@@ -44,10 +44,10 @@
   --sileo-state-loading: #64748b;
   --sileo-state-error: #ef4444;
   --sileo-state-warning: #eab308;
-  --sileo-state-info: #6366f1;
+  --sileo-state-info: #ffb86a;
   --sileo-state-action: #f97316;
-  --sileo-width: 340px;
-  --sileo-height: 68px;
+  --sileo-width: 350px;
+  --sileo-height: 40px;
   --sileo-duration: 520ms;
 
   /* v3.3 — slightly roomier desktop scale */
@@ -105,50 +105,40 @@ body {
 button, a { -webkit-tap-highlight-color: transparent; }
 button { font: inherit; }
 
-/* Sileo 0.1.5 has an open viewport hitbox issue: collapse the invisible
-   button box so it cannot intercept header controls outside the visible toast. */
-[data-sileo-toast="true"] {
-  height: 0;
-  filter: drop-shadow(0 18px 20px rgba(15, 23, 42, .22)) drop-shadow(0 8px 14px rgba(15, 23, 42, .14));
-}
-html.dark [data-sileo-toast="true"] {
-  filter: drop-shadow(0 20px 24px rgba(0, 0, 0, .56)) drop-shadow(0 8px 14px rgba(0, 0, 0, .38));
-}
-
-/* Sileo anchors its heading *under* the description at bottom-right.
-   We supply an ordered heading + subtitle as a custom description instead.
-   Hide the duplicated built-in title and keep the SVG morph + custom bell. */
-[data-sileo-title] { display: none !important; }
-[data-sileo-description] { width: 100%; }
-.paessed-toast-content {
-  display: flex;
+/* Sileo v0.1.5: retain its actual 40px SVG height and the native header.
+   Reposition the TOP-edge morph at the BOTTOM of the screen: bell + title
+   at the top of the panel; description on the next line, like the mockup.
+   This avoids the detached orphan badge caused by the previous 68px / 0px hacks. */
+[data-sileo-viewport][data-position="top-right"] {
+  top: auto !important;
+  bottom: 14px;
+  right: 14px;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 2px 0 0;
-  width: 100%;
+}
+/* Interact only with the visible pill/panel, not an invisible 350px toast box. */
+[data-sileo-viewport] { pointer-events: none; }
+[data-sileo-toast] { pointer-events: none !important; filter: drop-shadow(0 16px 20px rgba(15,23,42,.24)) drop-shadow(0 6px 9px rgba(15,23,42,.12)); }
+html.dark [data-sileo-toast] { filter: drop-shadow(0 17px 21px rgba(0,0,0,.52)) drop-shadow(0 6px 10px rgba(0,0,0,.36)); }
+[data-sileo-header], [data-sileo-content][data-visible="true"] { pointer-events: auto; }
+/* Keep native Sileo icon above the description and use PAESSED type hierarchy. */
+[data-sileo-title] {
+  color: var(--text) !important;
   font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-transform: none !important;
 }
-.paessed-toast-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
+[data-sileo-badge][data-state="info"] {
+  --_c: #ffb86a !important;
+  color: #ffb86a !important;
+  background-color: color-mix(in srgb, #ffb86a 15%, transparent) !important;
 }
-.paessed-toast-content strong {
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.35;
-  text-transform: none;
-}
-.paessed-toast-content span {
-  color: var(--muted);
+[data-sileo-description] {
+  color: var(--muted) !important;
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif;
   font-size: 12px;
-  font-weight: 500;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  display: block;
+  line-height: 18px;
+  padding: 4px 16px 14px;
 }
 .domain-desktop-viewport {
   cursor: grab;

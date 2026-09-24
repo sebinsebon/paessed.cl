@@ -51,29 +51,20 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 
-/**
- * Render a fully custom toast body so the visual order stays stable:
- * icon + title on the first row, subtitle underneath.
- */
+/** Sileo’s native header renders the bell and title; the body below holds the subtitle. */
 function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
-  const iconColor = variant === "success" ? "#10b981" : "#ffb86a";
-  const content = (
-    <div className="paessed-toast-content">
-      <div className="paessed-toast-head">
-        {variant === "success"
-          ? <Check size={16} strokeWidth={2.6} color={iconColor} />
-          : <Bell size={16} strokeWidth={2.2} color={iconColor} />}
-        <strong>{title}</strong>
-      </div>
-      <span>{subtitle}</span>
-    </div>
-  );
   const options = {
-    title: "",
-    description: content,
+    title,
+    description: subtitle,
+    // The top-edge layout places the badge ABOVE the description. CSS anchors
+    // its viewport bottom-right without overriding Sileo’s morph geometry.
+    position: "top-right" as const,
+    icon: variant === "info"
+      ? <Bell size={17} strokeWidth={2.3} color="#ffb86a" />
+      : <Check size={17} strokeWidth={2.6} color="#10b981" />,
     duration: 5600,
-    autopilot: { expand: 36, collapse: 5200 },
+    autopilot: { expand: 0, collapse: 5200 },
   };
   if (variant === "success") sileo.success(options);
   else sileo.info(options);
@@ -260,13 +251,12 @@ function Sidebar({ tourFocus }: { tourFocus: boolean }) {
 }
 
 function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
-  const tone = accent
-    ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }
-    : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" };
   return (
     <div
-      className="flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-bold"
-      style={tone}
+      className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
+      style={accent
+        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }
+        : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" }}
     >
       <Icon size={15} style={iconColor ? { color: iconColor } : undefined} />
       {children}
@@ -322,7 +312,7 @@ function Topbar({
           <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden w-[122px] dark:block" />
         </div>
         <div className="hidden items-center gap-2 lg:flex">
-          <TopMetric icon={Flame} iconColor="#ffb86a">14 días</TopMetric>
+          <TopMetric icon={Flame} accent iconColor="#ffb86a">14 días</TopMetric>
           <TopMetric icon={Medal}>Nv. 17 · 1.240 XP</TopMetric>
           <TopMetric icon={Target}>Objetivo 3/5</TopMetric>
           <TopMetric icon={TrendingUp}>Meta {monthlyGoal} pts</TopMetric>
@@ -380,13 +370,13 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       whileHover={mobile ? undefined : { scale: 1.012 }}
       whileTap={{ scale: .992 }}
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
-      className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3 text-left`}
+      className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
       data-critical={critical}
       style={masteryStyle(axis.state)}
     >
       <div className="flex items-start gap-3">
         <div
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border"
           style={{
             color: MASTERY[axis.state].color,
             borderColor: `color-mix(in srgb, ${MASTERY[axis.state].color} 25%, var(--border))`,
@@ -398,11 +388,11 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="truncate text-[14px] font-bold leading-[20px]">{axis.shortName}</h3>
-              <p className="text-[12px] font-medium leading-[18px] text-[var(--muted)]">{axis.correct}/{axis.total} correctas</p>
+              <h3 className="truncate text-[15px] font-bold leading-[22px]">{axis.shortName}</h3>
+              <p className="text-[13px] font-medium leading-5 text-[var(--muted)]">{axis.correct}/{axis.total} correctas</p>
             </div>
             <span
-              className="rounded-lg px-2 py-[5px] text-[12px] font-bold"
+              className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
               style={{ color: MASTERY[axis.state].color, background: `color-mix(in srgb, ${MASTERY[axis.state].color} 11%, var(--surface))` }}
             >
               {axis.percentage}%
@@ -410,7 +400,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           </div>
         </div>
       </div>
-      <div className="mt-2.5 h-2 overflow-hidden rounded-full progress-track">
+      <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
         <motion.div
           className="progress-fill h-full rounded-full"
           initial={{ width: 0 }}
@@ -419,7 +409,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           style={masteryStyle(axis.state)}
         />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] leading-4">
+      <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
         <span className="font-semibold" style={{ color: MASTERY[axis.state].color }}>Estado: {axis.state}</span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
@@ -533,9 +523,9 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
   );
 
   return (
-    <section className={`border-b border-[var(--border)] bg-[var(--surface)] py-2 ${tourFocus ? "tour-focus" : ""}`}>
+    <section className={`border-b border-[var(--border)] bg-[var(--surface)] py-[10px] ${tourFocus ? "tour-focus" : ""}`}>
       <div
-        className="domain-desktop-viewport domain-rail-mask hidden overflow-hidden px-5 py-2 lg:block"
+        className="domain-desktop-viewport domain-rail-mask hidden overflow-hidden px-5 py-[10px] lg:block"
         onMouseEnter={() => { hovered.current = true; }}
         onMouseLeave={() => { hovered.current = false; }}
         onPointerDown={onPointerDown}
@@ -1007,7 +997,7 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-[var(--canvas)]">
       <Toaster
-        position="bottom-right"
+        position="top-right"
         options={{
           fill: dark ? "#111827" : "#ffffff",
           roundness: 16,
@@ -1015,7 +1005,7 @@ export function Dashboard() {
           styles: {
             title: dark ? "text-slate-50! font-bold!" : "text-slate-900! font-bold!",
             description: dark ? "text-slate-300!" : "text-slate-500!",
-            badge: dark ? "bg-slate-800!" : "bg-slate-50!",
+            badge: "paessed-toast-badge",
             button: dark
               ? "bg-slate-800! text-slate-100! hover:bg-slate-700!"
               : "bg-slate-100! text-slate-900! hover:bg-slate-200!",
