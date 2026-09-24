@@ -1,0 +1,276 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  /* DESIGN.md — semantic surfaces */
+  --canvas: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-2: #eff4ff;
+  --surface-3: #e5eeff;
+  --surface-4: #dce9ff;
+  --surface-5: #d3e4fe;
+
+  /* DESIGN.md — typography */
+  --text: #0f172a;
+  --text-warm: #584237;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+
+  /* DESIGN.md — borders */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* DESIGN.md — brand / states */
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --primary-pressed: #c2410c;
+  --primary-accent: #fb923c;
+  --primary-soft: #ffedd5;
+  --secondary: #6366f1;
+  --secondary-hover: #4f46e5;
+  --secondary-soft: #eef2ff;
+  --success: #10b981;
+  --danger: #ef4444;
+  --danger-soft: #fef2f2;
+  --warning: #eab308;
+
+  /* DESIGN.md — elevation */
+  --shadow-1: 0 2px 8px -2px rgba(15, 23, 42, .05), 0 1px 4px -1px rgba(15, 23, 42, .03);
+  --shadow-2: 0 10px 25px -5px rgba(249, 115, 22, .10), 0 8px 10px -6px rgba(15, 23, 42, .06);
+  /* Sileo inherits PAESSED semantic colors instead of its default palette. */
+  --sileo-state-success: #10b981;
+  --sileo-state-loading: #64748b;
+  --sileo-state-error: #ef4444;
+  --sileo-state-warning: #eab308;
+  --sileo-state-info: #6366f1;
+  --sileo-state-action: #f97316;
+  --sileo-width: 340px;
+  --sileo-height: 40px;
+  --sileo-duration: 520ms;
+
+  /* v3.3 — slightly roomier desktop scale */
+  --sidebar-width: 264px;
+  --topbar-height: 68px;
+}
+
+
+html.dark {
+  color-scheme: dark;
+
+  /* Dark counterparts preserve the same DESIGN.md hierarchy. */
+  --canvas: #0b1020;
+  --surface: #111827;
+  --surface-raised: #111827;
+  --surface-2: #151f31;
+  --surface-3: #19253a;
+  --surface-4: #202d43;
+  --surface-5: #26364f;
+  --text: #f8fafc;
+  --text-warm: #e6d5cc;
+  --muted: #9aa8bc;
+  --muted-2: #74839a;
+  --border: #293750;
+  --border-strong: #3a4a64;
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --primary-pressed: #c2410c;
+  --primary-accent: #fb923c;
+  --primary-soft: #3a1d0d;
+  --secondary: #6366f1;
+  --secondary-hover: #4f46e5;
+  --secondary-soft: #1d2048;
+  --success: #10b981;
+  --danger: #ef4444;
+  --danger-soft: #35171b;
+  --warning: #eab308;
+  --shadow-1: 0 2px 8px -2px rgba(0, 0, 0, .34), 0 1px 4px -1px rgba(0, 0, 0, .24);
+  --shadow-2: 0 14px 34px -16px rgba(0, 0, 0, .68), 0 8px 16px -12px rgba(0, 0, 0, .50);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--canvas); }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  transition: background-color .22s ease, color .22s ease;
+  -webkit-font-smoothing: antialiased;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+button { font: inherit; }
+
+/* Sileo 0.1.5 has an open viewport hitbox issue: collapse the invisible
+   button box so it cannot intercept header controls outside the visible toast. */
+[data-sileo-toast="true"] {
+  height: 0;
+  filter: drop-shadow(0 14px 18px rgba(15, 23, 42, .18)) drop-shadow(0 4px 8px rgba(15, 23, 42, .10));
+}
+html.dark [data-sileo-toast="true"] {
+  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, .48)) drop-shadow(0 5px 10px rgba(0, 0, 0, .34));
+}
+
+/* Sileo anchors its heading *under* the description at bottom-right.
+   We supply an ordered heading + subtitle as a custom description instead.
+   Hide the duplicated built-in title and keep the SVG morph + custom bell. */
+[data-sileo-title] { display: none !important; }
+.paessed-toast-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 1px 0;
+  width: 100%;
+  font-family: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif;
+}
+.paessed-toast-content strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.paessed-toast-content span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.domain-desktop-viewport {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.domain-desktop-viewport:active { cursor: grabbing; }
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
+}
+.surface-raised {
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+}
+.text-muted { color: var(--muted); }
+.text-muted-2 { color: var(--muted-2); }
+
+.tactile-primary {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 0 var(--primary-pressed);
+  transition: transform .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.tactile-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+.tactile-primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--primary-pressed); }
+
+.soft-button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 2px 0 var(--border-strong);
+  transition: transform .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.soft-button:hover { background: var(--surface-2); transform: translateY(-1px); }
+.soft-button:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--border-strong); }
+
+.domain-rail-mask {
+  mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+}
+.domain-card-width {
+  /* Four cards fill the rail; the next copy enters immediately as the first card exits. */
+  width: calc((100vw - 264px - 44px - 36px) / 4);
+  min-width: calc((100vw - 264px - 44px - 36px) / 4);
+}
+.mastery-card {
+  position: relative;
+  isolation: isolate;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--mastery) 36%, var(--border));
+  box-shadow: var(--shadow-1), 0 0 0 0 color-mix(in srgb, var(--mastery) 0%, transparent);
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+.mastery-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: .22;
+  background: radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--mastery) 34%, transparent), transparent 46%);
+  pointer-events: none;
+}
+.mastery-card[data-critical="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  z-index: -2;
+  border: 1px solid color-mix(in srgb, var(--mastery) 26%, transparent);
+  animation: critical-aura 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.mastery-card:hover {
+  border-color: color-mix(in srgb, var(--mastery) 66%, var(--border));
+  box-shadow: var(--shadow-2), 0 10px 34px -20px color-mix(in srgb, var(--mastery) 72%, transparent);
+}
+
+.progress-track { background: var(--surface-3); }
+.progress-fill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--mastery) 88%, #fff 0%), var(--mastery));
+  position: relative;
+  overflow: hidden;
+}
+.progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-115%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.38), transparent);
+  animation: progress-shimmer 3.8s ease-in-out infinite;
+}
+
+
+.tour-focus {
+  position: relative;
+  z-index: 80 !important;
+  outline: 3px solid color-mix(in srgb, var(--primary) 82%, white 8%);
+  outline-offset: 5px;
+  border-radius: 18px;
+}
+
+@keyframes critical-aura {
+  0%, 100% { opacity: .22; transform: scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--mastery) 10%, transparent); }
+  50% { opacity: .62; transform: scale(1.008); box-shadow: 0 0 28px -10px color-mix(in srgb, var(--mastery) 54%, transparent); }
+}
+@keyframes progress-shimmer {
+  0%, 62% { transform: translateX(-115%); }
+  82%, 100% { transform: translateX(115%); }
+}
+
+
+@media (min-width: 1024px) {
+  /* Approx. +6% on rem-based UI sizing, paired with wider shell dimensions for a ~10% roomier desktop feel. */
+  html { font-size: 17px; }
+}
+
+@media (max-width: 1023px) {
+  .domain-card-width { width: 78vw; min-width: 290px; max-width: 390px; }
+  .domain-rail-mask { mask-image: none; -webkit-mask-image: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
+}
