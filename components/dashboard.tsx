@@ -10,10 +10,8 @@ import {
 import { sileo, Toaster } from "sileo";
 import {
   Bell,
-  BellRing,
   BookOpen,
   Calculator,
-  CalendarDays,
   Check,
   ChevronRight,
   CircleHelp,
@@ -54,26 +52,28 @@ import {
 } from "react";
 
 /**
- * In Sileo's bottom-position layout the built-in description appears above
- * the built-in title.  Render our own heading + subtitle, in that order,
- * inside Sileo's custom description slot instead of fighting its SVG layout.
- * The original title remains available to the toast API and is visually hidden
- * by the toaster styles below. The yellow notification bell replaces its icon.
+ * Render a fully custom toast body so the visual order stays stable:
+ * icon + title on the first row, subtitle underneath.
  */
 function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
+  const iconColor = variant === "success" ? "#10b981" : "#ffb86a";
   const content = (
     <div className="paessed-toast-content">
-      <strong>{title}</strong>
+      <div className="paessed-toast-head">
+        {variant === "success"
+          ? <Check size={16} strokeWidth={2.6} color={iconColor} />
+          : <Bell size={16} strokeWidth={2.2} color={iconColor} />}
+        <strong>{title}</strong>
+      </div>
       <span>{subtitle}</span>
     </div>
   );
   const options = {
-    title,
+    title: "",
     description: content,
-    icon: variant === "info" ? <BellRing size={18} strokeWidth={2.2} color="#facc15" /> : <Check size={18} strokeWidth={2.5} color="#10b981" />,
     duration: 5600,
-    autopilot: { expand: 40, collapse: 5200 },
+    autopilot: { expand: 36, collapse: 5200 },
   };
   if (variant === "success") sileo.success(options);
   else sileo.info(options);
@@ -259,15 +259,16 @@ function Sidebar({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function TopMetric({ icon: Icon, children, accent = false }: { icon: ComponentType<{ size?: number; className?: string }>; children: React.ReactNode; accent?: boolean }) {
+function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
+  const tone = accent
+    ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }
+    : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" };
   return (
     <div
-      className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
-      style={accent
-        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }
-        : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" }}
+      className="flex h-9 items-center gap-2 rounded-xl border px-3 text-[10px] font-bold"
+      style={tone}
     >
-      <Icon size={15} />
+      <Icon size={15} style={iconColor ? { color: iconColor } : undefined} />
       {children}
     </div>
   );
@@ -295,7 +296,7 @@ function Topbar({
       return;
     }
 
-    announce("Notificaciones", "No tienes avisos pendientes por ahora.");
+    announce("Notificaciones", "No tienes avisos pendientes todavía.");
     notificationOpen.current = true;
     notificationTimer.current = window.setTimeout(() => {
       notificationOpen.current = false;
@@ -321,7 +322,7 @@ function Topbar({
           <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden w-[122px] dark:block" />
         </div>
         <div className="hidden items-center gap-2 lg:flex">
-          <TopMetric icon={Flame} accent>14 días</TopMetric>
+          <TopMetric icon={Flame} iconColor="#ffb86a">14 días</TopMetric>
           <TopMetric icon={Medal}>Nv. 17 · 1.240 XP</TopMetric>
           <TopMetric icon={Target}>Objetivo 3/5</TopMetric>
           <TopMetric icon={TrendingUp}>Meta {monthlyGoal} pts</TopMetric>
@@ -343,7 +344,7 @@ function Topbar({
             className="soft-button relative flex h-9 w-9 items-center justify-center rounded-xl"
           >
             <Bell size={17} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ffb86a]" />
           </motion.button>
           <motion.button
             whileTap={{ rotate: -8, scale: .92 }}
@@ -351,7 +352,7 @@ function Topbar({
             onClick={() => setDark(!dark)}
             className="soft-button flex h-9 w-9 items-center justify-center rounded-xl"
           >
-            {dark ? <Sun size={17} className="text-[#facc15]" /> : <Moon size={17} className="text-[var(--secondary)]" />}
+            {dark ? <Sun size={17} className="text-[#ffb86a]" /> : <Moon size={17} className="text-[var(--secondary)]" />}
           </motion.button>
           <button className="ml-1 flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[var(--surface-2)]">
             <div
@@ -379,13 +380,13 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       whileHover={mobile ? undefined : { scale: 1.012 }}
       whileTap={{ scale: .992 }}
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
-      className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
+      className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3 text-left`}
       data-critical={critical}
       style={masteryStyle(axis.state)}
     >
       <div className="flex items-start gap-3">
         <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border"
           style={{
             color: MASTERY[axis.state].color,
             borderColor: `color-mix(in srgb, ${MASTERY[axis.state].color} 25%, var(--border))`,
@@ -397,11 +398,11 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="truncate text-[15px] font-bold leading-[22px]">{axis.shortName}</h3>
-              <p className="text-[13px] font-medium leading-5 text-[var(--muted)]">{axis.correct}/{axis.total} correctas</p>
+              <h3 className="truncate text-[14px] font-bold leading-[20px]">{axis.shortName}</h3>
+              <p className="text-[12px] font-medium leading-[18px] text-[var(--muted)]">{axis.correct}/{axis.total} correctas</p>
             </div>
             <span
-              className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
+              className="rounded-lg px-2 py-[5px] text-[12px] font-bold"
               style={{ color: MASTERY[axis.state].color, background: `color-mix(in srgb, ${MASTERY[axis.state].color} 11%, var(--surface))` }}
             >
               {axis.percentage}%
@@ -409,7 +410,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           </div>
         </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
+      <div className="mt-2.5 h-2 overflow-hidden rounded-full progress-track">
         <motion.div
           className="progress-fill h-full rounded-full"
           initial={{ width: 0 }}
@@ -418,7 +419,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           style={masteryStyle(axis.state)}
         />
       </div>
-      <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
+      <div className="mt-2 flex items-center justify-between gap-3 text-[10px] leading-4">
         <span className="font-semibold" style={{ color: MASTERY[axis.state].color }}>Estado: {axis.state}</span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
@@ -431,22 +432,21 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
   const reduced = useReducedMotion();
   const unitRef = useRef<HTMLDivElement>(null);
   const loopWidth = useRef(0);
-  const velocity = useRef(22);
+  const autoVelocity = useRef(-22);
+  const momentumVelocity = useRef(0);
+  const dragVelocity = useRef(0);
   const hovered = useRef(false);
-  const dragging = useRef<{ pointerId: number; startX: number; lastX: number; active: boolean } | null>(null);
+  const dragging = useRef<{ pointerId: number; startX: number; lastX: number; lastTime: number; active: boolean } | null>(null);
   const suppressClick = useRef(false);
 
   const wrapPosition = (position: number) => {
     const width = loopWidth.current;
     if (width <= 0) return position;
-    // The 3 rendered sets make x and x ± one set visually equivalent.
     return ((position % width) - width) % width;
   };
 
   useEffect(() => {
     const measure = () => {
-      // Each unit contains the 4 cards + the trailing 12px inter-unit gap.
-      // Resetting by exactly this width makes the copies visually indistinguishable.
       if (unitRef.current) {
         loopWidth.current = unitRef.current.getBoundingClientRect().width;
         x.set(wrapPosition(x.get()));
@@ -460,40 +460,47 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
       obs.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, []);
+  }, [x]);
 
   useAnimationFrame((_, delta) => {
     if (reduced || !loopWidth.current) return;
 
-    // Smoothly decelerate on hover and accelerate again on leave.
-    const targetVelocity = hovered.current || dragging.current?.active ? 0 : 22;
-    const easing = 1 - Math.exp(-delta / 190);
-    velocity.current += (targetVelocity - velocity.current) * easing;
+    const targetAuto = hovered.current || dragging.current?.active ? 0 : -22;
+    const autoEasing = 1 - Math.exp(-delta / 190);
+    autoVelocity.current += (targetAuto - autoVelocity.current) * autoEasing;
 
-    x.set(wrapPosition(x.get() - (velocity.current * delta) / 1000));
+    if (!dragging.current?.active) {
+      const decay = Math.exp(-delta / 460);
+      momentumVelocity.current *= decay;
+      if (Math.abs(momentumVelocity.current) < 4) momentumVelocity.current = 0;
+    }
+
+    x.set(wrapPosition(x.get() + ((autoVelocity.current + momentumVelocity.current) * delta) / 1000));
   });
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    // Keep mobile as native swipe/snap and preserve normal keyboard/click access.
     if (event.pointerType !== "mouse" || event.button !== 0) return;
-    dragging.current = { pointerId: event.pointerId, startX: event.clientX, lastX: event.clientX, active: false };
+    dragging.current = { pointerId: event.pointerId, startX: event.clientX, lastX: event.clientX, lastTime: event.timeStamp, active: false };
+    dragVelocity.current = 0;
+    momentumVelocity.current = 0;
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const state = dragging.current;
     if (!state || state.pointerId !== event.pointerId) return;
-    if (!state.active && Math.abs(event.clientX - state.startX) > 6) {
+    const dx = event.clientX - state.lastX;
+    const dt = Math.max(1, event.timeStamp - state.lastTime);
+    if (!state.active && Math.abs(event.clientX - state.startX) > 4) {
       state.active = true;
-      velocity.current = 0;
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     if (state.active) {
-      // Update on each move, not relative to drag start, so crossing a loop
-      // boundary in either direction does not suddenly jump to another card.
-      x.set(wrapPosition(x.get() + (event.clientX - state.lastX)));
+      x.set(wrapPosition(x.get() + dx));
+      dragVelocity.current = (dx / dt) * 1000;
       event.preventDefault();
     }
     state.lastX = event.clientX;
+    state.lastTime = event.timeStamp;
   };
 
   const finishPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -501,9 +508,8 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
     if (!state || state.pointerId !== event.pointerId) return;
     if (state.active) {
       suppressClick.current = true;
-      // If the browser doesn't emit a click after dragging, don't suppress
-      // the next *intentional* card click.
-      window.setTimeout(() => { suppressClick.current = false; }, 120);
+      momentumVelocity.current = dragVelocity.current;
+      window.setTimeout(() => { suppressClick.current = false; }, 140);
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -521,20 +527,15 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
   const desktopSet = (copy: string, measure = false) => (
     <div ref={measure ? unitRef : undefined} className="flex shrink-0 gap-3 pr-3" aria-hidden={measure ? undefined : true}>
       {axes.map((axis) => (
-        <DomainCard
-          key={`${copy}-${axis.id}`}
-          axis={axis}
-          onOpen={onOpen}
-          duplicate={!measure}
-        />
+        <DomainCard key={`${copy}-${axis.id}`} axis={axis} onOpen={onOpen} duplicate={!measure} />
       ))}
     </div>
   );
 
   return (
-    <section className={`border-b border-[var(--border)] bg-[var(--surface)] py-3 ${tourFocus ? "tour-focus" : ""}`}>
+    <section className={`border-b border-[var(--border)] bg-[var(--surface)] py-2 ${tourFocus ? "tour-focus" : ""}`}>
       <div
-        className="domain-desktop-viewport domain-rail-mask hidden overflow-hidden px-5 py-3 lg:block"
+        className="domain-desktop-viewport domain-rail-mask hidden overflow-hidden px-5 py-2 lg:block"
         onMouseEnter={() => { hovered.current = true; }}
         onMouseLeave={() => { hovered.current = false; }}
         onPointerDown={onPointerDown}
@@ -542,7 +543,7 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
         onPointerUp={finishPointer}
         onPointerCancel={finishPointer}
         onClickCapture={onTrackClickCapture}
-        aria-label="Ejes M1: arrastra para explorar o pulsa una tarjeta para ver su detalle"
+        aria-label="Ejes M1: arrastra libremente para explorar o pulsa una tarjeta para ver su detalle"
       >
         <motion.div className="flex w-max" style={{ x }}>
           {desktopSet("a", true)}
@@ -848,11 +849,11 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
             }`}
             title={previous ? `Comparado con el ensayo #${previous.id} (${previousCorrect} correctas)` : "Primer ensayo del historial mostrado"}
           >
-            {improvement === null ? "Primer registro" : improvement > 0
-              ? `↑ ${improvement} correctas más`
-              : improvement < 0 ? `↓ ${Math.abs(improvement)} correctas menos` : "= Mismas correctas"}
+            {improvement === null ? "Sin comparación previa" : improvement > 0
+              ? `+${improvement} correctas vs. el anterior`
+              : improvement < 0 ? `-${Math.abs(improvement)} correctas vs. el anterior` : "Mismas correctas que el anterior"}
           </div>
-          {previous && <div className="mt-1 text-[9px] font-medium text-[var(--muted)]">vs. ensayo anterior #{previous.id}</div>}
+          {previous && <div className="mt-1 text-[9px] font-medium text-[var(--muted)]">respecto al ensayo #{previous.id}</div>}
         </div>
       </div>
 
@@ -1032,17 +1033,16 @@ export function Dashboard() {
             <div>
               <div className="mb-2 flex items-center gap-2">
                 <span
-                  className="rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[.05em]"
+                  className="rounded-full border px-2.5 py-1 text-[11px] font-extrabold tracking-[.05em]"
                   style={{ borderColor: "color-mix(in srgb, var(--primary) 25%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }}
-                >Temporada PAES</span>
+                >67 días para la PAES</span>
                 <span className="text-[10px] font-bold text-[var(--muted)]">Septiembre · 2026</span>
               </div>
               <h1 className="text-[32px] font-extrabold leading-[40px] tracking-[-.025em] sm:text-[34px] sm:leading-[42px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
               <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
             </div>
             <div className="hidden items-center gap-2 md:flex">
-              <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><CalendarDays size={14} /> 67 días para la PAES</span>
-              <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[var(--primary)]" /> 3/5 de hoy</span>
+                            <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[#ffb86a]" /> 3/5 de hoy</span>
             </div>
           </section>
 
