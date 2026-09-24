@@ -61,10 +61,10 @@ function announce(title: string, subtitle: string, variant: "info" | "success" =
     // its viewport bottom-right without overriding Sileo’s morph geometry.
     position: "top-right" as const,
     icon: variant === "info"
-      ? <Bell size={17} strokeWidth={2.3} color="#ffb86a" />
+      ? <Bell size={17} strokeWidth={2.3} color="#fb923c" />
       : <Check size={17} strokeWidth={2.6} color="#10b981" />,
-    duration: 5600,
-    autopilot: { expand: 0, collapse: 5200 },
+    duration: 4500,
+    autopilot: { expand: 0, collapse: 3900 },
   };
   if (variant === "success") sileo.success(options);
   else sileo.info(options);
@@ -255,7 +255,7 @@ function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: 
     <div
       className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
       style={accent
-        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }
+        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "#fb923c" }
         : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" }}
     >
       <Icon size={15} style={iconColor ? { color: iconColor } : undefined} />
@@ -290,7 +290,7 @@ function Topbar({
     notificationOpen.current = true;
     notificationTimer.current = window.setTimeout(() => {
       notificationOpen.current = false;
-    }, 5600);
+    }, 4500);
   };
 
   useEffect(() => {
@@ -312,7 +312,7 @@ function Topbar({
           <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden w-[122px] dark:block" />
         </div>
         <div className="hidden items-center gap-2 lg:flex">
-          <TopMetric icon={Flame} accent iconColor="#ffb86a">14 días</TopMetric>
+          <TopMetric icon={Flame} accent iconColor="#fb923c">14 días</TopMetric>
           <TopMetric icon={Medal}>Nv. 17 · 1.240 XP</TopMetric>
           <TopMetric icon={Target}>Objetivo 3/5</TopMetric>
           <TopMetric icon={TrendingUp}>Meta {monthlyGoal} pts</TopMetric>
@@ -333,8 +333,8 @@ function Topbar({
             onClick={toggleNotifications}
             className="soft-button relative flex h-9 w-9 items-center justify-center rounded-xl"
           >
-            <Bell size={17} />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ffb86a]" />
+            <Bell size={17} className="text-[#fb923c]" />
+            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
           </motion.button>
           <motion.button
             whileTap={{ rotate: -8, scale: .92 }}
@@ -999,9 +999,9 @@ export function Dashboard() {
       <Toaster
         position="top-right"
         options={{
-          fill: dark ? "#111827" : "#ffffff",
+          fill: dark ? "#26364f" : "#e5eeff",
           roundness: 16,
-          autopilot: { expand: 100, collapse: 2500 },
+          autopilot: { expand: 0, collapse: 3900 },
           styles: {
             title: dark ? "text-slate-50! font-bold!" : "text-slate-900! font-bold!",
             description: dark ? "text-slate-300!" : "text-slate-500!",
@@ -1032,7 +1032,7 @@ export function Dashboard() {
               <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
             </div>
             <div className="hidden items-center gap-2 md:flex">
-                            <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[#ffb86a]" /> 3/5 de hoy</span>
+                            <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[#fb923c]" /> 3/5 de hoy</span>
             </div>
           </section>
 

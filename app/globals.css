@@ -44,7 +44,7 @@
   --sileo-state-loading: #64748b;
   --sileo-state-error: #ef4444;
   --sileo-state-warning: #eab308;
-  --sileo-state-info: #ffb86a;
+  --sileo-state-info: #fb923c;
   --sileo-state-action: #f97316;
   --sileo-width: 350px;
   --sileo-height: 40px;
@@ -129,9 +129,9 @@ html.dark [data-sileo-toast] { filter: drop-shadow(0 17px 21px rgba(0,0,0,.52)) 
   text-transform: none !important;
 }
 [data-sileo-badge][data-state="info"] {
-  --_c: #ffb86a !important;
-  color: #ffb86a !important;
-  background-color: color-mix(in srgb, #ffb86a 15%, transparent) !important;
+  --_c: #fb923c !important;
+  color: #fb923c !important;
+  background-color: color-mix(in srgb, #fb923c 15%, transparent) !important;
 }
 [data-sileo-description] {
   color: var(--muted) !important;
