@@ -194,7 +194,7 @@ function MasteryBadge({ state }: { state: MasteryState }) {
   );
 }
 
-function Sidebar({ tourFocus }: { tourFocus: boolean }) {
+function Sidebar({ tourFocus, dark }: { tourFocus: boolean; dark: boolean }) {
   const nav = [
     ["Inicio", Home, true, ""],
     ["Aprender", Route, false, "Ruta"],
@@ -205,10 +205,15 @@ function Sidebar({ tourFocus }: { tourFocus: boolean }) {
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 hidden w-[264px] border-r border-[var(--border)] bg-[var(--surface)] px-5 py-5 lg:flex lg:flex-col">
-      <div className="mb-7 px-1">
-        <img src="/paessed-logo.svg" alt="PAESSED" className="block w-[178px] dark:hidden" />
-        <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden w-[178px] dark:block" />
-        <div className="mt-1 text-[10px] font-extrabold tracking-[.16em] text-[var(--muted)]">MATEMÁTICA M1</div>
+      <div className="mb-7 flex w-full justify-center">
+        <div className="w-[178px]">
+          <img
+            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
+            alt="PAESSED"
+            className="block h-auto w-full"
+          />
+          <div className="mt-1 text-[10px] font-extrabold tracking-[.16em] text-[var(--muted)]">MATEMÁTICA M1</div>
+        </div>
       </div>
 
       <nav className={tourFocus ? "tour-focus" : ""}>
@@ -308,8 +313,11 @@ function Topbar({
     <header className="fixed left-0 right-0 top-0 z-40 flex h-[68px] items-center border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-4 backdrop-blur-lg lg:left-[264px] lg:px-6">
       <div className="flex w-full items-center gap-2">
         <div className="mr-auto flex items-center gap-2 lg:hidden">
-          <img src="/paessed-logo.svg" alt="PAESSED" className="block w-[122px] dark:hidden" />
-          <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden w-[122px] dark:block" />
+          <img
+            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
+            alt="PAESSED"
+            className="block h-auto w-[122px]"
+          />
         </div>
         <div className="hidden items-center gap-2 lg:flex">
           <TopMetric icon={Flame} accent iconColor="#fb923c">14 días</TopMetric>
@@ -931,7 +939,11 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
         data-tour-panel
         initial={{ opacity: 0, y: 18, scale: .97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="surface-raised fixed bottom-6 left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5"
+        className={`surface-raised fixed left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5 ${
+          step === tourSteps.length - 1
+            ? "top-[84px] bottom-auto max-h-[calc(100dvh-104px)] overflow-y-auto"
+            : "bottom-6"
+        }`}
       >
         <div className="flex items-start gap-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]"><Sparkles size={17} /></div>
@@ -1008,10 +1020,17 @@ export function Dashboard() {
       const headerBottom = 84; // 68px fixed header plus visual breathing room.
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
       const panelTop = panel?.getBoundingClientRect().top ?? window.innerHeight;
-      const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, panelTop - 20));
-      const freeHeight = Math.max(0, freeBottom - headerBottom);
-      // Larger sections align from the start; shorter ones are centered.
-      const desiredTop = headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
+      const lastStep = tourStep === tourSteps.length - 1;
+      // The last step places the coach panel at the TOP; position the
+      // highlighted exam section immediately below the panel's bottom edge.
+      const desiredTop = lastStep
+        ? Math.max(headerBottom, (panel?.getBoundingClientRect().bottom ?? 0) + 22)
+        : (() => {
+            const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, panelTop - 20));
+            const freeHeight = Math.max(0, freeBottom - headerBottom);
+            // Center small sections; align tall ones to their beginning.
+            return headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
+          })();
       const top = Math.max(0, window.scrollY + rect.top - desiredTop);
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
@@ -1037,13 +1056,16 @@ export function Dashboard() {
           },
         }}
       />
-      <Sidebar tourFocus={false} />
+      <Sidebar tourFocus={false} dark={dark} />
       <Topbar dark={dark} setDark={setDark} monthlyGoal={monthlyGoal} onTour={() => { setTourStep(0); setTourOpen(true); }} />
 
       <main className="min-h-screen pt-[68px] lg:pl-[264px]">
         <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-        <div className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7">
+        <div
+          className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
+          style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
+        >
           <section className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-2">
