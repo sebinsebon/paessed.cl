@@ -523,7 +523,7 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
   );
 
   return (
-    <section className={`border-b border-[var(--border)] bg-[var(--surface)] py-[10px] ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-domains" className={`border-b border-[var(--border)] bg-[var(--surface)] py-[10px] ${tourFocus ? "tour-focus" : ""}`}>
       <div
         className="domain-desktop-viewport domain-rail-mask hidden overflow-hidden px-5 py-[10px] lg:block"
         onMouseEnter={() => { hovered.current = true; }}
@@ -639,7 +639,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-mission" className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -769,7 +769,7 @@ function ProgressMonth() {
 
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><BookOpen size={15} className="text-[var(--secondary)]" /> Aprender</div>
         <h3 className="mt-2 text-lg font-extrabold">Continúa tu ruta adaptativa</h3>
@@ -876,7 +876,7 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
 
 function LastExams({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section className={`surface rounded-[24px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-exams" className={`surface rounded-[24px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="mb-5 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">
@@ -904,7 +904,7 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
 function MobileNav() {
   const items = [["Inicio", Home], ["Aprender", BookOpen], ["Ensayos", Trophy], ["Scanner", ScanLine]] as const;
   return (
-    <nav className="fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
+    <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
       {items.map(([label, Icon], i) => (
         <button key={label} className={`flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${i === 0 ? "bg-[var(--primary)] text-white" : "text-[var(--muted)]"}`}>
           <Icon size={17} />{label}
@@ -928,6 +928,7 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
     <>
       <div className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[1px]" />
       <motion.div
+        data-tour-panel
         initial={{ opacity: 0, y: 18, scale: .97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="surface-raised fixed bottom-6 left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5"
@@ -993,6 +994,30 @@ export function Dashboard() {
   };
 
   const tourKey = tourOpen ? tourSteps[tourStep].key : "";
+
+  // Keep the highlighted section between the fixed header and tour dialog.
+  // This also navigates to the first section when the tour is reopened.
+  useEffect(() => {
+    if (!tourOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById("tour-" + tourSteps[tourStep].key);
+      if (!target) return;
+
+      const rect = target.getBoundingClientRect();
+      const headerBottom = 84; // 68px fixed header plus visual breathing room.
+      const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
+      const panelTop = panel?.getBoundingClientRect().top ?? window.innerHeight;
+      const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, panelTop - 20));
+      const freeHeight = Math.max(0, freeBottom - headerBottom);
+      // Larger sections align from the start; shorter ones are centered.
+      const desiredTop = headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
+      const top = Math.max(0, window.scrollY + rect.top - desiredTop);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [tourOpen, tourStep]);
 
   return (
     <div className="min-h-screen bg-[var(--canvas)]">

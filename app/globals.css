@@ -115,6 +115,23 @@ button { font: inherit; }
   right: 14px;
   flex-direction: column;
 }
+
+/* Raise Sileo above mobile bottom navigation; use the same iOS safe area. */
+@media (max-width: 1023px) {
+  .paessed-mobile-nav {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  [data-sileo-viewport][data-position="top-right"] {
+    bottom: calc(98px + env(safe-area-inset-bottom, 0px));
+    right: 8px;
+  }
+}
+@media (max-width: 375px) {
+  [data-sileo-viewport][data-position="top-right"] {
+    transform: scale(.86);
+    transform-origin: bottom right;
+  }
+}
 /* Interact only with the visible pill/panel, not an invisible 350px toast box. */
 [data-sileo-viewport] { pointer-events: none; }
 [data-sileo-toast] { pointer-events: none !important; filter: drop-shadow(0 16px 20px rgba(15,23,42,.24)) drop-shadow(0 6px 9px rgba(15,23,42,.12)); }
