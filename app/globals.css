@@ -118,7 +118,13 @@ button { font: inherit; }
 /* Interact only with the visible pill/panel, not an invisible 350px toast box. */
 [data-sileo-viewport] { pointer-events: none; }
 [data-sileo-toast] { pointer-events: none !important; filter: drop-shadow(0 16px 20px rgba(15,23,42,.24)) drop-shadow(0 6px 9px rgba(15,23,42,.12)); }
-html.dark [data-sileo-toast] { filter: drop-shadow(0 17px 21px rgba(0,0,0,.52)) drop-shadow(0 6px 10px rgba(0,0,0,.36)); }
+/* Outline follows Sileo's morphing silhouette; avoid separate header/body borders. */
+html.dark [data-sileo-toast] {
+  filter: drop-shadow(0 0 1px #3a4a64)
+          drop-shadow(0 0 1px #3a4a64)
+          drop-shadow(0 17px 21px rgba(0,0,0,.52))
+          drop-shadow(0 6px 10px rgba(0,0,0,.36));
+}
 [data-sileo-header], [data-sileo-content][data-visible="true"] { pointer-events: auto; }
 /* Keep native Sileo icon above the description and use PAESSED type hierarchy. */
 [data-sileo-title] {

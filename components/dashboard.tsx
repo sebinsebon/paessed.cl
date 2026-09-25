@@ -63,8 +63,8 @@ function announce(title: string, subtitle: string, variant: "info" | "success" =
     icon: variant === "info"
       ? <Bell size={17} strokeWidth={2.3} color="#fb923c" />
       : <Check size={17} strokeWidth={2.6} color="#10b981" />,
-    duration: 4500,
-    autopilot: { expand: 0, collapse: 3900 },
+    duration: 3000,
+    autopilot: { expand: 0, collapse: 2400 },
   };
   if (variant === "success") sileo.success(options);
   else sileo.info(options);
@@ -290,7 +290,7 @@ function Topbar({
     notificationOpen.current = true;
     notificationTimer.current = window.setTimeout(() => {
       notificationOpen.current = false;
-    }, 4500);
+    }, 3000);
   };
 
   useEffect(() => {
@@ -333,7 +333,7 @@ function Topbar({
             onClick={toggleNotifications}
             className="soft-button relative flex h-9 w-9 items-center justify-center rounded-xl"
           >
-            <Bell size={17} className="text-[#fb923c]" />
+            <Bell size={17} className="text-[var(--text)]" />
             <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
           </motion.button>
           <motion.button
@@ -999,9 +999,9 @@ export function Dashboard() {
       <Toaster
         position="top-right"
         options={{
-          fill: dark ? "#26364f" : "#e5eeff",
+          fill: dark ? "#111827" : "#e5eeff",
           roundness: 16,
-          autopilot: { expand: 0, collapse: 3900 },
+          autopilot: { expand: 0, collapse: 2400 },
           styles: {
             title: dark ? "text-slate-50! font-bold!" : "text-slate-900! font-bold!",
             description: dark ? "text-slate-300!" : "text-slate-500!",
