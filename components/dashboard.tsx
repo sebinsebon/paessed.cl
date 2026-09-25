@@ -930,6 +930,7 @@ const tourSteps = [
 ];
 
 function Tour({ open, step, setStep, close }: { open: boolean; step: number; setStep: (n: number) => void; close: () => void }) {
+  const reducedMotion = useReducedMotion();
   if (!open) return null;
   const item = tourSteps[step];
   return (
@@ -937,8 +938,15 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
       <div className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[1px]" />
       <motion.div
         data-tour-panel
-        initial={{ opacity: 0, y: 18, scale: .97 }}
+        layout="position"
+        initial={reducedMotion ? false : { opacity: 0, y: 18, scale: .97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{
+          layout: { duration: reducedMotion ? 0 : .52, ease: [.22, 1, .36, 1] },
+          opacity: { duration: reducedMotion ? 0 : .2 },
+          y: { duration: reducedMotion ? 0 : .25 },
+          scale: { duration: reducedMotion ? 0 : .25 },
+        }}
         className={`surface-raised fixed left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5 ${
           step === tourSteps.length - 1
             ? "top-[84px] bottom-auto max-h-[calc(100dvh-104px)] overflow-y-auto"
@@ -971,6 +979,13 @@ export function Dashboard() {
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  // Only remember scrollY during the tour; no extra listeners or storage.
+  const tourOrigin = useRef<number | null>(null);
+  const startTour = () => {
+    if (tourOrigin.current === null) tourOrigin.current = window.scrollY;
+    setTourStep(0);
+    setTourOpen(true);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("paessed-theme");
@@ -982,7 +997,7 @@ export function Dashboard() {
     if (goal) setMonthlyGoal(goal);
 
     if (!localStorage.getItem("paessed-dashboard-tour-seen")) {
-      const timer = window.setTimeout(() => setTourOpen(true), 650);
+      const timer = window.setTimeout(() => { if (tourOrigin.current === null) startTour(); }, 650);
       return () => window.clearTimeout(timer);
     }
   }, []);
@@ -1000,9 +1015,18 @@ export function Dashboard() {
   };
 
   const closeTour = () => {
+    const returnTo = tourOrigin.current;
+    tourOrigin.current = null;
     setTourOpen(false);
     setTourStep(0);
     localStorage.setItem("paessed-dashboard-tour-seen", "1");
+    // Wait until temporary tour-only padding/overlay are removed.
+    if (returnTo !== null) {
+      window.requestAnimationFrame(() => {
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: returnTo, behavior: reducedMotion ? "auto" : "smooth" });
+      });
+    }
   };
 
   const tourKey = tourOpen ? tourSteps[tourStep].key : "";
@@ -1019,14 +1043,16 @@ export function Dashboard() {
       const rect = target.getBoundingClientRect();
       const headerBottom = 84; // 68px fixed header plus visual breathing room.
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
-      const panelTop = panel?.getBoundingClientRect().top ?? window.innerHeight;
+      // Use the final layout, not the panel's in-flight animated position.
+      const panelHeight = panel?.offsetHeight ?? 0;
+      const settledBottomPanelTop = window.innerHeight - 24 - panelHeight;
       const lastStep = tourStep === tourSteps.length - 1;
       // The last step places the coach panel at the TOP; position the
       // highlighted exam section immediately below the panel's bottom edge.
       const desiredTop = lastStep
-        ? Math.max(headerBottom, (panel?.getBoundingClientRect().bottom ?? 0) + 22)
+        ? Math.max(headerBottom, 84 + panelHeight + 22)
         : (() => {
-            const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, panelTop - 20));
+            const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, settledBottomPanelTop - 20));
             const freeHeight = Math.max(0, freeBottom - headerBottom);
             // Center small sections; align tall ones to their beginning.
             return headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
@@ -1057,7 +1083,7 @@ export function Dashboard() {
         }}
       />
       <Sidebar tourFocus={false} dark={dark} />
-      <Topbar dark={dark} setDark={setDark} monthlyGoal={monthlyGoal} onTour={() => { setTourStep(0); setTourOpen(true); }} />
+      <Topbar dark={dark} setDark={setDark} monthlyGoal={monthlyGoal} onTour={startTour} />
 
       <main className="min-h-screen pt-[68px] lg:pl-[264px]">
         <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
