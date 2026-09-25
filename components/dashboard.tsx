@@ -250,7 +250,7 @@ function Sidebar({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
+function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string; style?: CSSProperties }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
   return (
     <div
       className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
