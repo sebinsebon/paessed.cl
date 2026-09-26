@@ -1,4 +1,6 @@
 "use client";
+import { useRouter } from "next/navigation";
+import { DemoDashboardIntro } from "@/components/dashboard-intro";
 
 import {
   AnimatePresence,
@@ -195,12 +197,16 @@ function MasteryBadge({ state }: { state: MasteryState }) {
 }
 
 function Sidebar({ tourFocus, dark }: { tourFocus: boolean; dark: boolean }) {
+  const router = useRouter();
   const nav = [
     ["Inicio", Home, true, ""],
     ["Aprender", Route, false, "Ruta"],
     ["Ensayos", Trophy, false, ""],
     ["Scanner", ScanLine, false, ""],
-    ["Playground", Gamepad2, false, "Pronto"],
+    ["Playground", Gamepad2, false, "Demo"],
+    ["Verificador", ShieldCheck, false, ""],
+    ["Estadísticas", Gauge, false, ""],
+    ["Perfil", CircleHelp, false, ""],
   ] as const;
 
   return (
@@ -223,6 +229,7 @@ function Sidebar({ tourFocus, dark }: { tourFocus: boolean; dark: boolean }) {
               whileHover={{ x: active ? 0 : 3 }}
               whileTap={{ scale: 0.985 }}
               key={label}
+              onClick={() => router.push(({ Inicio: "/inicio", Aprender: "/aprender", Ensayos: "/ensayos", Scanner: "/scanner", Playground: "/playground", Verificador: "/verificador", "Estadísticas": "/estadisticas", Perfil: "/perfil" } as Record<string,string>)[label])}
               className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors ${
                 active
                   ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-pressed)]"
@@ -671,7 +678,7 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 
         <motion.button
           whileHover={{ scale: 1.008 }}
-          onClick={() => announce("Misión de hoy", "Abriríamos tu práctica adaptativa de 5 preguntas.", "success")}
+          onClick={() => window.location.assign("/aprender/leccion")}
           className="tactile-primary mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
         >
           <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
@@ -803,7 +810,7 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
             <div className="text-xs font-extrabold">Semejanza y proporcionalidad</div>
             <div className="mt-1 text-[10px] text-[var(--muted)]">Lección 3 de 5 · ~8 min</div>
           </div>
-          <button onClick={() => announce("Ruta de aprendizaje", "Aprender abrirá tu ruta vertical completa estilo Duolingo.")} className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></button>
+          <button onClick={() => window.location.assign("/aprender")} className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></button>
         </div>
       </div>
     </section>
@@ -910,11 +917,12 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
 }
 
 function MobileNav() {
+  const router = useRouter();
   const items = [["Inicio", Home], ["Aprender", BookOpen], ["Ensayos", Trophy], ["Scanner", ScanLine]] as const;
   return (
     <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
       {items.map(([label, Icon], i) => (
-        <button key={label} className={`flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${i === 0 ? "bg-[var(--primary)] text-white" : "text-[var(--muted)]"}`}>
+        <button key={label} onClick={() => router.push(({ Inicio: "/inicio", Aprender: "/aprender", Ensayos: "/ensayos", Scanner: "/scanner" } as Record<string,string>)[label])} className={`flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${i === 0 ? "bg-[var(--primary)] text-white" : "text-[var(--muted)]"}`}>
           <Icon size={17} />{label}
         </button>
       ))}
@@ -926,7 +934,7 @@ const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
   { key: "learn", title: "Tu ruta vive en Aprender", body: "Inicio muestra dónde quedaste; Aprender tendrá la experiencia completa estilo Duolingo." },
-  { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
+  { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes visibles son datos de muestra; tus ensayos reales se vincularán más adelante." },
 ];
 
 function Tour({ open, step, setStep, close }: { open: boolean; step: number; setStep: (n: number) => void; close: () => void }) {
@@ -1098,10 +1106,10 @@ export function Dashboard() {
                 <span
                   className="rounded-full border px-2.5 py-1 text-[11px] font-extrabold tracking-[.05em]"
                   style={{ borderColor: "color-mix(in srgb, var(--primary) 25%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }}
-                >67 días para la PAES</span>
-                <span className="text-[10px] font-bold text-[var(--muted)]">Septiembre · 2026</span>
+                >PROTOTIPO · fecha referencial</span>
+                <span className="text-[10px] font-bold text-[var(--muted)]">Diseño en progreso</span>
               </div>
-              <h1 className="text-[32px] font-extrabold leading-[40px] tracking-[-.025em] sm:text-[34px] sm:leading-[42px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+              <h1 className="text-[32px] font-extrabold leading-[40px] tracking-[-.025em] sm:text-[34px] sm:leading-[42px]">¡Hola! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
               <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
             </div>
             <div className="hidden items-center gap-2 md:flex">
@@ -1109,6 +1117,7 @@ export function Dashboard() {
             </div>
           </section>
 
+          <DemoDashboardIntro />
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
             <DailyMission tourFocus={tourKey === "mission"} />
             <MonthlyGoal goal={monthlyGoal} setGoal={updateGoal} />

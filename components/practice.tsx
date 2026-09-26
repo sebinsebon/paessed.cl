@@ -1,0 +1,38 @@
+'use client';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, BookOpen, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, RotateCcw, Sparkles, Target, Trophy, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AXES, QUESTIONS, AxisId, Question, savePractice } from '@/lib/demo';
+import { Eyebrow, PrototypeShell } from '@/components/prototype-shell';
+export function PracticePage({section,mode}:{section:string;mode:string}){
+  const [questions,setQuestions]=useState<Question[]>(QUESTIONS.slice(0,3));
+  const [answers,setAnswers]=useState<(number|null)[]>(Array(3).fill(null));
+  const [index,setIndex]=useState(0);
+  const [finished,setFinished]=useState(false);
+  const [time,setTime]=useState(0);
+  const [ready,setReady]=useState(false);
+  const kind=section==='ensayos'?'ensayo':section==='aprender'?'leccion':'playground';
+  const label=kind==='ensayo'?'Ensayo demostrativo M1':kind==='leccion'?'Lección de práctica':'Práctica libre';
+  const back=kind==='ensayo'?'/ensayos':kind==='leccion'?'/aprender':'/playground';
+  useEffect(()=>{
+    let chosen:Question[];
+    if(kind==='ensayo')chosen=QUESTIONS;
+    else if(kind==='leccion'){
+      try {const raw=localStorage.getItem('paessed-prototype-topic');const p=raw?JSON.parse(raw) as {axis:AxisId}:null;chosen=QUESTIONS.filter(q=>q.axis===(p?.axis??'geometria'));}
+      catch {chosen=QUESTIONS.filter(q=>q.axis==='geometria');}
+    } else {
+      let axis:'todos'|AxisId='todos';let count=5;let surprise=false;
+      try{const raw=localStorage.getItem('paessed-prototype-playground-config');if(raw){const parsed=JSON.parse(raw);axis=parsed.axis??'todos';count=Math.max(1,Math.min(12,Number(parsed.count)||5));surprise=Boolean(parsed.surprise);}}catch{}
+      const source=axis==='todos'?QUESTIONS:QUESTIONS.filter(q=>q.axis===axis);
+      chosen=surprise?[...source].sort(()=>Math.random()-.5).slice(0,count):source.slice(0,count);
+      if(!chosen.length)chosen=QUESTIONS.slice(0,5);
+    }
+    setQuestions(chosen);setAnswers(chosen.map(()=>null));setIndex(0);setFinished(false);setTime(0);setReady(true);
+  },[kind]);
+  useEffect(()=>{if(!ready||finished)return;const id=window.setInterval(()=>setTime(t=>t+1),1000);return()=>window.clearInterval(id)},[ready,finished]);
+  const correct=useMemo(()=>questions.reduce((n,q,i)=>n+(answers[i]===q.correct?1:0),0),[questions,answers]);
+  function finish(){setFinished(true);savePractice({kind,correct,total:questions.length,finishedAt:Date.now()})}
+  function restart(){setIndex(0);setAnswers(questions.map(()=>null));setFinished(false);setTime(0)}
+  const question=questions[index];
+  return <PrototypeShell title={label} subtitle="Preguntas originales de ejemplo"><div className="mx-auto max-w-[860px]"><div className="mb-6 flex flex-wrap items-center justify-between gap-3"><Link href={back} className="soft-button inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold"><ArrowLeft size={16}/> Salir</Link><span className="inline-flex items-center gap-2 rounded-xl bg-[var(--surface-2)] px-3 py-2 text-xs font-extrabold text-[var(--muted)]"><Clock3 size={16}/> {Math.floor(time/60).toString().padStart(2,'0')}:{(time%60).toString().padStart(2,'0')} · cronómetro orientativo</span></div>{finished?<section className="surface-raised rounded-[27px] p-6 sm:p-9"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-500"><Trophy size={33}/></span><h1 className="mt-5 text-center text-[30px] font-extrabold">¡Práctica terminada!</h1><p className="mt-3 text-center text-sm text-[var(--muted)]">Aciertos en preguntas sintéticas: <strong className="text-[var(--text)]">{correct} / {questions.length}</strong>. No representan puntaje PAES.</p><h2 className="mt-9 text-lg font-extrabold">Revisa cada respuesta</h2><div className="mt-4 space-y-4">{questions.map((q,i)=><article key={q.id} className="rounded-2xl border border-[var(--border)] p-4"><div className="flex items-start gap-3"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${answers[i]===q.correct?'bg-emerald-500/15 text-emerald-600':'bg-orange-500/15 text-orange-600'}`}>{answers[i]===q.correct?<Check size={18}/>:<X size={18}/>}</span><div><p className="text-sm font-extrabold">{i+1}. {q.question}</p><p className="mt-2 text-xs text-[var(--muted)]">Tu respuesta: {answers[i]===null?'Omitida':q.options[answers[i]!]}</p><p className="mt-1 text-xs font-bold text-emerald-600">Respuesta del ejemplo: {q.options[q.correct]}</p><p className="mt-2 text-xs leading-6 text-[var(--muted)]">{q.explanation}</p></div></div></article>)}</div><div className="mt-7 flex flex-wrap gap-3"><button onClick={restart} className="soft-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"><RotateCcw size={16}/> Repetir</button><Link href={back} className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">Volver a {kind==='leccion'?'Aprender':kind==='ensayo'?'Ensayos':'Playground'} <ArrowRight size={16}/></Link><Link href="/estadisticas" className="soft-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">Estadísticas</Link></div></section>:<><div className="mb-6"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><Eyebrow>{label}</Eyebrow><span className="text-xs font-extrabold text-[var(--muted)]">PREGUNTA {index+1} / {questions.length}</span></div><div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-3)]"><div className="h-full rounded-full bg-[var(--primary)] transition-all" style={{width:`${(index+1)/questions.length*100}%`}}/></div></div><article className="surface-raised min-h-[420px] rounded-[26px] p-5 sm:p-8"><div className="mb-7 flex flex-wrap gap-2"><span className="rounded-full bg-[var(--primary-soft)] px-3 py-1 text-[10px] font-extrabold text-[var(--primary)]">{AXES.find(a=>a.id===question.axis)?.name}</span><span className="rounded-full bg-[var(--surface-2)] px-3 py-1 text-[10px] font-bold text-[var(--muted)]">{question.topic}</span></div><h1 className="text-xl font-extrabold leading-8 sm:text-[27px] sm:leading-10">{question.question}</h1><div className="mt-8 grid gap-3">{question.options.map((option,i)=><button key={i} aria-pressed={answers[index]===i} onClick={()=>setAnswers(old=>old.map((v,j)=>j===index?i:v))} className={`flex min-h-16 items-center gap-4 rounded-2xl border-2 p-3.5 text-left text-sm font-bold ${answers[index]===i?'border-orange-500 bg-[var(--primary-soft)]':'border-[var(--border)] hover:border-[var(--primary-accent)]'}`}><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${answers[index]===i?'bg-orange-500 text-white':'bg-[var(--surface-2)] text-[var(--muted)]'}`}>{String.fromCharCode(65+i)}</span>{option}</button>)}</div></article><div className="mt-6 flex flex-wrap items-center justify-between gap-3"><button onClick={()=>setIndex(Math.max(0,index-1))} disabled={index===0} className="soft-button inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold disabled:opacity-40"><ChevronLeft size={16}/> Anterior</button><span className="text-xs text-[var(--muted)]">Las preguntas se pueden omitir.</span>{index===questions.length-1?<button onClick={finish} className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">Terminar y revisar <CheckCircle2 size={17}/></button>:<button onClick={()=>setIndex(index+1)} className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">Siguiente <ChevronRight size={17}/></button>}</div></>}</div></PrototypeShell>;
+}

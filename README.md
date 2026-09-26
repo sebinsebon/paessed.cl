@@ -1,3 +1,13 @@
+# Prototipo multipágina de PAESSED
+
+**Nueva experiencia:** landing `/` → diagnóstico sin cuenta `/diagnostico` → registro **simulado** `/registro` → resultado `/resultados` → dashboard original `/inicio`.
+
+También incorpora rutas demostrativas de Aprender, Ensayos, Scanner, Verificador, Playground, Estadísticas, Perfil y Ranking. Consulta [`PROTOTYPE_ROUTES.md`](PROTOTYPE_ROUTES.md) para el alcance y las limitaciones. La interfaz comparte `DESIGN.md`, logos oficiales y el sistema visual existente. **No hay backend, cuentas reales, puntuaciones PAES ni extracción de PDF.**
+
+La app es un prototipo interactivo. Las preguntas son ejemplos originales sintéticos y los datos nuevos se guardan únicamente en `localStorage`. El dashboard original conserva métricas anteriores, marcadas ahora como ilustrativas.
+
+---
+
 # PAESSED — Dashboard de Inicio (prototipo v3.4)
 
 Prototipo funcional de **Inicio**, construido con la arquitectura acordada:
