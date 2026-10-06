@@ -11,8 +11,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "PAESSED — Inicio M1",
-  description: "Prototipo del dashboard adaptativo de PAESSED",
+  title: "PAESSED — Prepárate para la PAES M1",
+  description: "Diagnóstico, práctica adaptativa, ensayos y progreso para Matemática M1.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
