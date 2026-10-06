@@ -1345,13 +1345,9 @@ export function Dashboard() {
             <ExamsCard />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:-mt-2 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)] lg:px-5">
-            <div className="dashboard-linked-card">
-              <LearnCard tourFocus={tourKey === "learn"} />
-            </div>
-            <div className="dashboard-linked-card">
-              <ProgressMonth />
-            </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,.85fr)]">
+            <ProgressMonth />
+            <LearnCard tourFocus={tourKey === "learn"} />
           </div>
 
           <div className="mt-7">
