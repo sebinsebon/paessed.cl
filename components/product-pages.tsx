@@ -123,14 +123,113 @@ export function LearnExperience() {
   );
 }
 
-const exams = [
-  { title: "Ensayo M1 · Septiembre", date: "21 sep 2026", score: 742, correct: 51, delta: "+14", status: "Analizado" },
-  { title: "Ensayo M1 · Septiembre", date: "12 sep 2026", score: 728, correct: 49, delta: "+17", status: "Analizado" },
-  { title: "Ensayo M1 · Septiembre", date: "03 sep 2026", score: 711, correct: 47, delta: "+9", status: "Analizado" },
-];
+const technicalExams = [
+  {
+    title: "Ensayo M1 · Septiembre",
+    date: "21 sep 2026",
+    score: 742,
+    delta: "+14 pts",
+    wrong: [4, 8, 12, 18, 27, 33, 42, 51, 57, 63],
+    omitted: [7, 22, 46, 60],
+  },
+  {
+    title: "Ensayo M1 · Septiembre",
+    date: "12 sep 2026",
+    score: 728,
+    delta: "+17 pts",
+    wrong: [3, 9, 14, 19, 25, 31, 38, 44, 49, 55, 59, 64],
+    omitted: [6, 20, 41, 61],
+  },
+  {
+    title: "Ensayo M1 · Septiembre",
+    date: "03 sep 2026",
+    score: 711,
+    delta: "+9 pts",
+    wrong: [2, 5, 10, 16, 21, 26, 30, 35, 39, 45, 50, 54, 58, 62],
+    omitted: [13, 29, 47, 65],
+  },
+] as const;
+
+function ExamQuestionMap({ wrong, omitted }: { wrong: readonly number[]; omitted: readonly number[] }) {
+  const wrongSet = new Set(wrong);
+  const omittedSet = new Set(omitted);
+  const correct = 65 - wrong.length - omitted.length;
+
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] font-bold text-[var(--muted)]">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-[3px] bg-emerald-500" />{correct} correctas</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-[3px] bg-rose-400" />{wrong.length} incorrectas</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-[3px] bg-[var(--muted-2)] opacity-70" />{omitted.length} omitidas</span>
+      </div>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(13, minmax(0, 1fr))" }} aria-label="Mapa de las 65 preguntas">
+        {Array.from({ length: 65 }).map((_, index) => {
+          const question = index + 1;
+          const state = omittedSet.has(question) ? "omitted" : wrongSet.has(question) ? "wrong" : "correct";
+          const label = state === "correct" ? "Correcta" : state === "wrong" ? "Incorrecta" : "Omitida";
+          return (
+            <span
+              key={question}
+              title={`Pregunta ${question}: ${label}`}
+              className={
+                "aspect-[1.35/1] min-h-[8px] rounded-[4px] " +
+                (state === "correct"
+                  ? "bg-emerald-500"
+                  : state === "wrong"
+                    ? "bg-rose-400"
+                    : "bg-[var(--muted-2)] opacity-55")
+              }
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TechnicalExamRow({ exam }: { exam: (typeof technicalExams)[number] }) {
+  return (
+    <article className="surface rounded-[18px] p-4 transition hover:border-[var(--border-strong)] sm:p-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(220px,.78fr)_minmax(0,1.55fr)_auto] lg:items-center">
+        <div className="min-w-0">
+          <div className="truncate text-[15px] font-extrabold">{exam.title}</div>
+          <div className="mt-1 flex items-end gap-2">
+            <span className="text-2xl font-extrabold tracking-[-.03em]">{exam.score}</span>
+            <span className="pb-0.5 text-[10px] font-bold text-[var(--muted)]">pts</span>
+          </div>
+          <div className="mt-1 text-[10px] font-medium text-[var(--muted)]">{exam.date} · Analizado</div>
+          <div className="mt-1 text-[10px] font-extrabold text-emerald-500">{exam.delta}</div>
+        </div>
+
+        <ExamQuestionMap wrong={exam.wrong} omitted={exam.omitted} />
+
+        <div className="flex items-center gap-2 lg:flex-col">
+          <Link
+            href="/app/ensayos/resultado"
+            className="tactile-primary grid h-11 w-11 place-items-center rounded-xl"
+            title="Abrir ensayo"
+            aria-label="Abrir ensayo"
+          >
+            <Play size={17} fill="currentColor" />
+          </Link>
+          <button
+            type="button"
+            className="soft-button grid h-11 w-11 place-items-center rounded-xl"
+            title="Opciones del ensayo"
+            aria-label="Opciones del ensayo"
+          >
+            <Settings size={17} />
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export function ExamsExperience() {
   const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
+  const [query, setQuery] = useState("");
+  const [sortByScore, setSortByScore] = useState(false);
 
   useEffect(() => {
     void listImportedExams()
@@ -138,97 +237,99 @@ export function ExamsExperience() {
       .catch(() => setImportedExams([]));
   }, []);
 
+  const visibleExams = technicalExams
+    .filter((exam) => (exam.title + " " + exam.date).toLowerCase().includes(query.trim().toLowerCase()))
+    .slice()
+    .sort((a, b) => sortByScore ? b.score - a.score : 0);
+
   return (
-    <AppShell title="Ensayos" eyebrow="Medición real">
-      <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Historial y práctica</div>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-[-.03em]">Tus ensayos</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Revisa progreso, errores y cambios de dominio. Los ensayos son la evidencia más fuerte de tu perfil.</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Link href="/app/ensayos/importar" className="soft-button inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
-            <Upload size={16} />Importar ensayo
+    <AppShell title="Ensayos" showPageContext={false}>
+      <section>
+        <h1 className="text-[30px] font-extrabold leading-tight tracking-[-.035em] sm:text-[34px]">Tus ensayos</h1>
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+          Revisa resultados, errores y el mapa completo de preguntas de cada ensayo.
+        </p>
+      </section>
+
+      <div className="mt-6 flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="surface rounded-xl px-4 py-2.5 text-xs font-extrabold">
+            Ensayos: {technicalExams.length + importedExams.length}
+          </div>
+          <Link href="/app/ensayos/importar" className="soft-button inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold">
+            <Upload size={15} />Importar ensayo
           </Link>
-          <Link href="/app/ensayos/nuevo" className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
-            <Play size={16} />Comenzar ensayo
+          <Link href="/app/ensayos/nuevo" className="tactile-primary inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold">
+            <Play size={15} />Nuevo ensayo
+          </Link>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row xl:justify-end">
+          <button
+            type="button"
+            onClick={() => setSortByScore((value) => !value)}
+            className="soft-button inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-extrabold"
+          >
+            <Settings size={15} />{sortByScore ? "Orden: puntaje" : "Orden: reciente"}
+          </button>
+
+          <label className="surface flex min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 sm:w-[260px]">
+            <Search size={15} className="shrink-0 text-[var(--muted)]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Buscar ensayo"
+              className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none placeholder:text-[var(--muted-2)]"
+            />
+          </label>
+        </div>
+      </div>
+
+      {importedExams.length > 0 && (
+        <section className="mt-4 rounded-[18px] border border-emerald-300/60 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+          <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+            <PackageCheck size={16} />Importados en este navegador
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {importedExams.map((exam) => (
+              <Link
+                key={exam.id}
+                href={"/app/ensayos/importado/" + encodeURIComponent(exam.id)}
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 transition hover:border-emerald-400 dark:border-emerald-900/70"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-extrabold">{exam.title}</div>
+                  <div className="mt-1 text-[10px] text-[var(--muted)]">{exam.questionCount} preguntas · {exam.assetCount} assets</div>
+                </div>
+                <ChevronRight size={16} className="text-[var(--muted)]" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-4 space-y-3">
+        {visibleExams.map((exam) => <TechnicalExamRow key={exam.date} exam={exam} />)}
+        {visibleExams.length === 0 && (
+          <div className="surface rounded-[18px] p-8 text-center text-sm font-bold text-[var(--muted)]">
+            No encontré ensayos con esa búsqueda.
+          </div>
+        )}
+      </section>
+
+      <section className="surface mt-4 rounded-[20px] border-dashed p-5 sm:p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-extrabold">Agregar ensayo</h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              Importa un paquete .paessed/.zip. La pantalla de importación permite revisar el contenido antes de guardarlo.
+            </p>
+          </div>
+          <Link href="/app/ensayos/importar" className="soft-button inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
+            <Upload size={16} />Importar archivo
           </Link>
         </div>
       </section>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_360px]">
-        <section className="space-y-3">
-          {importedExams.length > 0 && (
-            <div className="mb-4 rounded-2xl border border-emerald-300/60 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
-                <PackageCheck size={16} />
-                Importados en este navegador
-              </div>
-              <div className="mt-3 space-y-2">
-                {importedExams.map((exam) => (
-                  <Link
-                    key={exam.id}
-                    href={"/app/ensayos/importado/" + encodeURIComponent(exam.id)}
-                    className="group flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 transition hover:border-emerald-400 hover:bg-emerald-50/50 sm:flex-row sm:items-center dark:border-emerald-900/70 dark:hover:bg-emerald-950/20"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-extrabold">{exam.title}</div>
-                      <div className="mt-1 text-[10px] text-[var(--muted)]">
-                        {exam.questionCount} preguntas · {exam.answerCount} respuestas detectadas · {exam.assetCount} assets
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">IMPORTADO</span>
-                      <span className="soft-button grid h-9 w-9 place-items-center rounded-xl">
-                        <ChevronRight size={15} />
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {exams.map((exam, index) => (
-            <article key={index} className="surface rounded-2xl p-5 transition hover:border-[var(--border-strong)]">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--secondary-soft)] text-[var(--secondary)]"><Trophy size={21} /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-extrabold">{exam.title}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{exam.date} · {exam.correct}/65 correctas · {exam.status}</div>
-                </div>
-                <div className="flex items-center gap-5">
-                  <div className="text-right">
-                    <div className="text-2xl font-extrabold">{exam.score}</div>
-                    <div className="text-[10px] font-extrabold text-emerald-500">{exam.delta} pts</div>
-                  </div>
-                  <button className="soft-button grid h-10 w-10 place-items-center rounded-xl"><ChevronRight size={17} /></button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <aside className="space-y-4">
-          <div className="surface-raised rounded-2xl p-5">
-            <div className="flex items-center gap-2 text-sm font-extrabold"><BarChart3 size={18} className="text-emerald-500" />Tendencia</div>
-            <div className="mt-4 flex items-end gap-2">
-              <span className="text-4xl font-extrabold">+31</span>
-              <span className="pb-1 text-xs font-bold text-emerald-500">pts este mes</span>
-            </div>
-            <div className="mt-5 flex h-28 items-end gap-2">
-              {[38, 49, 58, 68, 76].map((height, i) => <div key={i} className="flex-1 rounded-t-xl bg-[var(--secondary)] opacity-80" style={{ height: height + "%" }} />)}
-            </div>
-          </div>
-
-          <div className="surface rounded-2xl p-5">
-            <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">Próximo objetivo</div>
-            <div className="mt-2 text-lg font-extrabold">Superar 760 pts</div>
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--surface-3)]"><div className="h-full w-[72%] rounded-full bg-[var(--primary)]" /></div>
-            <div className="mt-2 text-[10px] font-bold text-[var(--muted)]">18 puntos para la meta intermedia</div>
-          </div>
-        </aside>
-      </div>
     </AppShell>
   );
 }
