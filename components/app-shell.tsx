@@ -33,7 +33,7 @@ function useTheme() {
   return { dark, toggle };
 }
 
-export function AppShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow?: string }) {
+export function AppShell({ children, title, eyebrow, showPageContext = true }: { children: ReactNode; title: string; eyebrow?: string; showPageContext?: boolean }) {
   const pathname = usePathname();
   const { dark, toggle } = useTheme();
 
@@ -84,8 +84,12 @@ export function AppShell({ children, title, eyebrow }: { children: ReactNode; ti
             <img src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"} alt="PAESSED" className="h-auto w-[118px]" />
           </Link>
           <div className="hidden sm:block">
-            {eyebrow && <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">{eyebrow}</div>}
-            <div className="text-sm font-extrabold text-[var(--text)]">{title}</div>
+            {showPageContext && (
+              <>
+                {eyebrow && <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">{eyebrow}</div>}
+                <div className="text-sm font-extrabold text-[var(--text)]">{title}</div>
+              </>
+            )}
           </div>
         </div>
 
