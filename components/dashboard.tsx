@@ -409,6 +409,34 @@ function HomeActions({
   );
 }
 
+
+function DashboardTopNav({
+  dark,
+  setDark,
+  onTour,
+}: {
+  dark: boolean;
+  setDark: (v: boolean) => void;
+  onTour: () => void;
+}) {
+  return (
+    <header className="fixed left-0 right-0 top-0 z-40 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] backdrop-blur-xl lg:left-[264px]">
+      <div className="mx-auto flex h-full w-full max-w-[1280px] items-center px-4 sm:px-6">
+        <Link href="/app/inicio" className="lg:hidden">
+          <img
+            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
+            alt="PAESSED"
+            className="block h-auto w-[118px]"
+          />
+        </Link>
+        <div className="ml-auto">
+          <HomeActions dark={dark} setDark={setDark} onTour={onTour} />
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis: Axis; onOpen: (axis: Axis) => void; mobile?: boolean; duplicate?: boolean }) {
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
@@ -1089,7 +1117,7 @@ export function Dashboard() {
       if (!target) return;
 
       const rect = target.getBoundingClientRect();
-      const headerBottom = 16; // The dashboard no longer has a fixed top bar.
+      const headerBottom = 80; // 64px top nav plus visual breathing room.
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
       // Use the final layout, not the panel's in-flight animated position.
       const panelHeight = panel?.offsetHeight ?? 0;
@@ -1131,17 +1159,15 @@ export function Dashboard() {
         }}
       />
       <Sidebar tourFocus={false} dark={dark} />
-      <main className="min-h-screen lg:pl-[264px]">
+      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} />
+      <main className="min-h-screen pt-[64px] lg:pl-[264px]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <section className="mb-6 flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
-              <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
-            </div>
-            <HomeActions dark={dark} setDark={setDark} onTour={startTour} />
+          <section className="mb-6">
+            <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+            <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
