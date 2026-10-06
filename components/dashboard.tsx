@@ -1347,14 +1347,49 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
-            <DailyMission tourFocus={tourKey === "mission"} />
-            <ExamsCard />
-          </div>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_12px_minmax(0,.95fr)_12px_minmax(290px,1fr)] lg:grid-rows-[auto_12px_auto] lg:gap-0">
+            {/* Desktop-only surfaces: two continuous interlocking L shapes. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[1/4] lg:row-[1] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:rounded-br-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[1] lg:row-[2/4] lg:block lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-t-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden lg:col-[2/4] lg:row-[1] lg:block lg:self-end lg:h-px lg:bg-[var(--border)]"
+            />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
-            <LearnCard tourFocus={tourKey === "learn"} />
-            <ProgressMonth />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[5] lg:row-[1/3] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[3/6] lg:row-[3] lg:block lg:rounded-tl-[20px] lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-t-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden lg:col-[3/5] lg:row-[3] lg:block lg:self-start lg:h-px lg:bg-[var(--border)]"
+            />
+
+            <div className="lg:col-[1/4] lg:row-[1] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
+              <DailyMission tourFocus={tourKey === "mission"} />
+            </div>
+
+            <div className="lg:col-[5] lg:row-[1] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
+              <ExamsCard />
+            </div>
+
+            <div className="lg:col-[1] lg:row-[3] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
+              <LearnCard tourFocus={tourKey === "learn"} />
+            </div>
+
+            <div className="lg:col-[3/6] lg:row-[3] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
+              <ProgressMonth />
+            </div>
           </div>
 
           <div className="mt-7">
