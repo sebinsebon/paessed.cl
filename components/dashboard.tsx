@@ -1347,12 +1347,12 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)] lg:gap-0 lg:[&>section:first-child]:rounded-r-none lg:[&>section:last-child]:rounded-l-none lg:[&>section:last-child]:border-l-0">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
             <DailyMission tourFocus={tourKey === "mission"} />
             <ExamsCard />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)] lg:gap-0 lg:[&>section:first-child]:rounded-r-none lg:[&>section:last-child]:rounded-l-none lg:[&>section:last-child]:border-l-0">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
             <LearnCard tourFocus={tourKey === "learn"} />
             <ProgressMonth />
           </div>
