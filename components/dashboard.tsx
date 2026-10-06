@@ -675,14 +675,15 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
           <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.008 }}
-          onClick={() => announce("Misión de hoy", "Abriríamos tu práctica adaptativa de 5 preguntas.", "success")}
-          className="tactile-primary mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
-        >
-          <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
-          <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
-        </motion.button>
+        <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit">
+          <Link
+            href="/app/playground"
+            className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
+          >
+            <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
+            <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
@@ -809,7 +810,7 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
             <div className="text-xs font-extrabold">Semejanza y proporcionalidad</div>
             <div className="mt-1 text-[10px] text-[var(--muted)]">Lección 3 de 5 · ~8 min</div>
           </div>
-          <button onClick={() => announce("Ruta de aprendizaje", "Aprender abrirá tu ruta vertical completa estilo Duolingo.")} className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></button>
+          <Link href="/app/aprender" className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></Link>
         </div>
       </div>
     </section>
@@ -905,7 +906,7 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-rose-400" />Incorrecta</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--muted-2)] opacity-60" />Omitida</span>
           </div>
-          <button className="soft-button rounded-lg px-3 py-2 text-[10px] font-extrabold text-[var(--primary)]">Ver todos</button>
+          <Link href="/app/ensayos" className="soft-button rounded-lg px-3 py-2 text-[10px] font-extrabold text-[var(--primary)]">Ver todos</Link>
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
