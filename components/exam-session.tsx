@@ -51,7 +51,7 @@ export function ExamSession() {
   const q = QUESTIONS[index];
 
   const finish = () => {
-    const correct = answers.reduce((sum, value, i) => sum + (value === QUESTIONS[i].answer ? 1 : 0), 0);
+    const correct = answers.reduce<number>((sum, value, i) => sum + (value === QUESTIONS[i].answer ? 1 : 0), 0);
     const omitted = 65 - answered;
     const wrong = answered - correct;
     const score = Math.round(100 + (correct / 65) * 900);
