@@ -950,9 +950,9 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function ExamsCard() {
+function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
-    <section className="surface relative overflow-hidden rounded-[20px] p-5">
+    <section className={embedded ? "relative h-full overflow-hidden bg-transparent p-5" : "surface relative overflow-hidden rounded-[20px] p-5"}>
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
           <Trophy size={19} />
@@ -989,7 +989,7 @@ function ExamsCard() {
 }
 
 
-function ProgressMonth() {
+function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
   const points = [690, 711, 728, 742];
   const labels = ["03", "10", "16", "21 sep"];
   const min = 670;
@@ -997,7 +997,7 @@ function ProgressMonth() {
   const coords = points.map((p, i) => ({ x: 28 + i * 98, y: 112 - ((p - min) / (max - min)) * 80 }));
   const path = coords.map((c, i) => `${i ? "L" : "M"}${c.x},${c.y}`).join(" ");
   return (
-    <section className="surface rounded-[20px] p-5">
+    <section className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Progreso de septiembre</div>
@@ -1347,21 +1347,35 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(300px,.8fr)_minmax(0,1.15fr)_minmax(290px,.9fr)]">
-            <div className="lg:col-[1/3]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(300px,.8fr)_16px_minmax(0,1.15fr)_minmax(290px,.9fr)] lg:grid-rows-[auto_16px_auto] lg:gap-0">
+            <div className="lg:col-[1/4] lg:row-[1] lg:pr-4">
               <DailyMission tourFocus={tourKey === "mission"} />
             </div>
 
-            <div className="lg:col-[3]">
-              <ExamsCard />
-            </div>
-
-            <div className="lg:col-[1]">
+            <div className="lg:col-[1] lg:row-[3] lg:pr-4">
               <LearnCard tourFocus={tourKey === "learn"} />
             </div>
 
-            <div className="lg:col-[2/4]">
-              <ProgressMonth />
+            {/* One continuous L-shaped surface for the right pair only. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[4] lg:row-[1/3] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[3/5] lg:row-[3] lg:block lg:rounded-tl-[20px] lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-t-0 lg:border-[var(--border)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden lg:col-[3/4] lg:row-[3] lg:block lg:self-start lg:h-px lg:bg-[var(--border)]"
+            />
+
+            <div className="lg:col-[4] lg:row-[1] lg:z-10">
+              <ExamsCard embedded />
+            </div>
+
+            <div className="lg:col-[3/5] lg:row-[3] lg:z-10">
+              <ProgressMonth embedded />
             </div>
           </div>
 
