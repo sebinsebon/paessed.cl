@@ -187,7 +187,7 @@ function masteryStyle(state: MasteryState): MasteryCSS {
 function carouselMasteryColor(percentage: number) {
   const pct = Math.max(0, Math.min(100, percentage));
   const hue = 28 + pct * 1.15;
-  return `oklch(0.68 0.15 ${hue})`;
+  return `oklch(0.76 0.13 ${hue})`;
 }
 
 function carouselMasteryStyle(percentage: number): MasteryCSS {
@@ -285,6 +285,7 @@ function HomeActions({
   onTour: () => void;
 }) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [detached, setDetached] = useState(false);
   const notificationOpen = useRef(false);
   const notificationTimer = useRef<number | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -303,6 +304,13 @@ function HomeActions({
       notificationOpen.current = false;
     }, 3000);
   };
+
+  useEffect(() => {
+    const syncDetached = () => setDetached(window.scrollY > 28);
+    syncDetached();
+    window.addEventListener("scroll", syncDetached, { passive: true });
+    return () => window.removeEventListener("scroll", syncDetached);
+  }, []);
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -330,7 +338,15 @@ function HomeActions({
   };
 
   return (
-    <div className="fixed right-4 top-3 z-[60] flex shrink-0 items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] p-1.5 shadow-[var(--shadow-2)] backdrop-blur-xl sm:right-6">
+    <motion.div
+      layout
+      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+      className={`z-[60] flex shrink-0 items-center gap-1.5 transition-[background-color,border-color,box-shadow,padding] duration-200 ${
+        detached
+          ? "fixed right-4 top-3 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] p-1.5 shadow-[var(--shadow-2)] backdrop-blur-xl sm:right-6"
+          : "relative rounded-xl border border-transparent bg-transparent p-0 shadow-none"
+      }`}
+    >
       <motion.button
         whileTap={{ scale: .92 }}
         aria-label="Notificaciones"
@@ -419,12 +435,20 @@ function HomeActions({
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 
-function DashboardTopNav({ dark }: { dark: boolean }) {
+function DashboardTopNav({
+  dark,
+  setDark,
+  onTour,
+}: {
+  dark: boolean;
+  setDark: (v: boolean) => void;
+  onTour: () => void;
+}) {
   return (
     <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] lg:ml-[264px]">
       <div className="mx-auto flex h-full w-full max-w-[1280px] items-center px-4 sm:px-6">
@@ -435,6 +459,9 @@ function DashboardTopNav({ dark }: { dark: boolean }) {
             className="block h-auto w-[118px]"
           />
         </Link>
+        <div className="ml-auto">
+          <HomeActions dark={dark} setDark={setDark} onTour={onTour} />
+        </div>
       </div>
     </header>
   );
@@ -1163,8 +1190,7 @@ export function Dashboard() {
         }}
       />
       <Sidebar tourFocus={false} dark={dark} />
-      <DashboardTopNav dark={dark} />
-      <HomeActions dark={dark} setDark={setDark} onTour={startTour} />
+      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} />
       <main className="min-h-screen lg:pl-[264px]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
