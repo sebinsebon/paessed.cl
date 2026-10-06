@@ -18,7 +18,7 @@ import { AppShell } from "@/components/app-shell";
 type Axis = {
   name: string;
   percentage: number;
-  icon: ComponentType<{ size?: number; className?: string }>;
+  icon: ComponentType<{ size?: number; className?: string; style?: CSSProperties }>;
 };
 
 type MasteryStyle = CSSProperties & { "--mastery": string };
