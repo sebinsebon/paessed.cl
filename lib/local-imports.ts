@@ -59,3 +59,15 @@ export async function listImportedExams(): Promise<ImportedExamSummary[]> {
   database.close();
   return records.map((record) => record.summary).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
 }
+
+export async function getImportedExam(id: string): Promise<ImportedExamRecord | null> {
+  const database = await openDatabase();
+  const record = await new Promise<ImportedExamRecord | undefined>((resolve, reject) => {
+    const transaction = database.transaction(STORE, "readonly");
+    const request = transaction.objectStore(STORE).get(id);
+    request.onsuccess = () => resolve(request.result as ImportedExamRecord | undefined);
+    request.onerror = () => reject(request.error ?? new Error("No se pudo leer el ensayo importado."));
+  });
+  database.close();
+  return record ?? null;
+}
