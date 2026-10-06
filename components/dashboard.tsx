@@ -186,28 +186,14 @@ function masteryStyle(state: MasteryState): MasteryCSS {
  */
 function carouselMasteryColor(percentage: number) {
   const pct = Math.max(0, Math.min(100, percentage));
-  const stops = [
-    { pct: 0, rgb: [255, 106, 100] },   // PAESSED tertiary container
-    { pct: 40, rgb: [251, 146, 60] },   // PAESSED primary accent
-    { pct: 60, rgb: [245, 183, 66] },   // warm bridge
-    { pct: 75, rgb: [179, 191, 82] },   // orange-to-mastery bridge
-    { pct: 85, rgb: [100, 184, 112] },  // soft mastery green
-    { pct: 100, rgb: [16, 185, 129] },  // PAESSED success/mastery
-  ] as const;
 
-  const upperIndex = stops.findIndex((stop) => pct <= stop.pct);
-  if (upperIndex <= 0) {
-    const [r, g, b] = stops[0].rgb;
-    return `rgb(${r} ${g} ${b})`;
-  }
-
-  const lower = stops[upperIndex - 1];
-  const upper = stops[upperIndex];
-  const t = (pct - lower.pct) / (upper.pct - lower.pct);
-  const rgb = lower.rgb.map((value, index) =>
-    Math.round(value + (upper.rgb[index] - value) * t)
-  );
-  return `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`;
+  // Bright mastery family from the dashboard reference:
+  // critical orange → regular gold → strong lime → mastered green.
+  if (pct >= 85) return "#77E637";
+  if (pct >= 75) return "#ACE637";
+  if (pct >= 60) return "#E6B537";
+  if (pct >= 40) return "#E69A37";
+  return "#E67D37";
 }
 
 function carouselMasteryStyle(percentage: number): MasteryCSS {
@@ -235,12 +221,10 @@ function Sidebar({
   tourFocus,
   dark,
   collapsed,
-  onToggle,
 }: {
   tourFocus: boolean;
   dark: boolean;
   collapsed: boolean;
-  onToggle: () => void;
 }) {
   const nav = [
     ["Inicio", Home, "/app/inicio", ""],
@@ -318,19 +302,44 @@ function Sidebar({
         </motion.div>
       </div>
 
-      <motion.button
-        type="button"
-        onClick={onToggle}
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: .96 }}
-        aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
-        className="absolute right-[-15px] top-1/2 z-[70] flex h-[68px] w-[30px] -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
-      >
-        <motion.span animate={{ rotate: collapsed ? 0 : 180 }} transition={{ duration: .22, ease: [.22, 1, .36, 1] }}>
-          <ChevronRight size={16} strokeWidth={2.4} />
-        </motion.span>
-      </motion.button>
     </motion.aside>
+  );
+}
+
+function SidebarToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onToggle}
+      aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
+      initial={false}
+      animate={{
+        left: collapsed ? 0 : 249,
+        opacity: collapsed ? 1 : 0,
+        x: collapsed ? 0 : -8,
+      }}
+      whileHover={{
+        opacity: 1,
+        x: 0,
+        scale: 1.03,
+      }}
+      whileTap={{ scale: .96 }}
+      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+      className="fixed top-1/2 z-40 hidden h-[68px] w-[30px] -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md hover:bg-[var(--surface-3)] hover:text-[var(--text)] lg:flex"
+    >
+      <motion.span
+        animate={{ rotate: collapsed ? 0 : 180 }}
+        transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
+      >
+        <ChevronRight size={16} strokeWidth={2.4} />
+      </motion.span>
+    </motion.button>
   );
 }
 
@@ -823,15 +832,7 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-mission" className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[var(--primary-soft)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--primary)]">Misión de hoy</span>
-            <MasteryBadge state="Crítico" />
-          </div>
-          <span className="text-[10px] font-bold text-[var(--muted)]">Se renueva cada día</span>
-        </div>
-
-        <div className="mt-4 max-w-2xl">
+        <div className="max-w-2xl">
           <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
           <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
@@ -1264,7 +1265,8 @@ export function Dashboard() {
           },
         }}
       />
-      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
+      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} />
+      <SidebarToggle collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
       <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} />
       <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
       <main className="min-h-screen transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]">
