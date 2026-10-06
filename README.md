@@ -35,6 +35,7 @@ Landing pública
 Rutas principales:
 
 - `/` — landing pública.
+- `/login` — acceso de usuarios que ya tienen cuenta.
 - `/diagnostico` — diagnóstico inicial.
 - `/diagnostico/resultado` — primera lectura de dominio.
 - `/registro` — registro posterior al diagnóstico.
