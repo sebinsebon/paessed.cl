@@ -350,11 +350,9 @@ function SidebarToggle({
       <motion.div
         initial={false}
         animate={{
-          left: collapsed ? -4 : 263,
-          opacity: visible ? 1 : 0,
-          scale: visible ? 1 : .96,
+          left: collapsed ? -4 : visible ? 263 : 240,
         }}
-        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+        transition={{ type: "spring", stiffness: 430, damping: 32 }}
         className="pointer-events-none fixed top-1/2 z-40 hidden h-[64px] w-[24px] -translate-y-1/2 items-center justify-center rounded-r-[14px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] lg:flex"
         aria-hidden="true"
       >
