@@ -1352,9 +1352,9 @@ export function Dashboard() {
             <ExamsCard />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,.85fr)]">
-            <ProgressMonth />
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
             <LearnCard tourFocus={tourKey === "learn"} />
+            <ProgressMonth />
           </div>
 
           <div className="mt-7">
