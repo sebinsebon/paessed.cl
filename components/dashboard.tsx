@@ -1054,7 +1054,7 @@ export function Dashboard() {
       if (!target) return;
 
       const rect = target.getBoundingClientRect();
-      const headerBottom = 84; // 68px fixed header plus visual breathing room.
+      const headerBottom = 16; // The dashboard no longer has a fixed top bar.
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
       // Use the final layout, not the panel's in-flight animated position.
       const panelHeight = panel?.offsetHeight ?? 0;
@@ -1096,11 +1096,7 @@ export function Dashboard() {
         }}
       />
       <Sidebar tourFocus={false} dark={dark} />
-      <Topbar dark={dark} setDark={setDark} monthlyGoal={monthlyGoal} onTour={startTour} />
-
-      <main className="min-h-screen pt-[68px] lg:pl-[264px]">
-        <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
-
+      <main className="min-h-screen lg:pl-[264px]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
@@ -1122,7 +1118,9 @@ export function Dashboard() {
             </div>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
+          <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
             <DailyMission tourFocus={tourKey === "mission"} />
             <MonthlyGoal goal={monthlyGoal} setGoal={updateGoal} />
           </div>
