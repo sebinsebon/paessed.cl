@@ -350,11 +350,18 @@ function SidebarToggle({
         transition={{ type: "spring", stiffness: 420, damping: 36 }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => visible && onToggle()}
-        className="fixed inset-y-0 z-[65] hidden cursor-pointer lg:block"
-        aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
-        role="button"
-        tabIndex={-1}
+        className="fixed inset-y-0 z-[65] hidden cursor-pointer select-none outline-none lg:block"
+        aria-hidden="true"
+      />
+
+      <motion.div
+        initial={false}
+        animate={{ opacity: !collapsed && !visible ? 1 : 0 }}
+        transition={{ duration: .1 }}
+        className="pointer-events-none fixed left-[263px] top-1/2 z-[51] hidden h-[68px] w-px -translate-y-1/2 bg-[var(--border)] lg:block"
+        aria-hidden="true"
       />
 
       <motion.div
