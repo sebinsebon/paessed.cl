@@ -180,6 +180,20 @@ function masteryStyle(state: MasteryState): MasteryCSS {
   return { "--mastery": MASTERY[state].color };
 }
 
+/**
+ * Carousel-only mastery color.
+ * Keeps perceived lightness/chroma steady while hue travels from red to green.
+ */
+function carouselMasteryColor(percentage: number) {
+  const pct = Math.max(0, Math.min(100, percentage));
+  const hue = 28 + pct * 1.15;
+  return `oklch(0.68 0.15 ${hue})`;
+}
+
+function carouselMasteryStyle(percentage: number): MasteryCSS {
+  return { "--mastery": carouselMasteryColor(percentage) };
+}
+
 function MasteryBadge({ state }: { state: MasteryState }) {
   const item = MASTERY[state];
   return (
@@ -316,7 +330,7 @@ function HomeActions({
   };
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="fixed right-4 top-3 z-[60] flex shrink-0 items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] p-1.5 shadow-[var(--shadow-2)] backdrop-blur-xl sm:right-6">
       <motion.button
         whileTap={{ scale: .92 }}
         aria-label="Notificaciones"
@@ -410,17 +424,9 @@ function HomeActions({
 }
 
 
-function DashboardTopNav({
-  dark,
-  setDark,
-  onTour,
-}: {
-  dark: boolean;
-  setDark: (v: boolean) => void;
-  onTour: () => void;
-}) {
+function DashboardTopNav({ dark }: { dark: boolean }) {
   return (
-    <header className="fixed left-0 right-0 top-0 z-40 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] backdrop-blur-xl lg:left-[264px]">
+    <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] lg:ml-[264px]">
       <div className="mx-auto flex h-full w-full max-w-[1280px] items-center px-4 sm:px-6">
         <Link href="/app/inicio" className="lg:hidden">
           <img
@@ -429,9 +435,6 @@ function DashboardTopNav({
             className="block h-auto w-[118px]"
           />
         </Link>
-        <div className="ml-auto">
-          <HomeActions dark={dark} setDark={setDark} onTour={onTour} />
-        </div>
       </div>
     </header>
   );
@@ -440,6 +443,7 @@ function DashboardTopNav({
 function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis: Axis; onOpen: (axis: Axis) => void; mobile?: boolean; duplicate?: boolean }) {
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
+  const carouselColor = carouselMasteryColor(axis.percentage);
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -449,15 +453,15 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
       className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
       data-critical={critical}
-      style={masteryStyle(axis.state)}
+      style={carouselMasteryStyle(axis.percentage)}
     >
       <div className="flex items-start gap-3">
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border"
           style={{
-            color: MASTERY[axis.state].color,
-            borderColor: `color-mix(in srgb, ${MASTERY[axis.state].color} 25%, var(--border))`,
-            background: `color-mix(in srgb, ${MASTERY[axis.state].color} 10%, var(--surface))`,
+            color: carouselColor,
+            borderColor: `color-mix(in srgb, ${carouselColor} 25%, var(--border))`,
+            background: `color-mix(in srgb, ${carouselColor} 10%, var(--surface))`,
           }}
         >
           <Icon size={19} />
@@ -470,7 +474,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
             </div>
             <span
               className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
-              style={{ color: MASTERY[axis.state].color, background: `color-mix(in srgb, ${MASTERY[axis.state].color} 11%, var(--surface))` }}
+              style={{ color: carouselColor, background: `color-mix(in srgb, ${carouselColor} 11%, var(--surface))` }}
             >
               {axis.percentage}%
             </span>
@@ -483,11 +487,11 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           initial={{ width: 0 }}
           animate={{ width: `${axis.percentage}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={masteryStyle(axis.state)}
+          style={carouselMasteryStyle(axis.percentage)}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
-        <span className="font-semibold" style={{ color: MASTERY[axis.state].color }}>Estado: {axis.state}</span>
+        <span className="font-semibold" style={{ color: carouselColor }}>Estado: {axis.state}</span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
     </motion.button>
@@ -1117,7 +1121,7 @@ export function Dashboard() {
       if (!target) return;
 
       const rect = target.getBoundingClientRect();
-      const headerBottom = 80; // 64px top nav plus visual breathing room.
+      const headerBottom = 16; // The top nav scrolls with the page; only compact actions stay floating.
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
       // Use the final layout, not the panel's in-flight animated position.
       const panelHeight = panel?.offsetHeight ?? 0;
@@ -1159,8 +1163,9 @@ export function Dashboard() {
         }}
       />
       <Sidebar tourFocus={false} dark={dark} />
-      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} />
-      <main className="min-h-screen pt-[64px] lg:pl-[264px]">
+      <DashboardTopNav dark={dark} />
+      <HomeActions dark={dark} setDark={setDark} onTour={startTour} />
+      <main className="min-h-screen lg:pl-[264px]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
