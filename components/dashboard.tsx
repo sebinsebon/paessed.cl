@@ -1434,8 +1434,16 @@ export function Dashboard() {
               <DailyMission tourFocus={tourKey === "mission"} />
             </div>
 
+            <div className="lg:hidden">
+              <ExamsCard />
+            </div>
+
             <div className="lg:col-[1] lg:row-[3] lg:pr-4">
               <LearnCard tourFocus={tourKey === "learn"} />
+            </div>
+
+            <div className="lg:hidden">
+              <ProgressMonth />
             </div>
 
             <ConnectedRightDashboardCards />
