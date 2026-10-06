@@ -187,27 +187,27 @@ function masteryStyle(state: MasteryState): MasteryCSS {
 function carouselMasteryColor(percentage: number) {
   const pct = Math.max(0, Math.min(100, percentage));
   const stops = [
-    { pct: 0, color: [0.80, 0.12, 24] },
-    { pct: 40, color: [0.79, 0.13, 48] },
-    { pct: 60, color: [0.80, 0.12, 78] },
-    { pct: 75, color: [0.81, 0.11, 100] },
-    { pct: 85, color: [0.80, 0.11, 125] },
-    { pct: 100, color: [0.79, 0.12, 150] },
+    { pct: 0, rgb: [255, 106, 100] },   // PAESSED tertiary container
+    { pct: 40, rgb: [251, 146, 60] },   // PAESSED primary accent
+    { pct: 60, rgb: [245, 183, 66] },   // warm bridge
+    { pct: 75, rgb: [179, 191, 82] },   // orange-to-mastery bridge
+    { pct: 85, rgb: [100, 184, 112] },  // soft mastery green
+    { pct: 100, rgb: [16, 185, 129] },  // PAESSED success/mastery
   ] as const;
 
   const upperIndex = stops.findIndex((stop) => pct <= stop.pct);
   if (upperIndex <= 0) {
-    const [l, c, h] = stops[0].color;
-    return `oklch(${l} ${c} ${h})`;
+    const [r, g, b] = stops[0].rgb;
+    return `rgb(${r} ${g} ${b})`;
   }
 
   const lower = stops[upperIndex - 1];
   const upper = stops[upperIndex];
   const t = (pct - lower.pct) / (upper.pct - lower.pct);
-  const l = lower.color[0] + (upper.color[0] - lower.color[0]) * t;
-  const c = lower.color[1] + (upper.color[1] - lower.color[1]) * t;
-  const h = lower.color[2] + (upper.color[2] - lower.color[2]) * t;
-  return `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)})`;
+  const rgb = lower.rgb.map((value, index) =>
+    Math.round(value + (upper.rgb[index] - value) * t)
+  );
+  return `rgb(${rgb[0]} ${rgb[1]} ${rgb[2]})`;
 }
 
 function carouselMasteryStyle(percentage: number): MasteryCSS {
@@ -235,10 +235,12 @@ function Sidebar({
   tourFocus,
   dark,
   collapsed,
+  onToggle,
 }: {
   tourFocus: boolean;
   dark: boolean;
   collapsed: boolean;
+  onToggle: () => void;
 }) {
   const nav = [
     ["Inicio", Home, "/app/inicio", ""],
@@ -253,66 +255,81 @@ function Sidebar({
       initial={false}
       animate={{ width: collapsed ? 0 : 264, borderRightWidth: collapsed ? 0 : 1 }}
       transition={{ type: "spring", stiffness: 360, damping: 34 }}
-      className="fixed inset-y-0 left-0 z-50 hidden overflow-hidden border-[var(--border)] bg-[var(--surface)] lg:block"
+      className="fixed inset-y-0 left-0 z-50 hidden border-[var(--border)] bg-[var(--surface)] lg:block"
     >
-      <motion.div
-        initial={false}
-        animate={{ opacity: collapsed ? 0 : 1, x: collapsed ? -18 : 0 }}
-        transition={{ duration: .2 }}
-        className="flex h-full w-[264px] flex-col px-5 py-5"
-        aria-hidden={collapsed}
-      >
-        <Link href="/app/inicio" className="mb-7 flex w-full justify-center">
-          <div className="w-[178px]">
-            <img
-              src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
-              alt="PAESSED"
-              className="block h-auto w-full"
-            />
-            <div className="mt-1 text-[10px] font-extrabold tracking-[.16em] text-[var(--muted)]">MATEMÁTICA M1</div>
-          </div>
-        </Link>
-
-        <nav className={tourFocus ? "tour-focus" : ""}>
-          <div className="space-y-1.5">
-            {nav.map(([label, Icon, href, badge]) => {
-              const active = href === "/app/inicio";
-              return (
-                <motion.div whileHover={{ x: active ? 0 : 3 }} whileTap={{ scale: 0.985 }} key={label}>
-                  <Link
-                    href={href}
-                    tabIndex={collapsed ? -1 : undefined}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors ${
-                      active
-                        ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-pressed)]"
-                        : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
-                    }`}
-                  >
-                    <Icon size={18} />
-                    <span className="flex-1">{label}</span>
-                    {badge && (
-                      <span className={`rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
-                        {badge}
-                      </span>
-                    )}
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </div>
-        </nav>
-
-        <div className="mt-auto space-y-3">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
-            <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
-              <ShieldCheck size={16} className="text-[var(--primary)]" />
-              Modo Offline Ready
-              <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.45)]" />
+      <div className="h-full w-full overflow-hidden">
+        <motion.div
+          initial={false}
+          animate={{ opacity: collapsed ? 0 : 1, x: collapsed ? -18 : 0 }}
+          transition={{ duration: .2 }}
+          className="flex h-full w-[264px] flex-col px-5 py-5"
+          aria-hidden={collapsed}
+        >
+          <Link href="/app/inicio" className="mb-7 flex w-full justify-center">
+            <div className="w-[178px]">
+              <img
+                src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
+                alt="PAESSED"
+                className="block h-auto w-full"
+              />
+              <div className="mt-1 text-[10px] font-extrabold tracking-[.16em] text-[var(--muted)]">MATEMÁTICA M1</div>
             </div>
+          </Link>
+
+          <nav className={tourFocus ? "tour-focus" : ""}>
+            <div className="space-y-1.5">
+              {nav.map(([label, Icon, href, badge]) => {
+                const active = href === "/app/inicio";
+                return (
+                  <motion.div whileHover={{ x: active ? 0 : 3 }} whileTap={{ scale: 0.985 }} key={label}>
+                    <Link
+                      href={href}
+                      tabIndex={collapsed ? -1 : undefined}
+                      className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors ${
+                        active
+                          ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-pressed)]"
+                          : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="flex-1">{label}</span>
+                      {badge && (
+                        <span className={`rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
+                          {badge}
+                        </span>
+                      )}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </nav>
+
+          <div className="mt-auto space-y-3">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
+                <ShieldCheck size={16} className="text-[var(--primary)]" />
+                Modo Offline Ready
+                <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.45)]" />
+              </div>
+            </div>
+            <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">PAESSED adapta tu ruta con evidencia real, no con un puntaje inventado.</p>
           </div>
-          <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">PAESSED adapta tu ruta con evidencia real, no con un puntaje inventado.</p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
+
+      <motion.button
+        type="button"
+        onClick={onToggle}
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: .96 }}
+        aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
+        className="absolute right-[-15px] top-1/2 z-[70] flex h-[68px] w-[30px] -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+      >
+        <motion.span animate={{ rotate: collapsed ? 0 : 180 }} transition={{ duration: .22, ease: [.22, 1, .36, 1] }}>
+          <ChevronRight size={16} strokeWidth={2.4} />
+        </motion.span>
+      </motion.button>
     </motion.aside>
   );
 }
@@ -486,31 +503,17 @@ function DashboardTopNav({
   setDark,
   onTour,
   sidebarCollapsed,
-  onToggleSidebar,
 }: {
   dark: boolean;
   setDark: (v: boolean) => void;
   onTour: () => void;
   sidebarCollapsed: boolean;
-  onToggleSidebar: () => void;
 }) {
   return (
     <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] transition-[margin-left] duration-300 ease-out lg:ml-[var(--sidebar-width)]">
       <div className="mx-auto flex h-full w-full max-w-[1280px] items-center gap-2 px-4 sm:px-6">
-        <motion.button
-          type="button"
-          whileTap={{ scale: .92 }}
-          onClick={onToggleSidebar}
-          aria-label={sidebarCollapsed ? "Mostrar navegación" : "Ocultar navegación"}
-          className="soft-button hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl lg:flex"
-        >
-          <motion.span animate={{ rotate: sidebarCollapsed ? 0 : 180 }} transition={{ duration: .22 }}>
-            <ChevronRight size={17} />
-          </motion.span>
-        </motion.button>
-
         <AnimatePresence mode="popLayout" initial={false}>
-          {(sidebarCollapsed) && (
+          {sidebarCollapsed && (
             <motion.div
               key="desktop-nav-logo"
               initial={{ opacity: 0, x: -14, scale: .96 }}
@@ -1261,8 +1264,8 @@ export function Dashboard() {
           },
         }}
       />
-      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} />
-      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={() => setSidebarCollapsed((value) => !value)} />
+      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
+      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} />
       <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
       <main className="min-h-screen transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]">
         <div
