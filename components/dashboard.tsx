@@ -1057,11 +1057,11 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function ConnectedRightDashboardCards() {
+function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; learnFocus: boolean }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const examsRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const [outline, setOutline] = useState({ width: 0, height: 0, splitX: 0, progressTop: 0 });
+  const [shape, setShape] = useState({ width: 0, height: 0, examsLeft: 0, progressLeft: 0, progressTop: 0 });
 
   useEffect(() => {
     const shell = shellRef.current;
@@ -1074,10 +1074,11 @@ function ConnectedRightDashboardCards() {
       const examsRect = exams.getBoundingClientRect();
       const progressRect = progress.getBoundingClientRect();
 
-      setOutline({
+      setShape({
         width: shellRect.width,
         height: shellRect.height,
-        splitX: examsRect.left - shellRect.left,
+        examsLeft: examsRect.left - shellRect.left,
+        progressLeft: progressRect.left - shellRect.left,
         progressTop: progressRect.top - shellRect.top,
       });
     };
@@ -1090,53 +1091,71 @@ function ConnectedRightDashboardCards() {
     return () => observer.disconnect();
   }, []);
 
-  const radius = 20;
-  const { width, height, splitX, progressTop } = outline;
-  const r = Math.min(radius, width / 4 || radius, height / 4 || radius);
-  const path = width > 0 && height > 0
+  const inset = 0.5;
+  const r = 20;
+  const right = Math.max(inset, shape.width - inset);
+  const bottom = Math.max(inset, shape.height - inset);
+  const path = shape.width > 0 && shape.height > 0
     ? [
-        `M ${splitX + r} 0`,
-        `H ${width - r}`,
-        `Q ${width} 0 ${width} ${r}`,
-        `V ${height - r}`,
-        `Q ${width} ${height} ${width - r} ${height}`,
-        `H ${r}`,
-        `Q 0 ${height} 0 ${height - r}`,
-        `V ${progressTop + r}`,
-        `Q 0 ${progressTop} ${r} ${progressTop}`,
-        `H ${Math.max(r, splitX - r)}`,
-        `Q ${splitX} ${progressTop} ${splitX} ${Math.max(r, progressTop - r)}`,
-        `V ${r}`,
-        `Q ${splitX} 0 ${splitX + r} 0`,
+        `M ${shape.examsLeft + r} ${inset}`,
+        `H ${right - r}`,
+        `Q ${right} ${inset} ${right} ${inset + r}`,
+        `V ${bottom - r}`,
+        `Q ${right} ${bottom} ${right - r} ${bottom}`,
+        `H ${shape.progressLeft + r}`,
+        `Q ${shape.progressLeft} ${bottom} ${shape.progressLeft} ${bottom - r}`,
+        `V ${shape.progressTop + r}`,
+        `Q ${shape.progressLeft} ${shape.progressTop} ${shape.progressLeft + r} ${shape.progressTop}`,
+        `H ${shape.examsLeft - r}`,
+        `Q ${shape.examsLeft} ${shape.progressTop} ${shape.examsLeft} ${shape.progressTop - r}`,
+        `V ${inset + r}`,
+        `Q ${shape.examsLeft} ${inset} ${shape.examsLeft + r} ${inset}`,
         "Z",
       ].join(" ")
     : "";
 
   return (
-    <div
-      ref={shellRef}
-      className="relative hidden min-h-0 lg:col-[2/4] lg:row-[1/4] lg:grid"
-      style={{ gridTemplateColumns: "subgrid", gridTemplateRows: "subgrid" }}
-    >
-      {path && (
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="none"
-        >
-          <path d={path} fill="var(--surface)" stroke="var(--border)" strokeWidth="1" />
-        </svg>
-      )}
-
-      <div ref={examsRef} className="relative z-10 lg:col-[2] lg:row-[1]">
-        <ExamsCard embedded />
+    <>
+      <div className="mt-4 grid gap-4 lg:hidden">
+        <DailyMission tourFocus={missionFocus} />
+        <ExamsCard />
+        <LearnCard tourFocus={learnFocus} />
+        <ProgressMonth />
       </div>
 
-      <div ref={progressRef} className="relative z-10 lg:col-[1/3] lg:row-[3]">
-        <ProgressMonth embedded />
+      <div ref={shellRef} className="relative mt-4 hidden lg:block">
+        {path && (
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
+            viewBox={`0 0 ${shape.width} ${shape.height}`}
+            preserveAspectRatio="none"
+          >
+            <path
+              d={path}
+              fill="var(--surface)"
+              stroke="var(--border)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
+
+        <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
+          <DailyMission tourFocus={missionFocus} />
+          <div ref={examsRef}>
+            <ExamsCard embedded />
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
+          <LearnCard tourFocus={learnFocus} />
+          <div ref={progressRef}>
+            <ProgressMonth embedded />
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1430,25 +1449,7 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)_minmax(290px,.85fr)] lg:grid-rows-[auto_16px_auto] lg:gap-0">
-            <div className="lg:col-[1/3] lg:row-[1] lg:pr-4 lg:[&>section]:h-full">
-              <DailyMission tourFocus={tourKey === "mission"} />
-            </div>
-
-            <div className="lg:hidden">
-              <ExamsCard />
-            </div>
-
-            <div className="lg:col-[1] lg:row-[3] lg:pr-4 lg:[&>section]:h-full">
-              <LearnCard tourFocus={tourKey === "learn"} />
-            </div>
-
-            <div className="lg:hidden">
-              <ProgressMonth />
-            </div>
-
-            <ConnectedRightDashboardCards />
-          </div>
+          <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
 
           <div className="mt-7">
             <LastExams tourFocus={tourKey === "exams"} />
