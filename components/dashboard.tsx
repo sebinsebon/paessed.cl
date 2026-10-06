@@ -1057,6 +1057,88 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
+function ConnectedRightDashboardCards() {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const examsRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const [outline, setOutline] = useState({ width: 0, height: 0, splitX: 0, progressTop: 0 });
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    const exams = examsRef.current;
+    const progress = progressRef.current;
+    if (!shell || !exams || !progress) return;
+
+    const update = () => {
+      const shellRect = shell.getBoundingClientRect();
+      const examsRect = exams.getBoundingClientRect();
+      const progressRect = progress.getBoundingClientRect();
+
+      setOutline({
+        width: shellRect.width,
+        height: shellRect.height,
+        splitX: examsRect.left - shellRect.left,
+        progressTop: progressRect.top - shellRect.top,
+      });
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(shell);
+    observer.observe(exams);
+    observer.observe(progress);
+    return () => observer.disconnect();
+  }, []);
+
+  const radius = 20;
+  const { width, height, splitX, progressTop } = outline;
+  const r = Math.min(radius, width / 4 || radius, height / 4 || radius);
+  const path = width > 0 && height > 0
+    ? [
+        `M ${splitX + r} 0`,
+        `H ${width - r}`,
+        `Q ${width} 0 ${width} ${r}`,
+        `V ${height - r}`,
+        `Q ${width} ${height} ${width - r} ${height}`,
+        `H ${r}`,
+        `Q 0 ${height} 0 ${height - r}`,
+        `V ${progressTop + r}`,
+        `Q 0 ${progressTop} ${r} ${progressTop}`,
+        `H ${Math.max(r, splitX - r)}`,
+        `Q ${splitX} ${progressTop} ${splitX} ${Math.max(r, progressTop - r)}`,
+        `V ${r}`,
+        `Q ${splitX} 0 ${splitX + r} 0`,
+        "Z",
+      ].join(" ")
+    : "";
+
+  return (
+    <div
+      ref={shellRef}
+      className="relative hidden min-h-0 lg:col-[2/4] lg:row-[1/4] lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(290px,.85fr)] lg:grid-rows-[auto_16px_auto]"
+    >
+      {path && (
+        <svg
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="none"
+        >
+          <path d={path} fill="var(--surface)" stroke="var(--border)" strokeWidth="1" />
+        </svg>
+      )}
+
+      <div ref={examsRef} className="relative z-10 lg:col-[2] lg:row-[1]">
+        <ExamsCard embedded />
+      </div>
+
+      <div ref={progressRef} className="relative z-10 lg:col-[1/3] lg:row-[3]">
+        <ProgressMonth embedded />
+      </div>
+    </div>
+  );
+}
+
 function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?: (typeof exams)[number] }) {
   const squares = exam.answers.split("");
   const correct = squares.filter((a) => a === "g").length;
@@ -1347,8 +1429,8 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(300px,.8fr)_16px_minmax(0,1.15fr)_minmax(290px,.9fr)] lg:grid-rows-[auto_32px_auto] lg:gap-0">
-            <div className="lg:col-[1/4] lg:row-[1] lg:pr-4">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)_minmax(290px,.85fr)] lg:grid-rows-[auto_16px_auto] lg:gap-0">
+            <div className="lg:col-[1/3] lg:row-[1] lg:pr-4">
               <DailyMission tourFocus={tourKey === "mission"} />
             </div>
 
@@ -1356,30 +1438,10 @@ export function Dashboard() {
               <LearnCard tourFocus={tourKey === "learn"} />
             </div>
 
-            {/* One continuous L-shaped surface for the right pair only. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[4] lg:row-[1/3] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[3/5] lg:row-[3] lg:block lg:rounded-tl-[20px] lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-[var(--border)]"
-            />
-            <div
-              aria-hidden="true"
-              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[4] lg:row-[3] lg:z-[1] lg:block lg:self-start lg:h-[2px]"
-            />
-
-            <div className="lg:col-[4] lg:row-[1] lg:z-10">
-              <ExamsCard embedded />
-            </div>
-
-            <div className="lg:col-[3/5] lg:row-[3] lg:z-10">
-              <ProgressMonth embedded />
-            </div>
+            <ConnectedRightDashboardCards />
           </div>
 
-          <div className="mt-4">
+          <div className="mt-7">
             <LastExams tourFocus={tourKey === "exams"} />
           </div>
         </div>
