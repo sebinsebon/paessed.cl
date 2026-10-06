@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -21,8 +21,11 @@ import {
   Target,
   Trophy,
   UserRound,
+  Upload,
+  PackageCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 
 const learningNodes = [
   { title: "Números racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
@@ -127,6 +130,14 @@ const exams = [
 ];
 
 export function ExamsExperience() {
+  const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
+
+  useEffect(() => {
+    void listImportedExams()
+      .then(setImportedExams)
+      .catch(() => setImportedExams([]));
+  }, []);
+
   return (
     <AppShell title="Ensayos" eyebrow="Medición real">
       <section className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -135,13 +146,42 @@ export function ExamsExperience() {
           <h1 className="mt-2 text-3xl font-extrabold tracking-[-.03em]">Tus ensayos</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Revisa progreso, errores y cambios de dominio. Los ensayos son la evidencia más fuerte de tu perfil.</p>
         </div>
-        <Link href="/app/ensayos/nuevo" className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
-          <Play size={16} />Comenzar ensayo
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/app/ensayos/importar" className="soft-button inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
+            <Upload size={16} />Importar ensayo
+          </Link>
+          <Link href="/app/ensayos/nuevo" className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
+            <Play size={16} />Comenzar ensayo
+          </Link>
+        </div>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_360px]">
         <section className="space-y-3">
+          {importedExams.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-emerald-300/60 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
+                <PackageCheck size={16} />
+                Importados en este navegador
+              </div>
+              <div className="mt-3 space-y-2">
+                {importedExams.map((exam) => (
+                  <div key={exam.id} className="flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 sm:flex-row sm:items-center dark:border-emerald-900/70">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-extrabold">{exam.title}</div>
+                      <div className="mt-1 text-[10px] text-[var(--muted)]">
+                        {exam.questionCount} preguntas · {exam.answerCount} respuestas detectadas · {exam.assetCount} assets
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      IMPORTADO
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {exams.map((exam, index) => (
             <article key={index} className="surface rounded-2xl p-5 transition hover:border-[var(--border-strong)]">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
