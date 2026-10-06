@@ -1347,7 +1347,7 @@ export function Dashboard() {
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(300px,.8fr)_16px_minmax(0,1.15fr)_minmax(290px,.9fr)] lg:grid-rows-[auto_16px_auto] lg:gap-0">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(300px,.8fr)_16px_minmax(0,1.15fr)_minmax(290px,.9fr)] lg:grid-rows-[auto_32px_auto] lg:gap-0">
             <div className="lg:col-[1/4] lg:row-[1] lg:pr-4">
               <DailyMission tourFocus={tourKey === "mission"} />
             </div>
@@ -1363,11 +1363,11 @@ export function Dashboard() {
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[3/5] lg:row-[3] lg:block lg:rounded-tl-[20px] lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-t-0 lg:border-[var(--border)]"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[3/5] lg:row-[3] lg:block lg:rounded-tl-[20px] lg:rounded-bl-[20px] lg:rounded-br-[20px] lg:border lg:border-[var(--border)]"
             />
             <div
               aria-hidden="true"
-              className="pointer-events-none hidden lg:col-[3/4] lg:row-[3] lg:block lg:self-start lg:h-px lg:bg-[var(--border)]"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[4] lg:row-[3] lg:z-[1] lg:block lg:self-start lg:h-[2px]"
             />
 
             <div className="lg:col-[4] lg:row-[1] lg:z-10">
@@ -1379,7 +1379,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <div className="mt-7">
+          <div className="mt-4">
             <LastExams tourFocus={tourKey === "exams"} />
           </div>
         </div>
