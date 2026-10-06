@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronRight, FileJson2, Images, PackageCheck, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -94,9 +93,7 @@ function getOptions(question: unknown): Array<{ key: string; text: string }> {
   });
 }
 
-export function ImportedExamViewer() {
-  const params = useSearchParams();
-  const id = params.get("id") ?? "";
+export function ImportedExamViewer({ id }: { id: string }) {
   const [record, setRecord] = useState<ImportedExamRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(0);
