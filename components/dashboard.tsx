@@ -359,12 +359,9 @@ function SidebarToggle({
 
     collapseTimer.current = window.setTimeout(() => {
       setExpandedReady(false);
-
-      collapseTimer.current = window.setTimeout(() => {
-        collapseTimer.current = null;
-        onToggle();
-      }, 24);
-    }, 170);
+      collapseTimer.current = null;
+      onToggle();
+    }, 70);
   };
 
   const expandSidebar = () => {
