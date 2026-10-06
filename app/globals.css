@@ -208,8 +208,8 @@ html.dark [data-sileo-toast] {
 }
 .domain-card-width {
   /* Four cards fill the rail; the next copy enters immediately as the first card exits. */
-  width: calc((100vw - 264px - 44px - 36px) / 4);
-  min-width: calc((100vw - 264px - 44px - 36px) / 4);
+  width: calc((100vw - var(--sidebar-width, 264px) - 44px - 36px) / 4);
+  min-width: calc((100vw - var(--sidebar-width, 264px) - 44px - 36px) / 4);
 }
 .mastery-card {
   position: relative;
