@@ -36,10 +36,8 @@ import {
   BarChart3,
   Triangle,
   TrendingUp,
-  Pencil,
   Route,
   Clock3,
-  ShieldCheck,
   ArrowUpRight,
   UserRound,
 } from "lucide-react";
@@ -221,11 +219,16 @@ function Sidebar({
   tourFocus,
   dark,
   collapsed,
+  goal,
 }: {
   tourFocus: boolean;
   dark: boolean;
   collapsed: boolean;
+  goal: number;
 }) {
+  const lastScore = 742;
+  const goalProgress = Math.min(100, Math.round((lastScore / goal) * 100));
+  const goalGap = Math.max(goal - lastScore, 0);
   const nav = [
     ["Inicio", Home, "/app/inicio", ""],
     ["Aprender", Route, "/app/aprender", "Ruta"],
@@ -289,15 +292,28 @@ function Sidebar({
             </div>
           </nav>
 
-          <div className="mt-auto space-y-3">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
-                <ShieldCheck size={16} className="text-[var(--primary)]" />
-                Modo Offline Ready
-                <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.45)]" />
+          <div className="mt-auto">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+              <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">
+                <Target size={14} className="text-[var(--primary)]" />
+                Meta del mes
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-xl font-extrabold text-[var(--text)]">{goal} pts</div>
+                  <div className="mt-1 text-[10px] font-medium text-[var(--muted)]">{lastScore} pts · último ensayo</div>
+                </div>
+                <div className="text-[10px] font-extrabold text-[var(--primary)]">+{goalGap} pts</div>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-4)]">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${goalProgress}%` }}
+                  transition={{ duration: .8, ease: [.22, 1, .36, 1] }}
+                  className="h-full rounded-full bg-[var(--primary)]"
+                />
               </div>
             </div>
-            <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">PAESSED adapta tu ruta con evidencia real, no con un puntaje inventado.</p>
           </div>
         </motion.div>
       </div>
@@ -869,65 +885,44 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function MonthlyGoal({ goal, setGoal }: { goal: number; setGoal: (n: number) => void }) {
-  const [editing, setEditing] = useState(false);
-  const last = 742;
-  const gap = Math.max(goal - last, 0);
-  const pct = Math.min(100, Math.round((last / goal) * 100));
+function ExamsCard() {
   return (
-    <section className="surface relative rounded-[20px] p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><Target size={15} className="text-[var(--primary)]" /> Meta del mes</div>
-          <h3 className="mt-2 text-2xl font-extrabold">{goal} pts</h3>
-          <p className="mt-1 text-xs text-[var(--muted)]">PAESSED te la propuso según tus ensayos.</p>
+    <section className="surface relative overflow-hidden rounded-[20px] p-5">
+      <div className="flex items-start gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
+          <Trophy size={19} />
         </div>
-        <button onClick={() => setEditing(!editing)} className="soft-button flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-extrabold"><Pencil size={13} /> Editar</button>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <div className="text-[10px] font-bold text-[var(--muted)]">Último ensayo real</div>
-            <div className="mt-1 text-xl font-extrabold">{last} pts</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] font-bold text-[var(--muted)]">Brecha</div>
-            <div className="mt-1 text-sm font-extrabold text-[var(--primary)]">+{gap} pts</div>
-          </div>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: .9, ease: [.22,1,.36,1] }} className="h-full rounded-full bg-[var(--primary)]" />
+        <div className="min-w-0">
+          <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
+          <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em]">¿Listo para realizar un ensayo?</h3>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
         </div>
       </div>
 
-      <AnimatePresence>
-        {editing && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-3 border-t border-[var(--border)] pt-3">
-              <p className="mb-2 text-[10px] font-bold text-[var(--muted)]">Elige una meta o vuelve a la sugerida.</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[760, 780, 800, 850].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setGoal(option);
-                      setEditing(false);
-                      announce("Meta mensual actualizada", `Tu nuevo objetivo es llegar a ${option} pts este mes.`, "success");
-                    }}
-                    className={`rounded-lg border px-2 py-2 text-[11px] font-extrabold ${goal === option ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-3)]"}`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+          <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
+          <div className="mt-1 text-lg font-extrabold">742 pts</div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+          <div className="text-[10px] font-bold text-[var(--muted)]">Formato</div>
+          <div className="mt-1 text-lg font-extrabold">65 preguntas</div>
+        </div>
+      </div>
+
+      <motion.div whileHover={{ scale: 1.01 }} className="mt-4">
+        <Link
+          href="/app/ensayos"
+          className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold"
+        >
+          REALIZAR UN ENSAYO
+          <ArrowUpRight size={16} />
+        </Link>
+      </motion.div>
     </section>
   );
 }
+
 
 function ProgressMonth() {
   const points = [690, 711, 728, 742];
@@ -1203,11 +1198,6 @@ export function Dashboard() {
     localStorage.setItem("paessed-theme", value ? "dark" : "light");
   };
 
-  const updateGoal = (value: number) => {
-    setMonthlyGoal(value);
-    localStorage.setItem("paessed-monthly-goal", String(value));
-  };
-
   const closeTour = () => {
     const returnTo = tourOrigin.current;
     tourOrigin.current = null;
@@ -1276,7 +1266,7 @@ export function Dashboard() {
           },
         }}
       />
-      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} />
+      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} goal={monthlyGoal} />
       <SidebarToggle collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
       <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} />
       <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
@@ -1294,7 +1284,7 @@ export function Dashboard() {
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
             <DailyMission tourFocus={tourKey === "mission"} />
-            <MonthlyGoal goal={monthlyGoal} setGoal={updateGoal} />
+            <ExamsCard />
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,.85fr)]">
