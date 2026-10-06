@@ -168,7 +168,7 @@ export function ExamsExperience() {
                 {importedExams.map((exam) => (
                   <Link
                     key={exam.id}
-                    href={"/app/ensayos/importado?id=" + encodeURIComponent(exam.id)}
+                    href={"/app/ensayos/importado/" + encodeURIComponent(exam.id)}
                     className="group flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 transition hover:border-emerald-400 hover:bg-emerald-50/50 sm:flex-row sm:items-center dark:border-emerald-900/70 dark:hover:bg-emerald-950/20"
                   >
                     <div className="min-w-0 flex-1">
