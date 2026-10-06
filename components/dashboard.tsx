@@ -356,8 +356,9 @@ function SidebarToggle({
 
       <motion.div
         initial={false}
+        style={{ left: collapsed ? -6 : 263 }}
         animate={{
-          left: collapsed ? -6 : visible ? 263 : 226,
+          x: collapsed || visible ? 0 : -37,
           boxShadow: collapsed || visible ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
         }}
         transition={{ type: "spring", stiffness: 430, damping: 32 }}
