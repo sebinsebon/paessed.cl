@@ -920,14 +920,14 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
   );
 }
 
-function DailyMission({ tourFocus }: { tourFocus: boolean }) {
+function DailyMission({ tourFocus, embedded = false }: { tourFocus: boolean; embedded?: boolean }) {
   return (
-    <section id="tour-mission" className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-mission" className={`${embedded ? "relative h-full overflow-hidden bg-transparent p-6 lg:p-7" : "surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6"} ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="max-w-2xl">
           <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
-          <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+          <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px] lg:text-[30px]">Triángulos y Teorema de Tales</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)] lg:text-[15px] lg:leading-7">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -950,17 +950,17 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function ExamsCard() {
+function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
-    <section className="surface relative overflow-hidden rounded-[20px] p-5">
+    <section className={embedded ? "relative h-full overflow-hidden bg-transparent p-6 lg:p-7" : "surface relative overflow-hidden rounded-[20px] p-5"}>
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
           <Trophy size={19} />
         </div>
         <div className="min-w-0">
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
-          <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em]">¿Listo para realizar un ensayo?</h3>
-          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
+          <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em] lg:text-2xl">¿Listo para realizar un ensayo?</h3>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)] lg:text-sm lg:leading-6">Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
         </div>
       </div>
 
@@ -989,7 +989,7 @@ function ExamsCard() {
 }
 
 
-function ProgressMonth() {
+function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
   const points = [690, 711, 728, 742];
   const labels = ["03", "10", "16", "21 sep"];
   const min = 670;
@@ -997,17 +997,17 @@ function ProgressMonth() {
   const coords = points.map((p, i) => ({ x: 28 + i * 98, y: 112 - ((p - min) / (max - min)) * 80 }));
   const path = coords.map((c, i) => `${i ? "L" : "M"}${c.x},${c.y}`).join(" ");
   return (
-    <section className="surface rounded-[20px] p-5">
+    <section className={embedded ? "h-full bg-transparent p-6 lg:p-7" : "surface rounded-[20px] p-5"}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Progreso de septiembre</div>
-          <h3 className="mt-1 text-lg font-extrabold">Vas +52 puntos este mes</h3>
-          <p className="mt-1 text-xs text-[var(--muted)]">Solo resultados reales de ensayos, no estimaciones del diagnóstico.</p>
+          <h3 className="mt-1 text-lg font-extrabold lg:text-xl">Vas +52 puntos este mes</h3>
+          <p className="mt-1 text-xs text-[var(--muted)] lg:text-sm">Solo resultados reales de ensayos, no estimaciones del diagnóstico.</p>
         </div>
         <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-500">↗ +7,5%</div>
       </div>
       <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
-        <svg viewBox="0 0 340 135" className="h-[135px] w-full" role="img" aria-label="Evolución de puntajes del mes">
+        <svg viewBox="0 0 340 135" className="h-[135px] w-full lg:h-[165px]" role="img" aria-label="Evolución de puntajes del mes">
           {[32, 72, 112].map((y) => <line key={y} x1="20" x2="330" y1={y} y2={y} stroke="var(--border)" strokeWidth="1" />)}
           <motion.path d={path} fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: [.22,1,.36,1] }} />
           {coords.map((c, i) => (
@@ -1022,13 +1022,13 @@ function ProgressMonth() {
   );
 }
 
-function LearnCard({ tourFocus }: { tourFocus: boolean }) {
+function LearnCard({ tourFocus, embedded = false }: { tourFocus: boolean; embedded?: boolean }) {
   return (
-    <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-learn" className={`${embedded ? "relative h-full overflow-hidden bg-transparent p-6 lg:p-7" : "surface relative overflow-hidden rounded-[20px] p-5"} ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><BookOpen size={15} className="text-[var(--secondary)]" /> Aprender</div>
-        <h3 className="mt-2 text-lg font-extrabold">Continúa tu ruta adaptativa</h3>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">El modo tipo Duolingo completo vive en Aprender. Inicio solo te deja volver rápido donde quedaste.</p>
+        <h3 className="mt-2 text-lg font-extrabold lg:text-xl">Continúa tu ruta adaptativa</h3>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)] lg:text-sm lg:leading-6">El modo tipo Duolingo completo vive en Aprender. Inicio solo te deja volver rápido donde quedaste.</p>
 
         <div className="mt-5 flex items-center justify-center gap-2">
           {["done", "done", "current", "next", "next"].map((state, i) => (
@@ -1351,7 +1351,7 @@ export function Dashboard() {
             {/* Desktop-only surfaces: two continuous interlocking L shapes. */}
             <div
               aria-hidden="true"
-              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[1/4] lg:row-[1] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:rounded-br-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
+              className="pointer-events-none hidden bg-[var(--surface)] lg:col-[1/4] lg:row-[1] lg:block lg:rounded-tl-[20px] lg:rounded-tr-[20px] lg:border lg:border-b-0 lg:border-[var(--border)]"
             />
             <div
               aria-hidden="true"
@@ -1375,20 +1375,20 @@ export function Dashboard() {
               className="pointer-events-none hidden lg:col-[3/5] lg:row-[3] lg:block lg:self-start lg:h-px lg:bg-[var(--border)]"
             />
 
-            <div className="lg:col-[1/4] lg:row-[1] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
-              <DailyMission tourFocus={tourKey === "mission"} />
+            <div className="lg:col-[1/4] lg:row-[1] lg:z-10">
+              <DailyMission tourFocus={tourKey === "mission"} embedded />
             </div>
 
-            <div className="lg:col-[5] lg:row-[1] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
-              <ExamsCard />
+            <div className="lg:col-[5] lg:row-[1] lg:z-10">
+              <ExamsCard embedded />
             </div>
 
-            <div className="lg:col-[1] lg:row-[3] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
-              <LearnCard tourFocus={tourKey === "learn"} />
+            <div className="lg:col-[1] lg:row-[3] lg:z-10">
+              <LearnCard tourFocus={tourKey === "learn"} embedded />
             </div>
 
-            <div className="lg:col-[3/6] lg:row-[3] lg:z-10 lg:[&>section]:h-full lg:[&>section]:!rounded-none lg:[&>section]:!border-0 lg:[&>section]:!bg-transparent lg:[&>section]:!shadow-none">
-              <ProgressMonth />
+            <div className="lg:col-[3/6] lg:row-[3] lg:z-10">
+              <ProgressMonth embedded />
             </div>
           </div>
 
