@@ -354,14 +354,17 @@ function SidebarToggle({
 
   const collapseSidebar = () => {
     if (!expandedReady || collapseTimer.current) return;
-    setHovered(false);
-    setExpandedReady(false);
 
-    // Give React one paint to remove the handle before the sidebar starts collapsing.
+    setHovered(false);
+
     collapseTimer.current = window.setTimeout(() => {
-      collapseTimer.current = null;
-      onToggle();
-    }, 32);
+      setExpandedReady(false);
+
+      collapseTimer.current = window.setTimeout(() => {
+        collapseTimer.current = null;
+        onToggle();
+      }, 24);
+    }, 170);
   };
 
   const expandSidebar = () => {
@@ -373,33 +376,33 @@ function SidebarToggle({
   return (
     <>
       {expandedReady && !collapsed && (
-        <div
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={collapseSidebar}
-          className="fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"
-          aria-hidden="true"
-        />
-      )}
-
-      {expandedReady && !collapsed && hovered && (
         <>
+          <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={collapseSidebar}
+            className="fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"
+            aria-hidden="true"
+          />
+
           <motion.div
-            key="sidebar-border-eraser"
-            initial={{ scaleY: 0 }}
-            animate={{ scaleY: 1 }}
-            transition={{ duration: .12, ease: [.22, 1, .36, 1] }}
+            initial={false}
+            animate={{ scaleY: hovered ? 1 : 0 }}
+            transition={{ duration: .16, ease: [.22, 1, .36, 1] }}
             className="pointer-events-none fixed left-[263px] top-1/2 z-[55] hidden h-[68px] w-[2px] origin-center -translate-y-1/2 bg-[var(--surface)] lg:block"
             aria-hidden="true"
           />
+
           <motion.div
-            key="sidebar-expanded-handle"
-            initial={{ x: -30 }}
-            animate={{ x: 0 }}
-            transition={{ type: "spring", stiffness: 460, damping: 34 }}
+            initial={false}
+            animate={{
+              x: hovered ? 0 : -30,
+              boxShadow: hovered ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
+            }}
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
             style={{ left: 263 }}
-            className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
+            className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex"
             aria-hidden="true"
           >
             <ChevronLeft size={16} strokeWidth={2.4} />
@@ -407,23 +410,30 @@ function SidebarToggle({
         </>
       )}
 
-      {collapsedReady && collapsed && (
-        <>
-          <div
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={expandSidebar}
-            className="fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"
-            aria-hidden="true"
-          />
+      <AnimatePresence initial={false}>
+        {collapsedReady && collapsed && (
+          <>
+            <div
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={expandSidebar}
+              className="fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"
+              aria-hidden="true"
+            />
 
-          <div
-            className="pointer-events-none fixed left-[-6px] top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
-            aria-hidden="true"
-          >
-            <ChevronRight size={16} strokeWidth={2.4} />
-          </div>
-        </>
-      )}
+            <motion.div
+              key="sidebar-collapsed-handle"
+              initial={{ x: -26 }}
+              animate={{ x: 0 }}
+              exit={{ x: -26 }}
+              transition={{ type: "spring", stiffness: 360, damping: 30 }}
+              className="pointer-events-none fixed left-[-6px] top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
+              aria-hidden="true"
+            >
+              <ChevronRight size={16} strokeWidth={2.4} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
