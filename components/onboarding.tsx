@@ -65,7 +65,7 @@ export function DiagnosticFlow() {
       return;
     }
 
-    const correct = answers.reduce((sum, value, i) => sum + (value === QUESTIONS[i].answer ? 1 : 0), 0);
+    const correct = answers.reduce<number>((sum, value, i) => sum + (value === QUESTIONS[i].answer ? 1 : 0), 0);
     const byDomain = Object.keys(DOMAIN_COLORS).map((domain) => {
       const positions = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.domain === domain);
       const hits = positions.reduce((sum, item) => sum + (answers[item.i] === item.q.answer ? 1 : 0), 0);
