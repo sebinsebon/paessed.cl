@@ -1027,19 +1027,13 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
     <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><Gamepad2 size={15} className="text-[var(--secondary)]" /> Playground</div>
-        <h3 className="mt-2 text-lg font-extrabold">Pregunta aleatoria</h3>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Entra al modo Playground y resuelve preguntas sin límites. Puedes elegir el año, los ejes temáticos y más.</p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Sin límites</span>
-          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Filtra por año</span>
-          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Elige tus ejes</span>
-        </div>
+        <h3 className="mt-2 text-lg font-extrabold">Practica a tu manera</h3>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Resuelve todas las preguntas que quieras y ajusta la práctica por año, eje temático y otros filtros.</p>
 
         <div className="mt-5 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
           <div>
-            <div className="text-xs font-extrabold">Empieza con una pregunta al azar</div>
-            <div className="mt-1 text-[10px] text-[var(--muted)]">O entra y configura tu propia sesión.</div>
+            <div className="text-xs font-extrabold">Pregunta aleatoria</div>
+            <div className="mt-1 text-[10px] text-[var(--muted)]">Empieza al instante o entra al Playground para personalizar la sesión.</div>
           </div>
           <Link href="/app/playground" className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></Link>
         </div>
