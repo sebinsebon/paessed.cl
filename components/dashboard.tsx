@@ -15,6 +15,7 @@ import {
   BookOpen,
   Calculator,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleHelp,
   Flame,
