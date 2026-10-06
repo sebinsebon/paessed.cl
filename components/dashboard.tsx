@@ -1026,31 +1026,22 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><BookOpen size={15} className="text-[var(--secondary)]" /> Aprender</div>
-        <h3 className="mt-2 text-lg font-extrabold">Continúa tu ruta adaptativa</h3>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">El modo tipo Duolingo completo vive en Aprender. Inicio solo te deja volver rápido donde quedaste.</p>
+        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><Gamepad2 size={15} className="text-[var(--secondary)]" /> Playground</div>
+        <h3 className="mt-2 text-lg font-extrabold">Pregunta aleatoria</h3>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Entra al modo Playground y resuelve preguntas sin límites. Puedes elegir el año, los ejes temáticos y más.</p>
 
-        <div className="mt-5 flex items-center justify-center gap-2">
-          {["done", "done", "current", "next", "next"].map((state, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <motion.div
-                animate={state === "current" ? { scale: [1, 1.08, 1] } : undefined}
-                transition={{ repeat: Infinity, duration: 2.8 }}
-                className={`grid h-9 w-9 place-items-center rounded-full border-2 text-xs font-extrabold ${state === "done" ? "border-emerald-500 bg-emerald-500 text-white" : state === "current" ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-[0_0_0_5px_color-mix(in_srgb,var(--primary)_14%,transparent)]" : "border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--muted)]"}`}
-              >
-                {state === "done" ? <Check size={15} /> : i + 1}
-              </motion.div>
-              {i < 4 && <div className="h-px w-5 bg-[var(--border-strong)]" />}
-            </div>
-          ))}
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Sin límites</span>
+          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Filtra por año</span>
+          <span className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]">Elige tus ejes</span>
         </div>
 
         <div className="mt-5 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
           <div>
-            <div className="text-xs font-extrabold">Semejanza y proporcionalidad</div>
-            <div className="mt-1 text-[10px] text-[var(--muted)]">Lección 3 de 5 · ~8 min</div>
+            <div className="text-xs font-extrabold">Empieza con una pregunta al azar</div>
+            <div className="mt-1 text-[10px] text-[var(--muted)]">O entra y configura tu propia sesión.</div>
           </div>
-          <Link href="/app/aprender" className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></Link>
+          <Link href="/app/playground" className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></Link>
         </div>
       </div>
     </section>
@@ -1280,7 +1271,7 @@ function MobileNav() {
 const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
-  { key: "learn", title: "Tu ruta vive en Aprender", body: "Inicio muestra dónde quedaste; Aprender tendrá la experiencia completa estilo Duolingo." },
+  { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
   { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
 ];
 
