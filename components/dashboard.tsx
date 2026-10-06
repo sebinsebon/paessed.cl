@@ -333,40 +333,40 @@ function SidebarToggle({
   const visible = collapsed || hovered;
 
   return (
-    <motion.div
-      initial={false}
-      animate={{ left: collapsed ? -10 : 244 }}
-      transition={{ type: "spring", stiffness: 420, damping: 36 }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="fixed inset-y-0 z-[65] hidden w-[40px] lg:block"
-      aria-hidden={!visible}
-    >
-      <motion.button
-        type="button"
-        onClick={onToggle}
+    <>
+      <motion.div
+        initial={false}
+        animate={{ left: collapsed ? 0 : 218, width: collapsed ? 56 : 92 }}
+        transition={{ type: "spring", stiffness: 420, damping: 36 }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => visible && onToggle()}
+        className="fixed inset-y-0 z-[65] hidden cursor-pointer lg:block"
         aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
+        role="button"
+        tabIndex={-1}
+      />
+
+      <motion.div
         initial={false}
         animate={{
+          left: collapsed ? -4 : 263,
           opacity: visible ? 1 : 0,
-          x: visible ? 0 : -8,
           scale: visible ? 1 : .96,
         }}
-        whileHover={visible ? { scale: 1.04 } : undefined}
-        whileTap={visible ? { scale: .96 } : undefined}
-        transition={{ duration: .18, ease: [.22, 1, .36, 1] }}
-        className="absolute left-[10px] top-1/2 flex h-[58px] w-[24px] -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
-        style={{ pointerEvents: visible ? "auto" : "none" }}
+        transition={{ type: "spring", stiffness: 420, damping: 34 }}
+        className="pointer-events-none fixed top-1/2 z-40 hidden h-[64px] w-[24px] -translate-y-1/2 items-center justify-center rounded-r-[14px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] lg:flex"
+        aria-hidden="true"
       >
         <motion.span
           animate={{ rotate: collapsed ? 0 : 180 }}
           transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
           className="flex items-center justify-center"
         >
-          <ChevronRight size={15} strokeWidth={2.4} />
+          <ChevronRight size={15} strokeWidth={2.5} />
         </motion.span>
-      </motion.button>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
 
@@ -1287,9 +1287,13 @@ export function Dashboard() {
             <ExamsCard />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,.85fr)]">
-            <ProgressMonth />
-            <LearnCard tourFocus={tourKey === "learn"} />
+          <div className="mt-4 grid gap-4 lg:-mt-2 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)] lg:px-5">
+            <div className="dashboard-linked-card">
+              <LearnCard tourFocus={tourKey === "learn"} />
+            </div>
+            <div className="dashboard-linked-card">
+              <ProgressMonth />
+            </div>
           </div>
 
           <div className="mt-7">
