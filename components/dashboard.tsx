@@ -240,10 +240,20 @@ function Sidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 0 : 264, borderRightWidth: collapsed ? 0 : 1 }}
+      animate={{ width: collapsed ? 0 : 264 }}
       transition={{ type: "spring", stiffness: 360, damping: 34 }}
-      className="fixed inset-y-0 left-0 z-50 hidden border-[var(--border)] bg-[var(--surface)] lg:block"
+      className="fixed inset-y-0 left-0 z-50 hidden bg-[var(--surface)] lg:block"
     >
+      <motion.div
+        initial={false}
+        animate={{ opacity: collapsed ? 0 : 1 }}
+        className="pointer-events-none absolute right-0 top-0 h-[calc(50%-34px)] w-px bg-[var(--border)]"
+      />
+      <motion.div
+        initial={false}
+        animate={{ opacity: collapsed ? 0 : 1 }}
+        className="pointer-events-none absolute bottom-0 right-0 h-[calc(50%-34px)] w-px bg-[var(--border)]"
+      />
       <div className="h-full w-full overflow-hidden">
         <motion.div
           initial={false}
@@ -350,10 +360,10 @@ function SidebarToggle({
       <motion.div
         initial={false}
         animate={{
-          left: collapsed ? -4 : visible ? 263 : 240,
+          left: collapsed ? -6 : visible ? 263 : 239,
         }}
         transition={{ type: "spring", stiffness: 430, damping: 32 }}
-        className="pointer-events-none fixed top-1/2 z-40 hidden h-[64px] w-[24px] -translate-y-1/2 items-center justify-center rounded-r-[14px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] lg:flex"
+        className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
         aria-hidden="true"
       >
         <motion.span
@@ -361,7 +371,7 @@ function SidebarToggle({
           transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
           className="flex items-center justify-center"
         >
-          <ChevronRight size={15} strokeWidth={2.5} />
+          <ChevronRight size={16} strokeWidth={2.4} />
         </motion.span>
       </motion.div>
     </>
