@@ -17,7 +17,7 @@ export function Landing() {
         <img src="/paessed-logo.svg" alt="PAESSED" className="h-auto w-[154px] dark:hidden" />
         <img src="/paessed-logo-dark.svg" alt="PAESSED" className="hidden h-auto w-[154px] dark:block" />
         <div className="ml-auto flex items-center gap-2">
-          <Link href="/app/inicio" className="hidden rounded-xl px-4 py-2.5 text-sm font-extrabold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] sm:block">Ya tengo cuenta</Link>
+          <Link href="/login" className="hidden rounded-xl px-4 py-2.5 text-sm font-extrabold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)] sm:block">Ya tengo cuenta</Link>
           <Link href="/diagnostico" className="tactile-primary rounded-xl px-4 py-2.5 text-sm font-extrabold">Empezar gratis</Link>
         </div>
       </header>
