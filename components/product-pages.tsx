@@ -135,8 +135,8 @@ export function ExamsExperience() {
           <h1 className="mt-2 text-3xl font-extrabold tracking-[-.03em]">Tus ensayos</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Revisa progreso, errores y cambios de dominio. Los ensayos son la evidencia más fuerte de tu perfil.</p>
         </div>
-        <Link href="/app/playground" className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
-          <Play size={16} />Comenzar práctica
+        <Link href="/app/ensayos/nuevo" className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">
+          <Play size={16} />Comenzar ensayo
         </Link>
       </section>
 
@@ -196,6 +196,7 @@ const questionBank = [
 export function PlaygroundExperience() {
   const [selected, setSelected] = useState(questionBank[0]);
   const [choice, setChoice] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas">
@@ -217,7 +218,7 @@ export function PlaygroundExperience() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => { setSelected(item); setChoice(null); }}
+                  onClick={() => { setSelected(item); setChoice(null); setChecked(false); }}
                   className={"w-full rounded-xl border p-3 text-left transition " + (active ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/20" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
                 >
                   <div className="flex items-center justify-between">
@@ -247,7 +248,7 @@ export function PlaygroundExperience() {
             {["15 m", "10 m", "9 m", "1 m"].map((option, index) => (
               <button
                 key={option}
-                onClick={() => setChoice(option)}
+                onClick={() => { setChoice(option); setChecked(false); }}
                 className={"flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition " + (choice === option ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
               >
                 <span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--surface-3)] text-xs font-extrabold">{String.fromCharCode(65 + index)}</span>
@@ -256,9 +257,23 @@ export function PlaygroundExperience() {
             ))}
           </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-[var(--border)] pt-5">
-            <div className="text-[10px] font-bold text-[var(--muted)]">Pregunta #{selected.id} · DEMRE</div>
-            <button disabled={!choice} className="tactile-primary rounded-xl px-5 py-3 text-xs font-extrabold disabled:opacity-45">Comprobar</button>
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            {checked && (
+              <div className={"mb-4 rounded-2xl border p-4 " + (choice === "9 m"
+                ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+                : "border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20")}>
+                <div className={"text-xs font-extrabold " + (choice === "9 m" ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
+                  {choice === "9 m" ? "Correcto" : "Revisa la proporcionalidad"}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Si 110 km/h corresponden a 33 m, la constante es 33/110 = 0,3. Entonces f(30) = 0,3 · 30 = 9 m.
+                </p>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-bold text-[var(--muted)]">Pregunta #{selected.id} · DEMRE</div>
+              <button onClick={() => setChecked(true)} disabled={!choice} className="tactile-primary rounded-xl px-5 py-3 text-xs font-extrabold disabled:opacity-45">Comprobar</button>
+            </div>
           </div>
         </section>
       </div>
