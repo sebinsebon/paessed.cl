@@ -313,33 +313,44 @@ function SidebarToggle({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+  const visible = collapsed || hovered;
+
   return (
-    <motion.button
-      type="button"
-      onClick={onToggle}
-      aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
+    <motion.div
       initial={false}
-      animate={{
-        left: collapsed ? 0 : 249,
-        opacity: collapsed ? 1 : 0,
-        x: collapsed ? 0 : -8,
-      }}
-      whileHover={{
-        opacity: 1,
-        x: 0,
-        scale: 1.03,
-      }}
-      whileTap={{ scale: .96 }}
-      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-      className="fixed top-1/2 z-40 hidden h-[68px] w-[30px] -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md hover:bg-[var(--surface-3)] hover:text-[var(--text)] lg:flex"
+      animate={{ left: collapsed ? -10 : 244 }}
+      transition={{ type: "spring", stiffness: 420, damping: 36 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="fixed inset-y-0 z-[65] hidden w-[40px] lg:block"
+      aria-hidden={!visible}
     >
-      <motion.span
-        animate={{ rotate: collapsed ? 0 : 180 }}
-        transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
+      <motion.button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? "Mostrar navegación" : "Ocultar navegación"}
+        initial={false}
+        animate={{
+          opacity: visible ? 1 : 0,
+          x: visible ? 0 : -8,
+          scale: visible ? 1 : .96,
+        }}
+        whileHover={visible ? { scale: 1.04 } : undefined}
+        whileTap={visible ? { scale: .96 } : undefined}
+        transition={{ duration: .18, ease: [.22, 1, .36, 1] }}
+        className="absolute left-[10px] top-1/2 flex h-[58px] w-[24px] -translate-y-1/2 items-center justify-center rounded-r-xl border border-l-0 border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.08)] backdrop-blur-md transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text)]"
+        style={{ pointerEvents: visible ? "auto" : "none" }}
       >
-        <ChevronRight size={16} strokeWidth={2.4} />
-      </motion.span>
-    </motion.button>
+        <motion.span
+          animate={{ rotate: collapsed ? 0 : 180 }}
+          transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
+          className="flex items-center justify-center"
+        >
+          <ChevronRight size={15} strokeWidth={2.4} />
+        </motion.span>
+      </motion.button>
+    </motion.div>
   );
 }
 
