@@ -330,49 +330,61 @@ function SidebarToggle({
   onToggle: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const visible = collapsed || hovered;
 
   return (
     <>
-      <motion.div
-        initial={false}
-        animate={{ left: collapsed ? 0 : 218, width: collapsed ? 56 : 92 }}
-        transition={{ type: "spring", stiffness: 420, damping: 36 }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={() => visible && onToggle()}
-        className="fixed inset-y-0 z-[65] hidden cursor-pointer select-none outline-none lg:block"
-        aria-hidden="true"
-      />
+      {!collapsed && (
+        <>
+          <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => hovered && onToggle()}
+            className="fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"
+            aria-hidden="true"
+          />
 
-      <motion.div
-        initial={false}
-        animate={{ opacity: !collapsed && visible ? 1 : 0 }}
-        transition={{ duration: .08 }}
-        className="pointer-events-none fixed left-[263px] top-1/2 z-[55] hidden h-[68px] w-[2px] -translate-y-1/2 bg-[var(--surface)] lg:block"
-        aria-hidden="true"
-      />
+          <motion.div
+            initial={false}
+            animate={{ opacity: hovered ? 1 : 0 }}
+            transition={{ duration: .06 }}
+            className="pointer-events-none fixed left-[263px] top-1/2 z-[55] hidden h-[68px] w-[2px] -translate-y-1/2 bg-[var(--surface)] lg:block"
+            aria-hidden="true"
+          />
 
-      <motion.div
-        initial={false}
-        style={{ left: collapsed ? -6 : 263 }}
-        animate={{
-          x: collapsed || visible ? 0 : -37,
-          boxShadow: collapsed || visible ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
-        }}
-        transition={{ type: "spring", stiffness: 430, damping: 32 }}
-        className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex"
-        aria-hidden="true"
-      >
-        <motion.span
-          animate={{ rotate: collapsed ? 0 : 180 }}
-          transition={{ duration: .22, ease: [.22, 1, .36, 1] }}
-          className="flex items-center justify-center"
-        >
-          <ChevronRight size={16} strokeWidth={2.4} />
-        </motion.span>
-      </motion.div>
+          <motion.div
+            initial={false}
+            style={{ left: 263 }}
+            animate={{
+              x: hovered ? 0 : -26,
+              boxShadow: hovered ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
+            }}
+            transition={{ type: "spring", stiffness: 430, damping: 32 }}
+            className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex"
+            aria-hidden="true"
+          >
+            <ChevronLeft size={16} strokeWidth={2.4} />
+          </motion.div>
+        </>
+      )}
+
+      {collapsed && (
+        <>
+          <div
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onToggle}
+            className="fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"
+            aria-hidden="true"
+          />
+
+          <div
+            className="pointer-events-none fixed left-[-6px] top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
+            aria-hidden="true"
+          >
+            <ChevronRight size={16} strokeWidth={2.4} />
+          </div>
+        </>
+      )}
     </>
   );
 }
