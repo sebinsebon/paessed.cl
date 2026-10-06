@@ -166,17 +166,24 @@ export function ExamsExperience() {
               </div>
               <div className="mt-3 space-y-2">
                 {importedExams.map((exam) => (
-                  <div key={exam.id} className="flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 sm:flex-row sm:items-center dark:border-emerald-900/70">
+                  <Link
+                    key={exam.id}
+                    href={"/app/ensayos/importado?id=" + encodeURIComponent(exam.id)}
+                    className="group flex flex-col gap-3 rounded-xl border border-emerald-200/70 bg-[var(--surface)] p-3 transition hover:border-emerald-400 hover:bg-emerald-50/50 sm:flex-row sm:items-center dark:border-emerald-900/70 dark:hover:bg-emerald-950/20"
+                  >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-xs font-extrabold">{exam.title}</div>
                       <div className="mt-1 text-[10px] text-[var(--muted)]">
                         {exam.questionCount} preguntas · {exam.answerCount} respuestas detectadas · {exam.assetCount} assets
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                      IMPORTADO
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-extrabold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">IMPORTADO</span>
+                      <span className="soft-button grid h-9 w-9 place-items-center rounded-xl">
+                        <ChevronRight size={15} />
+                      </span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
