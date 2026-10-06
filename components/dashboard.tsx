@@ -1115,7 +1115,8 @@ function ConnectedRightDashboardCards() {
   return (
     <div
       ref={shellRef}
-      className="relative hidden min-h-0 lg:col-[2/4] lg:row-[1/4] lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(290px,.85fr)] lg:grid-rows-[auto_16px_auto]"
+      className="relative hidden min-h-0 lg:col-[2/4] lg:row-[1/4] lg:grid"
+      style={{ gridTemplateColumns: "subgrid", gridTemplateRows: "subgrid" }}
     >
       {path && (
         <svg
@@ -1430,7 +1431,7 @@ export function Dashboard() {
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)_minmax(290px,.85fr)] lg:grid-rows-[auto_16px_auto] lg:gap-0">
-            <div className="lg:col-[1/3] lg:row-[1] lg:pr-4">
+            <div className="lg:col-[1/3] lg:row-[1] lg:pr-4 lg:[&>section]:h-full">
               <DailyMission tourFocus={tourKey === "mission"} />
             </div>
 
@@ -1438,7 +1439,7 @@ export function Dashboard() {
               <ExamsCard />
             </div>
 
-            <div className="lg:col-[1] lg:row-[3] lg:pr-4">
+            <div className="lg:col-[1] lg:row-[3] lg:pr-4 lg:[&>section]:h-full">
               <LearnCard tourFocus={tourKey === "learn"} />
             </div>
 
