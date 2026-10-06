@@ -347,3 +347,57 @@ export function RegisterGate() {
     </div>
   );
 }
+
+
+export function LoginGate() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!email.includes("@")) return;
+    localStorage.setItem("paessed-user", JSON.stringify({ name: "Seba", email: email.trim() }));
+    router.push("/app/inicio");
+  };
+
+  return (
+    <div className="min-h-screen bg-[var(--canvas)]">
+      <BrandHeader />
+      <main className="mx-auto grid min-h-[calc(100vh-80px)] w-full max-w-[980px] items-center gap-8 px-5 py-10 sm:px-7 lg:grid-cols-[.9fr_1.1fr]">
+        <section className="hidden lg:block">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--secondary)]">
+            <UserRound size={14} />BIENVENIDO DE VUELTA
+          </div>
+          <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-[-.04em]">Continúa tu ruta donde la dejaste.</h1>
+          <p className="mt-4 max-w-md text-sm leading-6 text-[var(--muted)]">
+            Entra para volver a tus ensayos, misión diaria, ruta adaptativa y progreso por eje.
+          </p>
+        </section>
+
+        <section className="surface-raised rounded-[26px] p-5 sm:p-8">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]"><LockKeyhole size={22} /></div>
+          <h2 className="mt-5 text-2xl font-extrabold tracking-[-.02em]">Inicia sesión</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Este acceso sigue siendo simulado en la v4; el diseño queda listo para conectar autenticación real.</p>
+
+          <form onSubmit={submit} className="mt-6 space-y-4">
+            <label className="block">
+              <span className="text-xs font-extrabold">Correo</span>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="tu@correo.cl" className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm outline-none transition focus:border-orange-400" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-extrabold">Contraseña</span>
+              <input type="password" placeholder="Tu contraseña" className="mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm outline-none transition focus:border-orange-400" />
+            </label>
+            <button disabled={!email.includes("@")} className="tactile-primary mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-sm font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
+              Entrar a PAESSED <ArrowRight size={17} />
+            </button>
+          </form>
+
+          <div className="mt-5 border-t border-[var(--border)] pt-5 text-center text-xs font-bold text-[var(--muted)]">
+            ¿Todavía no tienes cuenta? <Link href="/diagnostico" className="font-extrabold text-[var(--primary)]">Haz el diagnóstico primero</Link>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
