@@ -261,33 +261,19 @@ function Sidebar({ tourFocus, dark }: { tourFocus: boolean; dark: boolean }) {
   );
 }
 
-function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string; style?: CSSProperties }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
-  return (
-    <div
-      className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
-      style={accent
-        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "#fb923c" }
-        : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" }}
-    >
-      <Icon size={15} style={iconColor ? { color: iconColor } : undefined} />
-      {children}
-    </div>
-  );
-}
-
-function Topbar({
+function HomeActions({
   dark,
   setDark,
-  monthlyGoal,
   onTour,
 }: {
   dark: boolean;
   setDark: (v: boolean) => void;
-  monthlyGoal: number;
   onTour: () => void;
 }) {
+  const [profileOpen, setProfileOpen] = useState(false);
   const notificationOpen = useRef(false);
   const notificationTimer = useRef<number | null>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const toggleNotifications = () => {
     if (notificationOpen.current) {
@@ -305,8 +291,17 @@ function Topbar({
   };
 
   useEffect(() => {
-    // Switching themes clears Sileo globally. Keep the bell's open/closed
-    // state in sync so the first click after a theme switch opens it again.
+    if (!profileOpen) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    };
+    window.addEventListener("pointerdown", closeOnOutside);
+    return () => window.removeEventListener("pointerdown", closeOnOutside);
+  }, [profileOpen]);
+
+  useEffect(() => {
     notificationOpen.current = false;
     if (notificationTimer.current) window.clearTimeout(notificationTimer.current);
   }, [dark]);
@@ -315,62 +310,102 @@ function Topbar({
     if (notificationTimer.current) window.clearTimeout(notificationTimer.current);
   }, []);
 
-  return (
-    <header className="fixed left-0 right-0 top-0 z-40 flex h-[68px] items-center border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-4 backdrop-blur-lg lg:left-[264px] lg:px-6">
-      <div className="flex w-full items-center gap-2">
-        <div className="mr-auto flex items-center gap-2 lg:hidden">
-          <img
-            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
-            alt="PAESSED"
-            className="block h-auto w-[122px]"
-          />
-        </div>
-        <div className="hidden items-center gap-2 lg:flex">
-          <TopMetric icon={Flame} accent iconColor="#fb923c">14 días</TopMetric>
-          <TopMetric icon={Medal}>Nv. 17 · 1.240 XP</TopMetric>
-          <TopMetric icon={Target}>Objetivo 3/5</TopMetric>
-          <TopMetric icon={TrendingUp}>Meta {monthlyGoal} pts</TopMetric>
-        </div>
+  const openTour = () => {
+    setProfileOpen(false);
+    onTour();
+  };
 
-        <div className="ml-auto flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: .92 }}
-            aria-label="Mostrar ayuda"
-            onClick={onTour}
-            className="soft-button hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
-          >
-            <CircleHelp size={17} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: .92 }}
-            aria-label="Notificaciones"
-            onClick={toggleNotifications}
-            className="soft-button relative flex h-9 w-9 items-center justify-center rounded-xl"
-          >
-            <Bell size={17} className="text-[var(--text)]" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
-          </motion.button>
-          <motion.button
-            whileTap={{ rotate: -8, scale: .92 }}
-            aria-label="Cambiar tema"
-            onClick={() => setDark(!dark)}
-            className="soft-button flex h-9 w-9 items-center justify-center rounded-xl"
-          >
-            {dark ? <Sun size={17} className="text-[#ffb86a]" /> : <Moon size={17} className="text-[var(--secondary)]" />}
-          </motion.button>
-          <button className="ml-1 flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[var(--surface-2)]">
-            <div
-              className="grid h-8 w-8 place-items-center rounded-full border text-[10px] font-extrabold"
-              style={{ borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--surface-2)", color: "var(--text)" }}
-            >SB</div>
-            <div className="hidden text-left sm:block">
-              <div className="text-xs font-extrabold">Seba</div>
-              <div className="text-[10px] text-[var(--muted)]">4° Medio</div>
-            </div>
-          </button>
-        </div>
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <motion.button
+        whileTap={{ scale: .92 }}
+        aria-label="Notificaciones"
+        onClick={toggleNotifications}
+        className="soft-button relative flex h-10 w-10 items-center justify-center rounded-xl"
+      >
+        <Bell size={18} className="text-[var(--text)]" />
+        <span className="absolute right-[9px] top-[9px] h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
+      </motion.button>
+
+      <div ref={profileRef} className="relative">
+        <motion.button
+          whileTap={{ scale: .94 }}
+          aria-label="Abrir perfil"
+          aria-expanded={profileOpen}
+          onClick={() => setProfileOpen((value) => !value)}
+          className="soft-button grid h-10 w-10 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[11px] font-extrabold text-[var(--text)]"
+        >
+          SB
+        </motion.button>
+
+        <AnimatePresence>
+          {profileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: .97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: .98 }}
+              transition={{ duration: .16, ease: [.22, 1, .36, 1] }}
+              className="surface-raised absolute right-0 top-[calc(100%+10px)] z-[80] w-[300px] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-extrabold text-[var(--text)]">Tu perfil</h2>
+                <button
+                  type="button"
+                  aria-label="Cerrar perfil"
+                  onClick={() => setProfileOpen(false)}
+                  className="soft-button grid h-8 w-8 place-items-center rounded-lg"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <Link
+                href="/app/perfil"
+                onClick={() => setProfileOpen(false)}
+                className="mt-3 flex items-center gap-3 rounded-xl p-2.5 transition-colors hover:bg-[var(--surface-2)]"
+              >
+                <div
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border text-[11px] font-extrabold"
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))",
+                    background: "var(--surface-2)",
+                    color: "var(--text)",
+                  }}
+                >
+                  SB
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-extrabold text-[var(--text)]">Seba</div>
+                  <div className="mt-0.5 text-[11px] font-medium text-[var(--muted)]">Estudiante · Matemática M1</div>
+                </div>
+              </Link>
+
+              <div className="my-2 border-t border-[var(--border)]" />
+
+              <button
+                type="button"
+                onClick={() => setDark(!dark)}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-xs font-bold text-[var(--text)] transition-colors hover:bg-[var(--surface-2)]"
+              >
+                {dark ? <Sun size={17} className="text-[#ffb86a]" /> : <Moon size={17} className="text-[var(--secondary)]" />}
+                {dark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+              </button>
+
+              <button
+                type="button"
+                onClick={openTour}
+                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-xs font-bold text-[var(--text)] transition-colors hover:bg-[var(--surface-2)]"
+              >
+                <CircleHelp size={17} className="text-[var(--muted)]" />
+                Recorrido de ayuda
+              </button>
+
+              <div className="mt-2 px-2.5 pt-2 text-[10px] font-medium text-[var(--muted-2)]">Perfil de demostración</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </header>
+    </div>
   );
 }
 
@@ -1101,21 +1136,12 @@ export function Dashboard() {
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <section className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="rounded-full border px-2.5 py-1 text-[11px] font-extrabold tracking-[.05em]"
-                  style={{ borderColor: "color-mix(in srgb, var(--primary) 25%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }}
-                >67 días para la PAES</span>
-                <span className="text-[10px] font-bold text-[var(--muted)]">Septiembre · 2026</span>
-              </div>
-              <h1 className="text-[32px] font-extrabold leading-[40px] tracking-[-.025em] sm:text-[34px] sm:leading-[42px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
-              <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
+          <section className="mb-6 flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+              <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
             </div>
-            <div className="hidden items-center gap-2 md:flex">
-                            <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[#fb923c]" /> 3/5 de hoy</span>
-            </div>
+            <HomeActions dark={dark} setDark={setDark} onTour={startTour} />
           </section>
 
           <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
