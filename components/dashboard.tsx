@@ -196,7 +196,16 @@ function carouselMasteryColor(percentage: number) {
 }
 
 function carouselMasteryStyle(percentage: number): MasteryCSS {
-  return { "--mastery": carouselMasteryColor(percentage) };
+  // Only the carousel progress fill uses this palette; the card keeps its axis color.
+  const pct = Math.max(0, Math.min(100, percentage));
+  const gradient =
+    pct >= 85 ? "linear-gradient(90deg, #b6f35c, #64db35)" :
+    pct >= 75 ? "linear-gradient(90deg, #c6ed4b, #83dc39)" :
+    pct >= 60 ? "linear-gradient(90deg, #f3c64a, #c4df40)" :
+    pct >= 40 ? "linear-gradient(90deg, #f6a34a, #ebca42)" :
+    "linear-gradient(90deg, #ed5954, #f3953f)";
+
+  return { "--mastery": carouselMasteryColor(pct), background: gradient };
 }
 
 function MasteryBadge({ state }: { state: MasteryState }) {
