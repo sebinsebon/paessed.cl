@@ -645,7 +645,7 @@ function DashboardTopNav({
 function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis: Axis; onOpen: (axis: Axis) => void; mobile?: boolean; duplicate?: boolean }) {
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
-  const carouselColor = carouselMasteryColor(axis.percentage);
+  const axisColor = MASTERY[axis.state].color;
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -655,15 +655,15 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
       className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
       data-critical={critical}
-      style={carouselMasteryStyle(axis.percentage)}
+      style={masteryStyle(axis.state)}
     >
       <div className="flex items-start gap-3">
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border"
           style={{
-            color: carouselColor,
-            borderColor: `color-mix(in srgb, ${carouselColor} 25%, var(--border))`,
-            background: `color-mix(in srgb, ${carouselColor} 10%, var(--surface))`,
+            color: axisColor,
+            borderColor: `color-mix(in srgb, ${axisColor} 25%, var(--border))`,
+            background: `color-mix(in srgb, ${axisColor} 10%, var(--surface))`,
           }}
         >
           <Icon size={19} />
@@ -676,7 +676,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
             </div>
             <span
               className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
-              style={{ color: carouselColor, background: `color-mix(in srgb, ${carouselColor} 11%, var(--surface))` }}
+              style={{ color: axisColor, background: `color-mix(in srgb, ${axisColor} 11%, var(--surface))` }}
             >
               {axis.percentage}%
             </span>
@@ -693,7 +693,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
-        <span className="font-semibold" style={{ color: carouselColor }}>Estado: {axis.state}</span>
+        <span className="font-semibold" style={{ color: axisColor }}>Estado: {axis.state}</span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
     </motion.button>
