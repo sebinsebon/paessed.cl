@@ -945,20 +945,20 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-mission" className={`surface-raised relative flex flex-col justify-center overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative grid w-full items-center gap-5 xl:grid-cols-[minmax(0,1fr)_240px] 2xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="min-w-0 xl:flex xl:min-h-[300px] xl:flex-col xl:justify-between">
+        <div className="min-w-0 xl:flex xl:min-h-[300px] xl:flex-col">
           <div className="xl:max-w-[360px]">
             <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
             <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
+              <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
+              <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
+            </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
-          </div>
-
-          <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit">
+          <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit xl:mt-auto xl:pt-5">
             <Link
               href="/app/playground"
               className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
