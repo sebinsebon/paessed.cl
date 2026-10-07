@@ -22,7 +22,6 @@ import {
   Gamepad2,
   Gauge,
   Home,
-  Medal,
   Moon,
   Play,
   ScanLine,
@@ -38,7 +37,6 @@ import {
   Triangle,
   TrendingUp,
   Route,
-  Clock3,
   ArrowUpRight,
   UserRound,
 } from "lucide-react";
@@ -943,54 +941,74 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section id="tour-mission" className={`surface-raised relative flex flex-col justify-center overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative grid w-full items-center gap-5 xl:grid-cols-[minmax(0,1fr)_240px] 2xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="min-w-0 xl:flex xl:min-h-[300px] xl:flex-col xl:justify-between">
-          <div className="xl:max-w-[360px]">
-            <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
-            <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+    <section
+      id="tour-mission"
+      className={tourFocus
+        ? "surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 tour-focus"
+        : "surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6"}
+    >
+      <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_175px] md:gap-5 lg:grid-cols-[minmax(0,1fr)_185px] xl:grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[minmax(0,1fr)_255px]">
+        <div className="flex min-w-0 flex-col items-start justify-between py-1 sm:min-h-[265px]">
+          <div className="max-w-[440px]">
+            <h2 className="text-[23px] font-extrabold leading-[1.2] tracking-[-.035em] text-[var(--text)] sm:text-[26px]">
+              Aprende siguiendo una ruta personalizada
+            </h2>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+              Mejora, repasa y comprueba lo que sabes con un recorrido a tu ritmo. Avanza por los ejes de Matemática M1 y sus subejes, paso a paso.
+            </p>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
-            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
-          </div>
-
-          <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit">
+          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="mt-7">
             <Link
-              href="/app/playground"
-              className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
+              href="/app/aprender"
+              className="tactile-primary inline-flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 text-xs font-extrabold"
             >
-              <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
-              <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
+              <Play size={16} fill="currentColor" />
+              EMPEZAR
             </Link>
           </motion.div>
         </div>
 
-        <div className="pointer-events-none relative hidden h-[300px] xl:block" aria-hidden="true">
-          <div className="absolute inset-5 rounded-full bg-[var(--primary)]/[.035] blur-3xl" />
-          <p className="absolute left-5 top-1 text-[10px] font-extrabold uppercase tracking-[.18em] text-[var(--muted)]">Tu ruta de hoy</p>
-          <svg className="relative h-full w-full" viewBox="0 0 240 265" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="130" cy="131" r="97" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 9" opacity=".35" />
-            <path d="M26 218 C24 173 102 222 103 164 S185 125 164 91 S171 50 211 43"
-              stroke="var(--border-strong)" strokeWidth="3" strokeDasharray="4 9" strokeLinecap="round" />
-            <path d="M26 218 C24 173 102 222 103 164"
-              stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" />
-            <circle cx="26" cy="218" r="15" fill="var(--surface-2)" stroke="var(--primary)" strokeWidth="2" />
-            <circle cx="26" cy="218" r="5" fill="var(--primary)" />
-            <circle cx="103" cy="164" r="15" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2" />
-            <path d="m97 164 4 4 8-9" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="164" cy="91" r="11" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2" />
-            <circle cx="164" cy="91" r="3" fill="var(--muted)" opacity=".65" />
-            <circle cx="211" cy="43" r="22" fill="var(--surface-2)" stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="3 4" />
-            <circle cx="211" cy="43" r="14" fill="var(--primary-soft)" />
-            <path d="M211 34v18m-9-9h18" stroke="var(--primary)" strokeWidth="2.3" strokeLinecap="round" />
-            <text x="24" y="251" fontSize="10" fill="var(--muted)" fontWeight="700" textAnchor="middle">INICIO</text>
-            <text x="211" y="78" fontSize="10" fill="var(--muted)" fontWeight="700" textAnchor="middle">META</text>
-            <path d="M40 80 53 57 66 80Z" stroke="var(--secondary)" strokeWidth="1.4" opacity=".25" />
-            <path d="M51 68h23" stroke="var(--secondary)" strokeWidth="1.4" strokeLinecap="round" opacity=".18" />
+        <div className="pointer-events-none relative mx-auto h-[185px] w-full max-w-[275px] sm:h-[265px]" aria-hidden="true">
+          <svg viewBox="0 0 250 255" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full">
+            <defs>
+              <linearGradient id="learning-path-gradient" x1="35" y1="217" x2="109" y2="163" gradientUnits="userSpaceOnUse">
+                <stop stopColor="var(--primary)" />
+                <stop offset="1" stopColor="var(--primary-accent)" />
+              </linearGradient>
+            </defs>
+
+            <circle cx="130" cy="130" r="106" fill="var(--primary)" opacity=".025" />
+            <path
+              d="M35 217 C39 167 90 218 109 163 C125 114 177 161 186 103 C190 68 207 57 221 35"
+              stroke="var(--border-strong)"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray="1 12"
+            />
+            <path
+              d="M35 217 C39 167 90 218 109 163"
+              stroke="url(#learning-path-gradient)"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+
+            <circle cx="35" cy="217" r="15" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
+            <circle cx="35" cy="217" r="5.5" fill="var(--primary)" />
+
+            <circle cx="109" cy="163" r="28" fill="var(--primary)" opacity=".09" />
+            <circle cx="109" cy="163" r="19" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
+            <path d="m101 163 5 5 11-12" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+            <circle cx="186" cy="103" r="16" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2.5" />
+            <circle cx="186" cy="103" r="5" fill="var(--muted-2)" />
+
+            <circle cx="221" cy="35" r="27" fill="var(--primary)" opacity=".09" />
+            <circle cx="221" cy="35" r="20" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
+            <path d="M215 46V25m0 1 13 4-13 5" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+            <circle cx="65" cy="90" r="3" fill="var(--secondary)" opacity=".25" />
+            <path d="M68 81v-13m-6 6.5h12" stroke="var(--secondary)" strokeWidth="1.5" strokeLinecap="round" opacity=".2" />
           </svg>
         </div>
       </div>
