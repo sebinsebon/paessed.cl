@@ -944,12 +944,12 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-mission" className={`surface-raised relative flex flex-col justify-center overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative grid w-full items-center gap-5 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_240px]">
-        <div className="min-w-0">
-          <div className="max-w-2xl">
+      <div className="relative grid w-full items-center gap-5 xl:grid-cols-[minmax(0,1fr)_240px] 2xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="min-w-0 xl:flex xl:min-h-[300px] xl:flex-col xl:justify-between">
+          <div className="xl:max-w-[360px]">
             <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
             <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -969,31 +969,29 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
           </motion.div>
         </div>
 
-        <div className="hidden lg:block" aria-label="Vista previa de los temas de práctica">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Vista previa</p>
-                <p className="mt-1 text-sm font-extrabold">Lo que practicarás</p>
-              </div>
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]"><Target size={18} /></div>
-            </div>
-            <div className="mt-4 space-y-3">
-              {[
-                { name: "Semejanza", width: "78%", color: "var(--primary)" },
-                { name: "Proporciones", width: "56%", color: "var(--secondary)" },
-                { name: "Aplicación", width: "32%", color: "var(--danger)" },
-              ].map((topic) => (
-                <div key={topic.name}>
-                  <p className="mb-1.5 text-[11px] font-semibold">{topic.name}</p>
-                  <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]">
-                    <div className="h-full rounded-full" style={{ width: topic.width, backgroundColor: topic.color }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-[11px] leading-4 text-[var(--muted)]">Cinco preguntas para reforzar tus habilidades.</p>
-          </div>
+        <div className="pointer-events-none relative hidden h-[300px] xl:block" aria-hidden="true">
+          <div className="absolute inset-5 rounded-full bg-[var(--primary)]/[.035] blur-3xl" />
+          <p className="absolute left-5 top-1 text-[10px] font-extrabold uppercase tracking-[.18em] text-[var(--muted)]">Tu ruta de hoy</p>
+          <svg className="relative h-full w-full" viewBox="0 0 240 265" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="130" cy="131" r="97" stroke="var(--border)" strokeWidth="1" strokeDasharray="3 9" opacity=".35" />
+            <path d="M26 218 C24 173 102 222 103 164 S185 125 164 91 S171 50 211 43"
+              stroke="var(--border-strong)" strokeWidth="3" strokeDasharray="4 9" strokeLinecap="round" />
+            <path d="M26 218 C24 173 102 222 103 164"
+              stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="26" cy="218" r="15" fill="var(--surface-2)" stroke="var(--primary)" strokeWidth="2" />
+            <circle cx="26" cy="218" r="5" fill="var(--primary)" />
+            <circle cx="103" cy="164" r="15" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2" />
+            <path d="m97 164 4 4 8-9" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="164" cy="91" r="11" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2" />
+            <circle cx="164" cy="91" r="3" fill="var(--muted)" opacity=".65" />
+            <circle cx="211" cy="43" r="22" fill="var(--surface-2)" stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="3 4" />
+            <circle cx="211" cy="43" r="14" fill="var(--primary-soft)" />
+            <path d="M211 34v18m-9-9h18" stroke="var(--primary)" strokeWidth="2.3" strokeLinecap="round" />
+            <text x="24" y="251" fontSize="10" fill="var(--muted)" fontWeight="700" textAnchor="middle">INICIO</text>
+            <text x="211" y="78" fontSize="10" fill="var(--muted)" fontWeight="700" textAnchor="middle">META</text>
+            <path d="M40 80 53 57 66 80Z" stroke="var(--secondary)" strokeWidth="1.4" opacity=".25" />
+            <path d="M51 68h23" stroke="var(--secondary)" strokeWidth="1.4" strokeLinecap="round" opacity=".18" />
+          </svg>
         </div>
       </div>
     </section>
