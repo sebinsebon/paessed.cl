@@ -922,7 +922,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section id="tour-mission" className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
+    <section id="tour-mission" className={`surface-raised relative flex flex-col justify-center overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="relative">
         <div className="max-w-2xl">
           <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
