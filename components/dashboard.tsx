@@ -923,28 +923,57 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-mission" className={`surface-raised relative flex flex-col justify-center overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative">
-        <div className="max-w-2xl">
-          <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
-          <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+      <div className="relative grid w-full items-center gap-5 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_240px]">
+        <div className="min-w-0">
+          <div className="max-w-2xl">
+            <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
+            <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
+            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
+            <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
+          </div>
+
+          <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit">
+            <Link
+              href="/app/playground"
+              className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
+            >
+              <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
+              <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
+            </Link>
+          </motion.div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
+        <div className="hidden lg:block" aria-label="Vista previa de los temas de práctica">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Vista previa</p>
+                <p className="mt-1 text-sm font-extrabold">Lo que practicarás</p>
+              </div>
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]"><Target size={18} /></div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {[
+                { name: "Semejanza", width: "78%", color: "var(--primary)" },
+                { name: "Proporciones", width: "56%", color: "var(--secondary)" },
+                { name: "Aplicación", width: "32%", color: "var(--danger)" },
+              ].map((topic) => (
+                <div key={topic.name}>
+                  <p className="mb-1.5 text-[11px] font-semibold">{topic.name}</p>
+                  <div className="h-2 overflow-hidden rounded-full bg-[var(--border)]">
+                    <div className="h-full rounded-full" style={{ width: topic.width, backgroundColor: topic.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-[11px] leading-4 text-[var(--muted)]">Cinco preguntas para reforzar tus habilidades.</p>
+          </div>
         </div>
-
-        <motion.div whileHover={{ scale: 1.008 }} className="mt-5 w-full sm:w-fit">
-          <Link
-            href="/app/playground"
-            className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
-          >
-            <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
-            <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
-          </Link>
-        </motion.div>
       </div>
     </section>
   );
