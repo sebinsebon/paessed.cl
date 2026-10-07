@@ -943,72 +943,100 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section
       id="tour-mission"
-      className={tourFocus
-        ? "surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 tour-focus"
-        : "surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6"}
+      className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}
     >
-      <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_175px] md:gap-5 lg:grid-cols-[minmax(0,1fr)_185px] xl:grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[minmax(0,1fr)_255px]">
-        <div className="flex min-w-0 flex-col items-start justify-between py-1 sm:min-h-[265px]">
-          <div className="max-w-[440px]">
-            <h2 className="text-[23px] font-extrabold leading-[1.2] tracking-[-.035em] text-[var(--text)] sm:text-[26px]">
+      <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_250px] 2xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="flex min-w-0 flex-col justify-between lg:min-h-[280px]">
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
+                  <BookOpen size={20} strokeWidth={2.1} />
+                </div>
+                <div>
+                  <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</div>
+                  <div className="text-xs font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</div>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
+                Ruta activa
+              </span>
+            </div>
+
+            <h2 className="mt-5 max-w-[450px] text-xl font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[22px]">
               Aprende siguiendo una ruta personalizada
             </h2>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
-              Mejora, repasa y comprueba lo que sabes con un recorrido a tu ritmo. Avanza por los ejes de Matemática M1 y sus subejes, paso a paso.
+            <p className="mt-2.5 max-w-[470px] text-[13px] leading-[21px] text-[var(--muted)]">
+              Refuerza lo que necesitas, repasa a tu ritmo y avanza por cada eje de Matemática M1, paso a paso.
             </p>
           </div>
 
-          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="mt-7">
-            <Link
-              href="/app/aprender"
-              className="tactile-primary inline-flex items-center justify-center gap-2.5 rounded-xl px-6 py-3.5 text-xs font-extrabold"
-            >
-              <Play size={16} fill="currentColor" />
-              EMPEZAR
-            </Link>
-          </motion.div>
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-x-5 gap-y-4">
+            <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }}>
+              <Link
+                href="/app/aprender"
+                className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"
+              >
+                <Play size={16} fill="currentColor" />
+                EMPEZAR
+              </Link>
+            </motion.div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[.08em] text-[var(--muted)]">Siguiente parada</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs font-extrabold text-[var(--text)]">
+                Álgebra y Funciones <ChevronRight size={15} className="text-[var(--primary)]" />
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="pointer-events-none relative mx-auto h-[185px] w-full max-w-[275px] sm:h-[265px]" aria-hidden="true">
-          <svg viewBox="0 0 250 255" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full">
-            <defs>
-              <linearGradient id="learning-path-gradient" x1="35" y1="217" x2="109" y2="163" gradientUnits="userSpaceOnUse">
-                <stop stopColor="var(--primary)" />
-                <stop offset="1" stopColor="var(--primary-accent)" />
-              </linearGradient>
-            </defs>
-
-            <circle cx="130" cy="130" r="106" fill="var(--primary)" opacity=".025" />
+        <div className="pointer-events-none relative mx-auto h-[230px] w-full max-w-[280px] lg:h-[280px]" aria-hidden="true">
+          <svg
+            className="h-full w-full overflow-visible"
+            viewBox="0 0 290 280"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* One carefully drawn trail, with completed, current and upcoming stations. */}
             <path
-              d="M35 217 C39 167 90 218 109 163 C125 114 177 161 186 103 C190 68 207 57 221 35"
+              d="M43 226 C46 186 97 224 119 189 C136 160 144 156 178 151 C218 143 201 99 239 57"
               stroke="var(--border-strong)"
               strokeWidth="5"
-              strokeLinecap="round"
               strokeDasharray="1 12"
+              strokeLinecap="round"
             />
             <path
-              d="M35 217 C39 167 90 218 109 163"
-              stroke="url(#learning-path-gradient)"
+              d="M43 226 C46 186 97 224 119 189"
+              stroke="var(--primary)"
               strokeWidth="5"
               strokeLinecap="round"
             />
 
-            <circle cx="35" cy="217" r="15" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
-            <circle cx="35" cy="217" r="5.5" fill="var(--primary)" />
+            {/* Start — a small, quiet anchor. */}
+            <circle cx="43" cy="226" r="13" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
+            <circle cx="43" cy="226" r="4.5" fill="var(--primary)" />
 
-            <circle cx="109" cy="163" r="28" fill="var(--primary)" opacity=".09" />
-            <circle cx="109" cy="163" r="19" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
-            <path d="m101 163 5 5 11-12" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            {/* The first completed milestone. */}
+            <circle cx="119" cy="189" r="31" fill="var(--primary)" opacity=".08" />
+            <circle cx="119" cy="189" r="23" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
+            <path d="m110 189 6 6 13-14" stroke="var(--primary)" strokeWidth="3.1" strokeLinecap="round" strokeLinejoin="round" />
 
-            <circle cx="186" cy="103" r="16" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2.5" />
-            <circle cx="186" cy="103" r="5" fill="var(--muted-2)" />
+            {/* Next stop: one consistent shape, subdued until reached. */}
+            <circle cx="178" cy="151" r="18" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2.5" />
+            <circle cx="178" cy="151" r="5" fill="var(--muted-2)" />
 
-            <circle cx="221" cy="35" r="27" fill="var(--primary)" opacity=".09" />
-            <circle cx="221" cy="35" r="20" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
-            <path d="M215 46V25m0 1 13 4-13 5" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
-            <circle cx="65" cy="90" r="3" fill="var(--secondary)" opacity=".25" />
-            <path d="M68 81v-13m-6 6.5h12" stroke="var(--secondary)" strokeWidth="1.5" strokeLinecap="round" opacity=".2" />
+            {/* Destination — the open-book emblem reprises the card icon. */}
+            <circle cx="239" cy="57" r="37" fill="var(--primary)" opacity=".065" />
+            <circle cx="239" cy="57" r="28" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.7" />
+            <path
+              d="M239 49c-4-3-10-4-15-2v17c5-2 11-1 15 2 4-3 10-4 15-2V47c-5-2-11-1-15 2Z"
+              stroke="var(--primary)"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path d="M239 49v17" stroke="var(--primary)" strokeWidth="2.4" strokeLinecap="round" />
           </svg>
         </div>
       </div>
