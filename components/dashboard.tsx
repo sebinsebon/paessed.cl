@@ -702,7 +702,19 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
-        <span className="font-semibold" style={{ color: axisColor }}>Estado: {axis.state}</span>
+        <span className="font-semibold text-[var(--muted)]">
+          Estado:{" "}
+          <span
+            style={{
+              ...carouselMasteryStyle(axis.percentage),
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {axis.state}
+          </span>
+        </span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
     </motion.button>
