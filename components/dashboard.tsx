@@ -945,25 +945,18 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
       id="tour-mission"
       className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}
     >
-      <div className="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_220px] xl:grid-cols-[minmax(0,1fr)_250px] 2xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="flex min-w-0 flex-col justify-between lg:min-h-[280px]">
+      <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
+        <div className="flex min-w-0 flex-col justify-between lg:min-h-[265px]">
           <div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
-                  <BookOpen size={20} strokeWidth={2.1} />
-                </div>
-                <div>
-                  <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</div>
-                  <div className="text-xs font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</div>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
+                <BookOpen size={20} strokeWidth={2.1} />
               </div>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--primary)]" />
-                Ruta activa
-              </span>
+              <div>
+                <p className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
+                <p className="text-xs font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</p>
+              </div>
             </div>
-
             <h2 className="mt-5 max-w-[450px] text-xl font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[22px]">
               Aprende siguiendo una ruta personalizada
             </h2>
@@ -972,72 +965,42 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
             </p>
           </div>
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-x-5 gap-y-4">
-            <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }}>
-              <Link
-                href="/app/aprender"
-                className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"
-              >
-                <Play size={16} fill="currentColor" />
-                EMPEZAR
-              </Link>
-            </motion.div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[.08em] text-[var(--muted)]">Siguiente parada</p>
-              <p className="mt-0.5 flex items-center gap-1 text-xs font-extrabold text-[var(--text)]">
-                Álgebra y Funciones <ChevronRight size={15} className="text-[var(--primary)]" />
-              </p>
-            </div>
-          </div>
+          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="mt-7 self-start">
+            <Link
+              href="/app/aprender"
+              className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"
+            >
+              <Play size={16} fill="currentColor" />
+              EMPEZAR
+            </Link>
+          </motion.div>
         </div>
 
-        <div className="pointer-events-none relative mx-auto h-[230px] w-full max-w-[280px] lg:h-[280px]" aria-hidden="true">
-          <svg
-            className="h-full w-full overflow-visible"
-            viewBox="0 0 290 280"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* One carefully drawn trail, with completed, current and upcoming stations. */}
-            <path
-              d="M43 226 C46 186 97 224 119 189 C136 160 144 156 178 151 C218 143 201 99 239 57"
-              stroke="var(--border-strong)"
-              strokeWidth="5"
-              strokeDasharray="1 12"
-              strokeLinecap="round"
-            />
-            <path
-              d="M43 226 C46 186 97 224 119 189"
-              stroke="var(--primary)"
-              strokeWidth="5"
-              strokeLinecap="round"
-            />
+        <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 sm:p-[18px]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.11em] text-[var(--muted)]">Tu ruta de aprendizaje</p>
+            <Route size={17} className="shrink-0 text-[var(--primary)]" strokeWidth={2} />
+          </div>
 
-            {/* Start — a small, quiet anchor. */}
-            <circle cx="43" cy="226" r="13" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.5" />
-            <circle cx="43" cy="226" r="4.5" fill="var(--primary)" />
+          <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.08em] text-[var(--primary)]">Siguiente parada</p>
+            <p className="mt-1 text-sm font-extrabold leading-5 text-[var(--text)]">Álgebra y Funciones</p>
+            <p className="mt-0.5 text-[11px] text-[var(--muted)]">Aprende y practica a tu ritmo</p>
+          </div>
 
-            {/* The first completed milestone. */}
-            <circle cx="119" cy="189" r="31" fill="var(--primary)" opacity=".08" />
-            <circle cx="119" cy="189" r="23" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
-            <path d="m110 189 6 6 13-14" stroke="var(--primary)" strokeWidth="3.1" strokeLinecap="round" strokeLinejoin="round" />
-
-            {/* Next stop: one consistent shape, subdued until reached. */}
-            <circle cx="178" cy="151" r="18" fill="var(--surface-2)" stroke="var(--border-strong)" strokeWidth="2.5" />
-            <circle cx="178" cy="151" r="5" fill="var(--muted-2)" />
-
-            {/* Destination — the open-book emblem reprises the card icon. */}
-            <circle cx="239" cy="57" r="37" fill="var(--primary)" opacity=".065" />
-            <circle cx="239" cy="57" r="28" fill="var(--surface)" stroke="var(--primary)" strokeWidth="2.7" />
-            <path
-              d="M239 49c-4-3-10-4-15-2v17c5-2 11-1 15 2 4-3 10-4 15-2V47c-5-2-11-1-15 2Z"
-              stroke="var(--primary)"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path d="M239 49v17" stroke="var(--primary)" strokeWidth="2.4" strokeLinecap="round" />
-          </svg>
+          <div className="mt-4 flex items-center justify-between gap-2 text-[11px] font-bold text-[var(--muted)]">
+            <span>Explora los ejes de M1</span>
+            <span className="tabular-nums">4 ejes</span>
+          </div>
+          <div className="mt-2 grid grid-cols-4 gap-1.5" aria-hidden="true">
+            <span className="h-1.5 rounded-full bg-[var(--primary)]" />
+            <span className="h-1.5 rounded-full bg-[var(--border-strong)]" />
+            <span className="h-1.5 rounded-full bg-[var(--border-strong)]" />
+            <span className="h-1.5 rounded-full bg-[var(--border-strong)]" />
+          </div>
+          <p className="mt-3 text-[11px] leading-4 text-[var(--muted)]">
+            Un paso a la vez, sin perder de vista lo que viene.
+          </p>
         </div>
       </div>
     </section>
