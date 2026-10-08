@@ -616,6 +616,9 @@ export function PlaygroundExperience() {
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
   const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", savedOnly: false });
+  const [queuedFilters, setQueuedFilters] = useState<{ year: string; axis: string; savedOnly: boolean; question: string } | null>(null);
+  const [filterDecisionOpen, setFilterDecisionOpen] = useState(false);
+  const [filterNotice, setFilterNotice] = useState<string | null>(null);
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
   const [recentQuestionIds, setRecentQuestionIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -669,34 +672,55 @@ export function PlaygroundExperience() {
       setSettingsOpen(false);
       return;
     }
-    setDraftYear(sessionFilters.year);
-    setDraftAxis(sessionFilters.axis);
-    setDraftSavedOnly(sessionFilters.savedOnly);
-    setDraftQuestion("random");
+    setDraftYear(queuedFilters?.year ?? sessionFilters.year);
+    setDraftAxis(queuedFilters?.axis ?? sessionFilters.axis);
+    setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
+    setDraftQuestion(queuedFilters?.question ?? "random");
+    setFilterDecisionOpen(false);
     setDrawingEnabled(false);
     setSettingsOpen(true);
   };
-  const applyPracticeFilters = () => {
-    if (!draftQuestions.length) return;
-    const shuffled = shufflePlaygroundQuestions(draftQuestions);
-    if (draftQuestion !== "random") {
-      const selected = shuffled.indexOf(draftQuestion);
-      if (selected >= 0) {
-        shuffled.splice(selected, 1);
-        shuffled.unshift(draftQuestion);
-      }
+  const commitPracticeFilters = (
+    filters: { year: string; axis: string; savedOnly: boolean; question: string },
+    matching: PlaygroundQuestion[],
+    avoidId?: string
+  ) => {
+    if (!matching.length) return;
+    const shuffled = shufflePlaygroundQuestions(matching);
+    const chosenIndex = filters.question === "random" ? -1 : shuffled.indexOf(filters.question);
+    if (chosenIndex > 0) {
+      shuffled.splice(chosenIndex, 1);
+      shuffled.unshift(filters.question);
+    } else if (chosenIndex < 0 && shuffled.length > 1 && shuffled[0] === avoidId) {
+      [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
     }
-    setYear(draftYear);
-    setAxis(draftAxis);
-    setSavedOnly(draftSavedOnly);
-    setSessionFilters({ year: draftYear, axis: draftAxis, savedOnly: draftSavedOnly });
-    setSelectedStartQuestion(draftQuestion);
+    setYear(filters.year);
+    setAxis(filters.axis);
+    setSavedOnly(filters.savedOnly);
+    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
+    setSelectedStartQuestion(filters.question);
     setOrder(shuffled);
     setPosition(0);
     setAnswers({});
     setRevealed({});
     setPendingAction(null);
+    setQueuedFilters(null);
+    setFilterDecisionOpen(false);
+    setFilterNotice(null);
     setSettingsOpen(false);
+  };
+
+  const applyPracticeFilters = (timing: "now" | "next") => {
+    if (!draftQuestions.length) return;
+    const filters = { year: draftYear, axis: draftAxis, savedOnly: draftSavedOnly, question: draftQuestion };
+    if (timing === "now") {
+      commitPracticeFilters(filters, draftQuestions, current?.id);
+    } else {
+      setQueuedFilters(filters);
+      setFilterDecisionOpen(false);
+      setFilterNotice(null);
+      setSettingsOpen(false);
+    }
   };
 
   useEffect(() => {
@@ -847,6 +871,9 @@ export function PlaygroundExperience() {
     setAnswers({});
     setRevealed({});
     setPendingAction(null);
+    setQueuedFilters(null);
+    setFilterDecisionOpen(false);
+    setFilterNotice(null);
     setSettingsOpen(false);
     setDrawingEnabled(false);
     setSidebarVisible(false);
@@ -863,6 +890,38 @@ export function PlaygroundExperience() {
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
     beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", savedOnly: false });
+  };
+
+  // Advance deliberately only after checking an answer. Deferred filters take
+  // effect here, never while the student is working on the current question.
+  const advanceQuestion = () => {
+    if (!isRevealed) return;
+    if (queuedFilters) {
+      const matching = playgroundQuestions.filter((question) =>
+        (queuedFilters.year === "all" || String(question.year) === queuedFilters.year) &&
+        (queuedFilters.axis === "all" || question.axis === queuedFilters.axis) &&
+        (!queuedFilters.savedOnly || savedQuestionIds.includes(question.id))
+      );
+      if (matching.length > 0) {
+        commitPracticeFilters(queuedFilters, matching, current?.id);
+        return;
+      }
+      setQueuedFilters(null);
+      setFilterNotice("Los filtros pendientes ya no tienen preguntas disponibles. Continuarás con la selección anterior.");
+    }
+    setPendingAction(null);
+    if (position < visibleOrder.length - 1) {
+      setPosition((previous) => previous + 1);
+      return;
+    }
+    const nextOrder = shufflePlaygroundQuestions(sessionQuestions);
+    if (nextOrder.length > 1 && nextOrder[0] === current?.id) {
+      [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+    }
+    setOrder(nextOrder);
+    setPosition(0);
+    setAnswers({});
+    setRevealed({});
   };
 
   const confirmAnswer = () => {
@@ -1067,6 +1126,7 @@ export function PlaygroundExperience() {
                 <p key={sessionFilters.year + ":" + sessionFilters.axis + ":" + sessionFilters.savedOnly} className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
                   {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
+                {queuedFilters && <p className="truncate text-center text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
               </motion.div>
 
               <div className="flex shrink-0 items-center gap-1">
@@ -1146,7 +1206,7 @@ export function PlaygroundExperience() {
                       <div className="mt-4 border-t border-[var(--border)] pt-4">
                         <h3 className="text-[12px] font-extrabold">Filtros de preguntas</h3>
                         <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
-                          Aplicar nuevos filtros reinicia esta ronda.
+                          Puedes aplicarlos ahora o al avanzar a la siguiente pregunta.
                         </p>
                         <div className="mt-3 grid gap-3">
                           <div>
@@ -1197,12 +1257,43 @@ export function PlaygroundExperience() {
                           <button
                             type="button"
                             disabled={draftQuestions.length === 0}
-                            onClick={applyPracticeFilters}
+                            onClick={() => setFilterDecisionOpen(true)}
                             className="tactile-primary min-h-9 rounded-lg px-3 text-[11px] font-extrabold disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             Aplicar filtros
                           </button>
                         </div>
+                        {filterDecisionOpen && (
+                          <div role="group" aria-label="Cuándo aplicar los filtros" className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                            <p className="text-[12px] font-extrabold text-[var(--text)]">¿Cuándo quieres aplicar los cambios?</p>
+                            <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
+                              Puedes terminar la pregunta actual sin perder tu respuesta ni tus cálculos.
+                            </p>
+                            <div className="mt-3 grid gap-2">
+                              <button
+                                type="button"
+                                onClick={() => applyPracticeFilters("next")}
+                                className="min-h-9 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[11px] font-bold text-[var(--text)] hover:bg-[var(--surface-3)]"
+                              >
+                                En la próxima pregunta
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyPracticeFilters("now")}
+                                className="tactile-primary min-h-9 rounded-lg px-3 text-[11px] font-extrabold"
+                              >
+                                Aplicar ahora
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setFilterDecisionOpen(false)}
+                                className="min-h-8 text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--text)]"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </motion.section>
                   )}
@@ -1261,6 +1352,7 @@ export function PlaygroundExperience() {
               </div>
             )}
             {saveError && <p role="alert" className="px-4 pb-2 text-right text-[11px] text-rose-500">{saveError}</p>}
+            {filterNotice && <p role="status" className="px-4 pb-2 text-right text-[11px] text-amber-600">{filterNotice}</p>}
           </motion.header>
 
           <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
@@ -1359,7 +1451,15 @@ export function PlaygroundExperience() {
                           Reintentar
                         </button>
                       )}
-
+                      {isRevealed && (
+                        <button
+                          type="button"
+                          onClick={advanceQuestion}
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)]"
+                        >
+                          Siguiente <ChevronRight size={16} aria-hidden="true" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   {pendingAction && (
