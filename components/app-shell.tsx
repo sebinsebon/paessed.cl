@@ -22,10 +22,12 @@ function useAppTheme() {
   return { dark, setDark };
 }
 
-export function AppShell({ children, title, eyebrow, wide = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean }) {
+export function AppShell({ children, title, eyebrow, wide = false, immersive = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean; immersive?: boolean }) {
   const router = useRouter();
   const { dark, setDark } = useAppTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
+  // Temporarily hide navigation for a focused activity; do not change user sidebar preference.
+  const visuallyCollapsed = sidebarCollapsed || immersive;
   const [monthlyGoal, setMonthlyGoal] = useState(780);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function AppShell({ children, title, eyebrow, wide = false }: { children:
   };
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)]" style={{ "--sidebar-width": sidebarCollapsed ? "0px" : "264px" } as CSSProperties}>
+    <div className="min-h-screen bg-[var(--canvas)]" style={{ "--sidebar-width": visuallyCollapsed ? "0px" : "264px" } as CSSProperties}>
       <Toaster
         position="top-right"
         options={{
@@ -54,16 +56,16 @@ export function AppShell({ children, title, eyebrow, wide = false }: { children:
           },
         }}
       />
-      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} goal={monthlyGoal} />
-      <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={sidebarCollapsed} />
+      <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />
+      {!immersive && <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />}
+      {!immersive && <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={sidebarCollapsed} />}
       <main
         aria-label={eyebrow ? eyebrow + " · " + title : title}
-        className="min-h-screen transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]"
+        className={(immersive ? "h-dvh overflow-hidden" : "min-h-screen") + " transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]"}
       >
-        <div className={`mx-auto w-full px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7 ${wide ? "max-w-none" : "max-w-[1280px]"}`}>{children}</div>
+        <div className={immersive ? "h-full w-full min-h-0 overflow-hidden" : `mx-auto w-full px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7 ${wide ? "max-w-none" : "max-w-[1280px]"}`}>{children}</div>
       </main>
-      <MobileNav />
+      {!immersive && <MobileNav />}
     </div>
   );
 }
