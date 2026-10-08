@@ -620,6 +620,14 @@ export function PlaygroundExperience() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isPracticing, setIsPracticing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
+  const [drawingColor, setDrawingColor] = useState("#2563eb");
+  const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
+  const [draftYear, setDraftYear] = useState("all");
+  const [draftAxis, setDraftAxis] = useState("all");
+  const [draftSavedOnly, setDraftSavedOnly] = useState(false);
+  const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
   const settingsRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<string[]>([]);
@@ -644,6 +652,49 @@ export function PlaygroundExperience() {
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
   const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
+  const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
+  const draftQuestions = playgroundQuestions.filter((question) =>
+    (draftYear === "all" || String(question.year) === draftYear) &&
+    (draftAxis === "all" || question.axis === draftAxis) &&
+    (!draftSavedOnly || savedQuestionIds.includes(question.id))
+  );
+  const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
+    if (!current) return;
+    setStrokesByQuestion((previous) => ({ ...previous, [current.id]: next }));
+  };
+  const openPracticeSettings = () => {
+    if (settingsOpen) {
+      setSettingsOpen(false);
+      return;
+    }
+    setDraftYear(year);
+    setDraftAxis(axis);
+    setDraftSavedOnly(savedOnly);
+    setDraftQuestion("random");
+    setDrawingEnabled(false);
+    setSettingsOpen(true);
+  };
+  const applyPracticeFilters = () => {
+    if (!draftQuestions.length) return;
+    const shuffled = shufflePlaygroundQuestions(draftQuestions);
+    if (draftQuestion !== "random") {
+      const selected = shuffled.indexOf(draftQuestion);
+      if (selected >= 0) {
+        shuffled.splice(selected, 1);
+        shuffled.unshift(draftQuestion);
+      }
+    }
+    setYear(draftYear);
+    setAxis(draftAxis);
+    setSavedOnly(draftSavedOnly);
+    setSelectedStartQuestion(draftQuestion);
+    setOrder(shuffled);
+    setPosition(0);
+    setAnswers({});
+    setRevealed({});
+    setPendingAction(null);
+    setSettingsOpen(false);
+  };
 
   useEffect(() => {
     try {
@@ -766,6 +817,7 @@ export function PlaygroundExperience() {
     setRevealed({});
     setPendingAction(null);
     setSettingsOpen(false);
+    setDrawingEnabled(false);
     setSidebarVisible(false);
     window.scrollTo({ top: 0, behavior: "instant" });
     setIsPracticing(true);
@@ -947,6 +999,18 @@ export function PlaygroundExperience() {
                 </p>
               </motion.div>
 
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz para cálculos"}
+                  aria-pressed={drawingEnabled}
+                  title={drawingEnabled ? "Cerrar herramientas de dibujo" : "Hacer cálculos a mano"}
+                  onClick={() => { setSettingsOpen(false); setDrawingEnabled((previous) => !previous); }}
+                  className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
+                    (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+                >
+                  <Pencil size={18} aria-hidden="true" />
+                </button>
               <button
                 type="button"
                 onClick={toggleSavedQuestion}
@@ -959,13 +1023,13 @@ export function PlaygroundExperience() {
               >
                 <Bookmark size={19} fill={currentSaved ? "currentColor" : "none"} aria-hidden="true" />
               </button>
-                            <div className="relative shrink-0" ref={settingsRef}>
+              <div className="relative shrink-0" ref={settingsRef}>
                 <button
                   type="button"
-                  aria-label="Ajustes de apariencia del ensayo"
+                  aria-label="Ajustes de apariencia y filtros de preguntas"
                   aria-expanded={settingsOpen}
                   aria-controls="playground-paper-settings"
-                  onClick={() => setSettingsOpen((previous) => !previous)}
+                  onClick={openPracticeSettings}
                   className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
                     (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
                 >
@@ -977,14 +1041,15 @@ export function PlaygroundExperience() {
                     <motion.section
                       id="playground-paper-settings"
                       role="group"
-                      aria-label="Tema del ensayo"
+                      aria-label="Ajustes de la práctica"
                       initial={{ opacity: 0, y: -6, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 w-[min(320px,calc(100vw-24px))] rounded-2xl p-4 shadow-xl"
+                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(75dvh,640px)] w-[min(360px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl
                     >
-                      <h2 className="text-[14px] font-extrabold">Apariencia del ensayo</h2>
+                      <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
+                      <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
                       <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">Cambia solo la hoja de preguntas. La interfaz mantiene su tema.</p>
                       <div className="mt-3 space-y-2">
                         {([
@@ -1008,11 +1073,123 @@ export function PlaygroundExperience() {
                           </button>
                         ))}
                       </div>
+                      <div className="mt-4 border-t border-[var(--border)] pt-4">
+                        <h3 className="text-[12px] font-extrabold">Filtros de preguntas</h3>
+                        <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
+                          Aplicar nuevos filtros reinicia esta ronda.
+                        </p>
+                        <div className="mt-3 grid gap-3">
+                          <div>
+                            <label htmlFor="playground-practice-year" className="mb-1 block text-[11px] font-bold">Año</label>
+                            <select
+                              id="playground-practice-year"
+                              value={draftYear}
+                              onChange={(event) => { setDraftYear(event.target.value); setDraftQuestion("random"); }}
+                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
+                            >
+                              <option value="all">Todos los años</option>
+                              {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="playground-practice-axis" className="mb-1 block text-[11px] font-bold">Eje temático</label>
+                            <select
+                              id="playground-practice-axis"
+                              value={draftAxis}
+                              onChange={(event) => { setDraftAxis(event.target.value); setDraftQuestion("random"); }}
+                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
+                            >
+                              <option value="all">Todos los ejes</option>
+                              {axes.map((value) => <option key={value} value={value}>{value}</option>)}
+                            </select>
+                          </div>
+                          <label className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold">
+                            <input type="checkbox" checked={draftSavedOnly} onChange={(event) => { setDraftSavedOnly(event.target.checked); setDraftQuestion("random"); }} />
+                            Solo preguntas guardadas
+                          </label>
+                          <div>
+                            <label htmlFor="playground-practice-question" className="mb-1 block text-[11px] font-bold">Primera pregunta</label>
+                            <select
+                              id="playground-practice-question"
+                              value={draftQuestion}
+                              onChange={(event) => setDraftQuestion(event.target.value)}
+                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
+                            >
+                              <option value="random">Aleatoria</option>
+                              {draftQuestions.map((question) => (
+                                <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-medium text-[var(--muted)]">{draftQuestions.length} disponibles</span>
+                          <button
+                            type="button"
+                            disabled={draftQuestions.length === 0}
+                            onClick={applyPracticeFilters}
+                            className="tactile-primary min-h-9 rounded-lg px-3 text-[11px] font-extrabold disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Aplicar filtros
+                          </button>
+                        </div>
+                      </div>
                     </motion.section>
                   )}
                 </AnimatePresence>
               </div>
+              </div>
             </div>
+            {drawingEnabled && current && (
+              <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[var(--text)] shadow-lg sm:right-6">
+                <button
+                  type="button"
+                  onClick={() => setDrawingTool("pen")}
+                  aria-pressed={drawingTool === "pen"}
+                  title="Dibujar"
+                  className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
+                ><Pencil size={16} /></button>
+                <button
+                  type="button"
+                  onClick={() => setDrawingTool("eraser")}
+                  aria-pressed={drawingTool === "eraser"}
+                  title="Borrar trazo"
+                  className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
+                ><Eraser size={16} /></button>
+                <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden="true" />
+                {(["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827", "#ffffff"] as const).map((ink) => (
+                  <button
+                    key={ink}
+                    type="button"
+                    onClick={() => { setDrawingColor(ink); setDrawingTool("pen"); }}
+                    aria-label={"Color de tinta " + ink}
+                    aria-pressed={drawingColor === ink && drawingTool === "pen"}
+                    title={ink}
+                    className={"grid h-8 w-8 place-items-center rounded-lg border " + (drawingColor === ink && drawingTool === "pen" ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "border-transparent hover:border-[var(--border)]")}
+                  >
+                    <span className="h-4 w-4 rounded-full border border-slate-400/40" style={{ backgroundColor: ink }} />
+                  </button>
+                ))}
+                <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => updateCurrentStrokes(currentStrokes.slice(0, -1))}
+                  disabled={!currentStrokes.length}
+                  title="Deshacer último trazo"
+                  aria-label="Deshacer último trazo"
+                  className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"
+                ><RotateCcw size={16} /></button>
+                <button
+                  type="button"
+                  onClick={() => updateCurrentStrokes([])}
+                  disabled={!currentStrokes.length}
+                  title="Borrar todos los trazos"
+                  aria-label="Borrar todos los trazos"
+                  className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"
+                ><Trash2 size={16} /></button>
+                <span className="hidden text-[10px] text-[var(--muted)] sm:inline">Cierra el lápiz para responder</span>
+              </div>
+            )}
             {saveError && <p role="alert" className="px-4 pb-2 text-right text-[11px] text-rose-500">{saveError}</p>}
           </motion.header>
 
@@ -1028,7 +1205,8 @@ export function PlaygroundExperience() {
                   <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
                 </div>
 
-                <div key={current.id} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+                <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+                  <div className="relative flex min-h-full flex-col">
                   <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                     {current.stem}
                   </h2>
@@ -1071,6 +1249,14 @@ export function PlaygroundExperience() {
                       <p className="mt-1">{current.explanation}</p>
                     </div>
                   )}
+                  <PlaygroundScratchpad
+                    enabled={drawingEnabled}
+                    mode={drawingTool}
+                    color={drawingColor}
+                    strokes={currentStrokes}
+                    onChange={updateCurrentStrokes}
+                  />
+                  </div>
                 </div>
 
                 <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
