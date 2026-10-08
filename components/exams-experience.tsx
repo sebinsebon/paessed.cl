@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
+import { ImportExamPanel } from "@/components/import-exam";
 import { useEffect, useState, type DragEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -43,11 +43,6 @@ type SortOrder = "recent" | "oldest" | "score-high" | "score-low" | "name";
 type UploadFeedback = { kind: "success" | "error"; message: string };
 
 const EXAMS_PER_PAGE = 5;
-
-const ImportExamPanel = dynamic(
-  () => import("@/components/import-exam").then((module) => module.ImportExamPanel),
-  { loading: () => <div role="status" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)]">Preparando importador…</div> },
-);
 
 // These are illustrative records from the original prototype, not student data.
 const exampleExams: ExamRow[] = [
