@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
   BarChart3,
@@ -476,6 +477,9 @@ export function PlaygroundExperience() {
   const [axis, setAxis] = useState("all");
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [isPracticing, setIsPracticing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
+  const settingsRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<string[]>([]);
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -493,6 +497,58 @@ export function PlaygroundExperience() {
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("paessed-playground-paper-theme");
+    if (savedTheme === "auto" || savedTheme === "light" || savedTheme === "dark") setPaperTheme(savedTheme);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) setSettingsOpen(false);
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", onEscape, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", onEscape, true);
+    };
+  }, [settingsOpen]);
+
+  const choosePaperTheme = (theme: "auto" | "light" | "dark") => {
+    setPaperTheme(theme);
+    localStorage.setItem("paessed-playground-paper-theme", theme);
+    setSettingsOpen(false);
+  };
+
+  // Semantic paper colors are independent from the global interface colors.
+  // Automatic mode tracks the PAESSED theme through CSS variables.
+  const paperPalette = paperTheme === "dark"
+    ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", good: "#093d30", bad: "#441e2a", footer: "#151d2c" }
+    : paperTheme === "light"
+      ? { bg: "#ffffff", fg: "#111827", muted: "#64748b", border: "#e2e8f0", soft: "#f1f5f9", option: "#f8fafc", optionHover: "#fff7ed", selected: "#fff7ed", good: "#ecfdf5", bad: "#fff1f2", footer: "#fcfcfd" }
+      : { bg: "var(--surface)", fg: "var(--text)", muted: "var(--muted)", border: "var(--border)", soft: "var(--surface-2)", option: "var(--surface-2)", optionHover: "var(--surface-3)", selected: "var(--primary-soft)", good: "color-mix(in srgb, #10b981 14%, var(--surface))", bad: "color-mix(in srgb, #ef4444 14%, var(--surface))", footer: "var(--surface)" };
+
+  const paperStyle = {
+    "--pg-bg": paperPalette.bg,
+    "--pg-fg": paperPalette.fg,
+    "--pg-muted": paperPalette.muted,
+    "--pg-border": paperPalette.border,
+    "--pg-soft": paperPalette.soft,
+    "--pg-option": paperPalette.option,
+    "--pg-option-hover": paperPalette.optionHover,
+    "--pg-selected": paperPalette.selected,
+    "--pg-good": paperPalette.good,
+    "--pg-bad": paperPalette.bad,
+    "--pg-footer": paperPalette.footer,
+  } as CSSProperties;
+
   // The whole practice session occupies the viewport; only exceptionally long
   // question content scrolls inside the paper, never behind its fixed footer.
   useEffect(() => {
@@ -500,14 +556,14 @@ export function PlaygroundExperience() {
     const priorOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsPracticing(false);
+      if (event.key === "Escape" && !settingsOpen) setIsPracticing(false);
     };
     window.addEventListener("keydown", onEscape);
     return () => {
       document.body.style.overflow = priorOverflow;
       window.removeEventListener("keydown", onEscape);
     };
-  }, [isPracticing]);
+  }, [isPracticing, settingsOpen]);
 
   // Both confirmation buttons revert after 5 seconds without the second click.
   useEffect(() => {
@@ -535,6 +591,8 @@ export function PlaygroundExperience() {
     setAnswers({});
     setRevealed({});
     setPendingAction(null);
+    setSettingsOpen(false);
+    window.scrollTo({ top: 0, behavior: "instant" });
     setIsPracticing(true);
   };
 
@@ -569,9 +627,17 @@ export function PlaygroundExperience() {
   };
 
   return (
-    <AppShell title="Playground" eyebrow="Banco de preguntas" wide>
-      {/* Setup: same page skeleton and left alignment as Ensayos. */}
-      <div className="mx-auto w-full max-w-[1460px] pb-5">
+    <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing}>
+      <AnimatePresence initial={false} mode="popLayout">
+      {!isPracticing ? (
+      <motion.div
+        key="playground-setup"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -16, scale: 0.99 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto w-full max-w-[1460px] pb-5"
+      >
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">Banco de preguntas</p>
@@ -598,7 +664,7 @@ export function PlaygroundExperience() {
             </p>
           </div>
 
-          <div className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-3 lg:py-7">
+          <motion.div layoutId="playground-config" transition={{ type: "spring", stiffness: 280, damping: 35 }} className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-3 lg:py-7">
             <div className="min-w-0">
               <label htmlFor="playground-start-year" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Año</label>
               <select
@@ -640,7 +706,7 @@ export function PlaygroundExperience() {
                 ))}
               </select>
             </div>
-          </div>
+          </motion.div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-4 sm:px-7">
             <p className="text-[12px] leading-5 text-[var(--muted)]">
@@ -661,43 +727,112 @@ export function PlaygroundExperience() {
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
           Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
-      </div>
-
-      {/* Immersive practice: uses the viewport instead of the regular page scroll. */}
-      {isPracticing && (
-        <div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]" aria-label="Modo práctica de Playground">
-          <header className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
-            <div className="mx-auto flex min-h-[56px] w-full max-w-[1280px] items-center justify-between gap-3 px-3 sm:px-6">
+      </motion.div>
+      ) : (
+        <motion.div
+          key="playground-practice"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]"
+          aria-label="Modo práctica de Playground"
+        >
+          <motion.header
+            layout
+            className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]"
+            transition={{ duration: 0.25 }}
+          >
+            <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
               <button
                 type="button"
-                onClick={() => { setPendingAction(null); setIsPracticing(false); }}
-                className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                onClick={() => { setPendingAction(null); setSettingsOpen(false); setIsPracticing(false); }}
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
               >
-                <ChevronLeft size={18} /> Volver a Playground
+                <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
               </button>
-              <div className="min-w-0 text-right">
-                <p className="truncate text-[12px] font-extrabold">Matemática M1</p>
-                <p className="truncate text-[10px] font-medium text-[var(--muted)]">
+
+              <motion.div
+                layoutId="playground-config"
+                transition={{ type: "spring", stiffness: 280, damping: 35 }}
+                className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
+              >
+                <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
+                <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
                   {year === "all" ? "Todos los años" : year} · {axis === "all" ? "Todos los ejes" : axis}
                 </p>
+              </motion.div>
+
+              <div className="relative shrink-0" ref={settingsRef}>
+                <button
+                  type="button"
+                  aria-label="Ajustes de apariencia del ensayo"
+                  aria-expanded={settingsOpen}
+                  aria-controls="playground-paper-settings"
+                  onClick={() => setSettingsOpen((previous) => !previous)}
+                  className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
+                    (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+                >
+                  <Settings size={19} aria-hidden="true" />
+                </button>
+
+                <AnimatePresence>
+                  {settingsOpen && (
+                    <motion.section
+                      id="playground-paper-settings"
+                      role="group"
+                      aria-label="Tema del ensayo"
+                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                      transition={{ duration: 0.16 }}
+                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 w-[min(320px,calc(100vw-24px))] rounded-2xl p-4 shadow-xl"
+                    >
+                      <h2 className="text-[14px] font-extrabold">Apariencia del ensayo</h2>
+                      <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">Cambia solo la hoja de preguntas. La interfaz mantiene su tema.</p>
+                      <div className="mt-3 space-y-2">
+                        {([
+                          { value: "auto", label: "Según PAESSED", description: "Sigue el tema de la interfaz" },
+                          { value: "light", label: "Hoja clara", description: "Blanco, incluso con interfaz oscura" },
+                          { value: "dark", label: "Hoja oscura", description: "Oscuro, incluso con interfaz clara" },
+                        ] as const).map((item) => (
+                          <button
+                            key={item.value}
+                            type="button"
+                            aria-pressed={paperTheme === item.value}
+                            onClick={() => choosePaperTheme(item.value)}
+                            className={"flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors " +
+                              (paperTheme === item.value ? "border-[var(--primary)] bg-[var(--primary-soft)]" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
+                          >
+                            <span>
+                              <span className="block text-[12px] font-bold text-[var(--text)]">{item.label}</span>
+                              <span className="block text-[10px] leading-4 text-[var(--muted)]">{item.description}</span>
+                            </span>
+                            {paperTheme === item.value && <Check size={16} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.section>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
-          </header>
+          </motion.header>
 
-          <main className="mx-auto flex min-h-0 w-full max-w-[1280px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
+          <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
             {current ? (
-              <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[#d9dde5] bg-white text-[#111827]">
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#e5e7eb] px-4 py-2 sm:px-7 sm:py-2.5">
+              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-[#eef2ff] px-2 py-1 text-[11px] font-bold text-[#1f2937]">N.º {current.number}</span>
-                    <span className="rounded-md bg-[#f3f4f6] px-2 py-1 text-[11px] font-bold text-[#1f2937]">{current.year}</span>
-                    <span className="hidden rounded-md border border-[#e5e7eb] px-2 py-1 text-[11px] font-medium text-[#475569] sm:inline">{current.collection}</span>
+                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {current.number}</span>
+                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year}</span>
+                    <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">{current.collection}</span>
                   </div>
-                  <span className="truncate text-right text-[11px] font-medium text-[#64748b]">{current.axis} · {current.topic}</span>
+                  <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
                 </div>
 
                 <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
-                  <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[#111827] sm:text-[21px]">
+                  <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                     {current.stem}
                   </h2>
 
@@ -708,12 +843,12 @@ export function PlaygroundExperience() {
                       const correct = isRevealed && current.correct === letter;
                       const wrong = isRevealed && selected && !correct;
                       const tone = correct
-                        ? "border-emerald-400 bg-emerald-50"
+                        ? "border-emerald-500 bg-[var(--pg-good)]"
                         : wrong
-                          ? "border-rose-400 bg-rose-50"
+                          ? "border-rose-500 bg-[var(--pg-bad)]"
                           : selected
-                            ? "border-[#f97316] bg-[#fff7ed] ring-1 ring-[#fed7aa]"
-                            : "border-[#d9dfe8] bg-[#f8fafc] hover:border-[#f59e0b] hover:bg-[#fffaf5] hover:shadow-sm";
+                            ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]"
+                            : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)] hover:shadow-sm";
                       return (
                         <button
                           key={letter}
@@ -723,8 +858,8 @@ export function PlaygroundExperience() {
                           onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
                           className={"flex min-h-[43px] w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-1.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[47px] sm:px-4 sm:py-2 " + tone}
                         >
-                          <span style={playgroundQuestionFont} className="shrink-0 text-[16px] font-semibold leading-7 text-[#111827] sm:text-[18px]">{letter})</span>
-                          <span style={playgroundQuestionFont} className="pt-px text-[16px] leading-7 text-[#111827] sm:text-[18px]">{option}</span>
+                          <span style={playgroundQuestionFont} className="shrink-0 text-[16px] font-semibold leading-7 text-[var(--pg-fg)] sm:text-[18px]">{letter})</span>
+                          <span style={playgroundQuestionFont} className="pt-px text-[16px] leading-7 text-[var(--pg-fg)] sm:text-[18px]">{option}</span>
                           {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
                         </button>
                       );
@@ -732,22 +867,22 @@ export function PlaygroundExperience() {
                   </div>
 
                   {isRevealed && (
-                    <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[#1f2937] sm:text-[13px] " + (isCorrect
-                      ? "border-emerald-200 bg-emerald-50"
-                      : "border-rose-200 bg-rose-50")}>
+                    <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[var(--pg-fg)] sm:text-[13px] " + (isCorrect
+                      ? "border-emerald-500/50 bg-[var(--pg-good)]"
+                      : "border-rose-500/50 bg-[var(--pg-bad)]")}>
                       <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
                       <p className="mt-1">{current.explanation}</p>
                     </div>
                   )}
                 </div>
 
-                <footer className="shrink-0 border-t border-[#e5e7eb] bg-[#fcfcfd] px-3 py-2.5 sm:px-7 sm:py-3">
+                <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => { setPendingAction(null); setPosition((previous) => Math.max(0, previous - 1)); }}
                       disabled={position === 0}
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <ChevronLeft size={16} /> Anterior
                     </button>
@@ -766,7 +901,7 @@ export function PlaygroundExperience() {
                         <button
                           type="button"
                           onClick={() => { setPendingAction(null); setRevealed((previous) => ({ ...previous, [current.id]: false })); }}
-                          className="min-h-10 rounded-lg border border-[#e5e7eb] bg-white px-4 text-[11px] font-bold text-[#334155] hover:bg-[#f8fafc]"
+                          className="min-h-10 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)]"
                         >
                           Reintentar
                         </button>
@@ -776,27 +911,28 @@ export function PlaygroundExperience() {
                         onClick={() => confirmAction("next")}
                         disabled={questions.length <= 1}
                         aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
-                        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-bold text-[#334155] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         {pendingAction === "next" ? "Confirmar" : "Otra pregunta"} <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
                   {pendingAction && (
-                    <p role="status" className="mt-1.5 text-right text-[10px] font-medium text-[#64748b]">
+                    <p role="status" className="mt-1.5 text-right text-[10px] font-medium text-[var(--pg-muted)]">
                       {pendingAction === "check" ? "Confirma para revisar." : "Confirma para cambiar de pregunta."} Se cancela en 5 segundos.
                     </p>
                   )}
                 </footer>
-              </article>
+              </motion.article>
             ) : (
               <section className="flex flex-1 items-center justify-center rounded-xl border border-[#d9dde5] bg-white p-5 text-center text-sm text-[#64748b]">
                 Preparando tu práctica…
               </section>
             )}
           </main>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </AppShell>
   );
 }
