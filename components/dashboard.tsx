@@ -946,16 +946,12 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
       className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}
     >
       <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
-        <div className="flex min-w-0 flex-col justify-between lg:min-h-[306px]">
-          <div>
-            <div className="flex items-center gap-3.5">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
-                <BookOpen size={23} strokeWidth={2.1} />
-              </div>
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
-                <p className="text-[13px] font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</p>
-              </div>
+        <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
+          <BookOpen aria-hidden="true" size={208} strokeWidth={1.25} className="pointer-events-none absolute -bottom-4 -right-3 z-0 h-44 w-44 text-[var(--primary)] opacity-[.07] sm:h-52 sm:w-52" />
+          <div className="relative z-10">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
+              <p className="mt-1 text-[13px] font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</p>
             </div>
             <h2 className="mt-6 max-w-[470px] text-[24px] font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[25px]">
               Aprende siguiendo una ruta personalizada
@@ -965,7 +961,7 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
             </p>
           </div>
 
-          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="mt-8 self-start">
+          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="relative z-10 mt-8 self-start">
             <Link
               href="/app/aprender"
               className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[13px] font-extrabold"
@@ -1013,11 +1009,9 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
-    <section className={embedded ? "relative h-full overflow-hidden bg-transparent p-5" : "surface relative overflow-hidden rounded-[20px] p-5"}>
-      <div className="flex items-start gap-3">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--primary-soft)] text-[var(--primary)]">
-          <Trophy size={19} />
-        </div>
+    <section className={embedded ? "relative isolate h-full overflow-hidden bg-transparent p-5" : "surface relative isolate overflow-hidden rounded-[20px] p-5"}>
+      <Trophy aria-hidden="true" size={180} strokeWidth={1.25} className="pointer-events-none absolute -right-5 top-0 z-0 h-40 w-40 text-[var(--primary)] opacity-[.065]" />
+      <div className="relative z-10">
         <div className="min-w-0">
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
           <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em]">¿Listo para realizar un ensayo?</h3>
@@ -1025,7 +1019,7 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
+      <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
           <div className="mt-1 text-lg font-extrabold">742 pts</div>
@@ -1036,7 +1030,7 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      <motion.div whileHover={{ scale: 1.01 }} className="mt-4">
+      <motion.div whileHover={{ scale: 1.01 }} className="relative z-10 mt-4">
         <Link
           href="/app/ensayos"
           className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold"
@@ -1085,9 +1079,10 @@ function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
 
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative">
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><Gamepad2 size={15} className="text-[var(--secondary)]" /> Playground</div>
+    <section id="tour-learn" className={`surface relative isolate overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
+      <Gamepad2 aria-hidden="true" size={175} strokeWidth={1.25} className="pointer-events-none absolute -right-5 top-0 z-0 h-40 w-40 text-[var(--secondary)] opacity-[.065]" />
+      <div className="relative z-10">
+        <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
         <h3 className="mt-2 text-lg font-extrabold">Practica a tu manera</h3>
         <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Resuelve todas las preguntas que quieras y ajusta la práctica por año, eje temático y otros filtros.</p>
 
