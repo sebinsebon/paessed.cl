@@ -949,10 +949,10 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
         <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -bottom-5 -right-3 z-0 flex h-44 w-44 items-center justify-center rounded-[36px] sm:h-52 sm:w-52 sm:rounded-[42px]"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 11%, var(--surface))" }}
+            className="pointer-events-none absolute -left-6 -top-6 z-0 flex h-44 w-44 rotate-[-10deg] items-center justify-center rounded-[36px] sm:h-52 sm:w-52 sm:rounded-[42px]"
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--surface))" }}
           >
-            <BookOpen size={150} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.24]" />
+            <BookOpen size={150} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.16]" />
           </div>
           <div className="relative z-10">
             <div>
@@ -1018,10 +1018,10 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
     <section className={embedded ? "relative isolate h-full overflow-hidden bg-transparent p-5" : "surface relative isolate overflow-hidden rounded-[20px] p-5"}>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 items-center justify-center rounded-[34px]"
-        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 11%, var(--surface))" }}
+        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 rotate-[10deg] items-center justify-center rounded-[34px]"
+        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--surface))" }}
       >
-        <Trophy size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.24]" />
+        <Trophy size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.16]" />
       </div>
       <div className="relative z-10">
         <div className="min-w-0">
@@ -1094,10 +1094,10 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
     <section id="tour-learn" className={`surface relative isolate overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 items-center justify-center rounded-[34px]"
-        style={{ backgroundColor: "color-mix(in srgb, var(--secondary) 11%, var(--surface))" }}
+        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 rotate-[8deg] items-center justify-center rounded-[34px]"
+        style={{ backgroundColor: "color-mix(in srgb, var(--secondary) 8%, var(--surface))" }}
       >
-        <Gamepad2 size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--secondary)] opacity-[.24]" />
+        <Gamepad2 size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--secondary)] opacity-[.16]" />
       </div>
       <div className="relative z-10">
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
