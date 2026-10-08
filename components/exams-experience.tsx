@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type DragEvent } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
   ArrowRight,
@@ -12,11 +13,13 @@ import {
   FileArchive,
   Info,
   RotateCcw,
+  Settings2,
   Search,
   Upload,
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
 import { type ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 
 type ExamRow = {
@@ -117,10 +120,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
 
   return (
     <div className="min-w-0">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <span className="text-[11px] font-bold text-[var(--muted)]">Mapa de preguntas</span>
-        <span className="text-[11px] font-bold tabular-nums text-[var(--muted)]">{exam.questionCount} preguntas</span>
-      </div>
+      <div className="mb-2.5 text-[11px] font-bold tabular-nums text-[var(--muted)]">{exam.questionCount} preguntas</div>
       {count > 0 ? (
         <div
           role="img"
@@ -173,7 +173,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
   );
 }
 
-function ExamCard({ exam, expanded, onToggle }: { exam: ExamRow; expanded: boolean; onToggle: () => void }) {
+function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void }) {
   const isImported = exam.kind === "imported";
   const isCompleted = exam.status === "completed";
   const actionLabel = isImported ? "Ver preguntas" : "Practicar";
@@ -233,25 +233,49 @@ function ExamCard({ exam, expanded, onToggle }: { exam: ExamRow; expanded: boole
           </button>
         </div>
       </div>
-      {expanded && (
-        <div id={"exam-details-" + exam.id} className="border-t border-[var(--border)] bg-[var(--surface-2)] px-4 py-3.5 sm:px-5">
-          {isImported ? (
-            <div className="flex flex-col gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
-              <p><span className="font-bold text-[var(--text)]">Archivo:</span> {exam.imported?.fileName}</p>
-              <p><span className="font-bold text-[var(--text)]">Contenido:</span> {exam.questionCount} preguntas · {exam.imported?.answerCount ?? 0} respuestas en solucionario · {exam.imported?.assetCount ?? 0} recursos</p>
-              {Boolean(exam.imported?.issues.length) && (
-                <p className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400"><AlertCircle size={14} /> {exam.imported?.issues.length} advertencias detectadas durante la importación</p>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="details"
+            id={"exam-details-" + exam.id}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ height: { duration: 0.29, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.22 } }}
+            className="overflow-hidden border-t border-[var(--border)] bg-[var(--surface-2)]"
+          >
+            <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0 flex-1">
+                {isImported ? (
+                  <div className="flex flex-col gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
+                    <p><span className="font-bold text-[var(--text)]">Archivo:</span> {exam.imported?.fileName}</p>
+                    <p><span className="font-bold text-[var(--text)]">Contenido:</span> {exam.questionCount} preguntas · {exam.imported?.answerCount ?? 0} respuestas en solucionario · {exam.imported?.assetCount ?? 0} recursos</p>
+                    {Boolean(exam.imported?.issues.length) && (
+                      <p className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400"><AlertCircle size={14} /> {exam.imported?.issues.length} advertencias detectadas durante la importación</p>
+                    )}
+                    <p>El solucionario importado no representa respuestas rendidas por el estudiante.</p>
+                  </div>
+                ) : (
+                  <p className="flex items-start gap-2 text-[12px] leading-5 text-[var(--muted)]">
+                    <Info size={15} className="mt-0.5 shrink-0" />
+                    Este ensayo es una demostración visual. {isCompleted ? "El puntaje y los colores son ilustrativos; no son resultados guardados." : "Todavía no tiene respuestas rendidas."} El botón Practicar abre una sesión de práctica del prototipo.
+                  </p>
+                )}
+              </div>
+              {isImported && (
+                <button
+                  type="button"
+                  onClick={onSettings}
+                  className="soft-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-start rounded-xl px-4 text-[12px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] md:ml-auto md:self-center"
+                  aria-label={"Abrir ajustes del ensayo " + exam.title}
+                >
+                  <Settings2 size={16} /> Ajustes
+                </button>
               )}
-              <p>El solucionario importado no representa respuestas rendidas por el estudiante.</p>
             </div>
-          ) : (
-            <p className="flex items-start gap-2 text-[12px] leading-5 text-[var(--muted)]">
-              <Info size={15} className="mt-0.5 shrink-0" />
-              Este ensayo es una demostración visual. {isCompleted ? "El puntaje y los colores son ilustrativos; no son resultados guardados." : "Todavía no tiene respuestas rendidas."} El botón Practicar abre una sesión de práctica del prototipo.
-            </p>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </article>
   );
 }
@@ -263,6 +287,7 @@ export function ExamsExperience() {
   const [sort, setSort] = useState<SortOrder>("recent");
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [settingsExamId, setSettingsExamId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [importing, setImporting] = useState(false);
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
@@ -413,6 +438,7 @@ export function ExamsExperience() {
               exam={exam}
               expanded={expandedId === exam.id}
               onToggle={() => setExpandedId((previous) => previous === exam.id ? null : exam.id)}
+              onSettings={() => { if (exam.imported) setSettingsExamId(exam.imported.id); }}
             />
           ))}
         </section>
@@ -451,6 +477,13 @@ export function ExamsExperience() {
           </div>
         </section>
       </div>
+      {settingsExamId && (
+        <ExamSettingsDialog
+          examId={settingsExamId}
+          onClose={() => setSettingsExamId(null)}
+          onSaved={async () => { setImportedExams(await listImportedExams()); }}
+        />
+      )}
     </AppShell>
   );
 }
