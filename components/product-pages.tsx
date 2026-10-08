@@ -480,30 +480,30 @@ export function PlaygroundExperience() {
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas">
-      <div className="mx-auto max-w-[1020px]">
-        <header className="mb-5">
-          <h1 className="text-2xl font-extrabold tracking-[-.035em] sm:text-3xl">Playground</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">Elige una pregunta y practica a tu ritmo.</p>
+      <div className="mx-auto max-w-[980px]">
+        <header className="mb-3">
+          <h1 className="text-[2.1rem] font-extrabold tracking-[-.04em]">Playground</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--muted)]">Elige una pregunta y practica a tu ritmo.</p>
         </header>
 
-        <section aria-label="Filtros de preguntas" className="surface mb-4 flex flex-wrap items-end gap-3 rounded-2xl p-3 sm:p-4">
+        <section aria-label="Filtros de preguntas" className="surface mb-3 flex flex-wrap items-end gap-2 rounded-[14px] px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="min-w-[120px] flex-1 sm:flex-none">
-            <label htmlFor="playground-year" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Año (modelo)</label>
-            <select id="playground-year" value={year} onChange={(event) => { setYear(event.target.value); setPosition(0); }} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2">
+            <label htmlFor="playground-year" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Año (modelo)</label>
+            <select id="playground-year" value={year} onChange={(event) => { setYear(event.target.value); setPosition(0); }} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
               <option value="all">Todos</option>
               {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
           <div className="min-w-[170px] flex-[2] sm:max-w-[285px]">
-            <label htmlFor="playground-axis" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Eje temático</label>
-            <select id="playground-axis" value={axis} onChange={(event) => { setAxis(event.target.value); setPosition(0); }} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2">
+            <label htmlFor="playground-axis" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Eje temático</label>
+            <select id="playground-axis" value={axis} onChange={(event) => { setAxis(event.target.value); setPosition(0); }} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
               <option value="all">Todos los ejes</option>
               {axes.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
           <div className="min-w-[120px] flex-1 sm:ml-auto sm:max-w-[180px]">
-            <label htmlFor="playground-jump" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Ir a pregunta</label>
-            <select id="playground-jump" value={current?.id ?? ""} onChange={(event) => { const next = questions.findIndex((question) => question.id === event.target.value); if (next >= 0) setPosition(next); }} disabled={!questions.length} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50">
+            <label htmlFor="playground-jump" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Ir a pregunta</label>
+            <select id="playground-jump" value={current?.id ?? ""} onChange={(event) => { const next = questions.findIndex((question) => question.id === event.target.value); if (next >= 0) setPosition(next); }} disabled={!questions.length} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50">
               {!questions.length && <option value="">Sin resultados</option>}
               {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year}</option>)}
             </select>
@@ -511,40 +511,40 @@ export function PlaygroundExperience() {
         </section>
 
         {current ? (
-          <article className="surface overflow-hidden rounded-[20px]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-8">
+          <article className="overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e7eb] px-4 py-3 sm:px-6">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-[var(--primary-soft)] px-2.5 py-1.5 text-xs font-extrabold text-[var(--primary)]">N.º {current.number}</span>
-                <span className="rounded-md bg-[var(--surface-2)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)]">{current.year}</span>
-                <span className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--muted)]">{current.collection}</span>
+                <span className="rounded-[6px] bg-[#eef2ff] px-2 py-1 text-[12px] font-bold text-[#1f2937]">N.º {current.number}</span>
+                <span className="rounded-[6px] bg-[#f3f4f6] px-2 py-1 text-[12px] font-bold text-[#1f2937]">{current.year}</span>
+                <span className="rounded-[6px] border border-[#e5e7eb] px-2 py-1 text-[12px] font-medium text-[#475569]">{current.collection}</span>
               </div>
-              <span className="text-xs font-semibold tabular-nums text-[var(--muted)]">{activePosition + 1} de {questions.length}</span>
+              <span className="text-xs font-semibold tabular-nums text-[#64748b]">{activePosition + 1} de {questions.length}</span>
             </div>
 
-            <div className="px-5 pb-7 pt-6 sm:px-10 sm:pb-9 sm:pt-8">
-              <div className="mb-7 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
+            <div className="px-5 pb-7 pt-6 sm:px-9 sm:pb-9 sm:pt-8">
+              <div className="mb-6 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#64748b]">
                 <span className="font-bold">{current.axis}</span>
                 <span aria-hidden="true">·</span>
                 <span>{current.topic}</span>
               </div>
 
-              <h2 style={playgroundQuestionFont} className="max-w-[830px] whitespace-pre-line text-[20px] font-normal leading-[1.65] tracking-normal text-[var(--text)] sm:text-[22px]">
+              <h2 style={playgroundQuestionFont} className="max-w-[820px] whitespace-pre-line text-[21px] font-normal leading-[1.8] text-[#111827] sm:text-[22px]">
                 {current.stem}
               </h2>
 
-              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 space-y-1.5 sm:mt-9">
+              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 space-y-1 sm:mt-9">
                 {current.options.map((option, index) => {
                   const letter = playgroundAnswerLetters[index];
                   const selected = selectedAnswer === letter;
                   const correct = isRevealed && current.correct === letter;
                   const wrong = isRevealed && selected && !correct;
                   const tone = correct
-                    ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/25"
+                    ? "border-emerald-400 bg-emerald-50"
                     : wrong
-                      ? "border-rose-400 bg-rose-50 dark:border-rose-700 dark:bg-rose-950/25"
+                      ? "border-rose-400 bg-rose-50"
                       : selected
-                        ? "border-[var(--primary)] bg-[var(--primary-soft)]"
-                        : "border-transparent hover:border-[var(--border)] hover:bg-[var(--surface-2)]";
+                        ? "border-[#cbd5e1] bg-[#f8fafc]"
+                        : "border-transparent bg-transparent hover:border-[#e5e7eb] hover:bg-[#fafafa]";
                   return (
                     <button
                       key={letter}
@@ -552,40 +552,40 @@ export function PlaygroundExperience() {
                       aria-pressed={selected}
                       disabled={isRevealed}
                       onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                      className={"flex min-h-[51px] w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
+                      className={"flex min-h-[44px] w-full items-start gap-2 rounded-[8px] border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
                     >
-                      <span style={playgroundQuestionFont} className="shrink-0 text-[18px] leading-7 font-semibold">{letter})</span>
-                      <span style={playgroundQuestionFont} className="pt-px text-[18px] leading-7">{option}</span>
-                      {correct && <Check size={18} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600 dark:text-emerald-400" />}
+                      <span style={playgroundQuestionFont} className="shrink-0 text-[18px] font-semibold leading-8 text-[#111827]">{letter})</span>
+                      <span style={playgroundQuestionFont} className="pt-[1px] text-[18px] leading-8 text-[#111827]">{option}</span>
+                      {correct && <Check size={18} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
                     </button>
                   );
                 })}
               </div>
 
               {isRevealed && (
-                <div role="status" className={"mt-7 rounded-xl border p-4 text-sm " + (isCorrect
-                  ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
-                  : "border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20")}>
+                <div role="status" className={"mt-7 rounded-lg border p-4 text-sm text-[#1f2937] " + (isCorrect
+                  ? "border-emerald-200 bg-emerald-50"
+                  : "border-rose-200 bg-rose-50")}>
                   <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
                   <p className="mt-1 leading-6">{current.explanation}</p>
                 </div>
               )}
 
-              <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-5">
-                <button type="button" onClick={() => setPosition(activePosition - 1)} disabled={activePosition === 0} className="soft-button inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40">
+              <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[#e5e7eb] pt-5">
+                <button type="button" onClick={() => setPosition(activePosition - 1)} disabled={activePosition === 0} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
                   <ChevronLeft size={17} /> Anterior
                 </button>
                 <div className="ml-auto flex items-center gap-2">
                   {!isRevealed ? (
-                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: true }))} disabled={!selectedAnswer} className="tactile-primary min-h-11 rounded-xl px-5 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
+                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: true }))} disabled={!selectedAnswer} className="tactile-primary min-h-11 rounded-lg px-5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-45">
                       Comprobar
                     </button>
                   ) : (
-                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: false }))} className="soft-button min-h-11 rounded-xl px-4 text-xs font-extrabold">
+                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: false }))} className="min-h-11 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc]">
                       Reintentar
                     </button>
                   )}
-                  <button type="button" onClick={() => setPosition(activePosition + 1)} disabled={activePosition === questions.length - 1} className="soft-button inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40">
+                  <button type="button" onClick={() => setPosition(activePosition + 1)} disabled={activePosition === questions.length - 1} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
                     Siguiente <ChevronRight size={17} />
                   </button>
                 </div>
