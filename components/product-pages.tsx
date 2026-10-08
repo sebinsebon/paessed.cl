@@ -615,6 +615,7 @@ export function PlaygroundExperience() {
   const [axis, setAxis] = useState("all");
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
+  const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", savedOnly: false });
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
   const [recentQuestionIds, setRecentQuestionIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -635,7 +636,7 @@ export function PlaygroundExperience() {
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
-  const [pendingAction, setPendingAction] = useState<"check" | "next" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"check" | null>(null);
 
   const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
   const questions = playgroundQuestions.filter((question) =>
@@ -668,9 +669,9 @@ export function PlaygroundExperience() {
       setSettingsOpen(false);
       return;
     }
-    setDraftYear(year);
-    setDraftAxis(axis);
-    setDraftSavedOnly(savedOnly);
+    setDraftYear(sessionFilters.year);
+    setDraftAxis(sessionFilters.axis);
+    setDraftSavedOnly(sessionFilters.savedOnly);
     setDraftQuestion("random");
     setDrawingEnabled(false);
     setSettingsOpen(true);
@@ -688,6 +689,7 @@ export function PlaygroundExperience() {
     setYear(draftYear);
     setAxis(draftAxis);
     setSavedOnly(draftSavedOnly);
+    setSessionFilters({ year: draftYear, axis: draftAxis, savedOnly: draftSavedOnly });
     setSelectedStartQuestion(draftQuestion);
     setOrder(shuffled);
     setPosition(0);
@@ -831,7 +833,8 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string) => {
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters = { year, axis, savedOnly }) => {
+    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
     if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
@@ -859,37 +862,17 @@ export function PlaygroundExperience() {
     setAxis("all");
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
-    beginSession(playgroundQuestions, questionId);
+    beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", savedOnly: false });
   };
 
-  const nextQuestion = () => {
-    if (position < visibleOrder.length - 1) {
-      setPosition((previous) => previous + 1);
-      return;
-    }
-    // Do not repeat within a round; reshuffle when the matching pool is exhausted.
-    const newOrder = shufflePlaygroundQuestions(sessionQuestions);
-    if (newOrder.length > 1 && newOrder[0] === current?.id) {
-      [newOrder[0], newOrder[1]] = [newOrder[1], newOrder[0]];
-    }
-    setOrder(newOrder);
-    setPosition(0);
-    setAnswers({});
-    setRevealed({});
-  };
-
-  const confirmAction = (action: "check" | "next") => {
-    if (pendingAction !== action) {
-      setPendingAction(action);
+  const confirmAnswer = () => {
+    if (!current || !selectedAnswer || isRevealed) return;
+    if (pendingAction !== "check") {
+      setPendingAction("check");
       return;
     }
     setPendingAction(null);
-    if (action === "check") {
-      if (!current || !selectedAnswer || isRevealed) return;
-      setRevealed((previous) => ({ ...previous, [current.id]: true }));
-    } else {
-      nextQuestion();
-    }
+    setRevealed((previous) => ({ ...previous, [current.id]: true }));
   };
 
   return (
@@ -1081,8 +1064,8 @@ export function PlaygroundExperience() {
                 className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
               >
                 <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
-                <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
-                  {year === "all" ? "Todos los años" : year} · {axis === "all" ? "Todos los ejes" : axis}
+                <p key={sessionFilters.year + ":" + sessionFilters.axis + ":" + sessionFilters.savedOnly} className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
+                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis}${sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
               </motion.div>
 
@@ -1360,7 +1343,7 @@ export function PlaygroundExperience() {
                       {!isRevealed ? (
                         <button
                           type="button"
-                          onClick={() => confirmAction("check")}
+                          onClick={confirmAnswer}
                           disabled={!selectedAnswer}
                           aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
                           className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
@@ -1376,20 +1359,12 @@ export function PlaygroundExperience() {
                           Reintentar
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => confirmAction("next")}
-                        disabled={sessionQuestions.length <= 1}
-                        aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
-                        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {pendingAction === "next" ? "Confirmar" : "Otra pregunta"} <ChevronRight size={16} />
-                      </button>
+
                     </div>
                   </div>
                   {pendingAction && (
                     <p role="status" className="mt-1.5 text-right text-[10px] font-medium text-[var(--pg-muted)]">
-                      {pendingAction === "check" ? "Confirma para revisar." : "Confirma para cambiar de pregunta."} Se cancela en 5 segundos.
+                      Confirma para revisar. Se cancela en 5 segundos.
                     </p>
                   )}
                 </footer>
