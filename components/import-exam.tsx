@@ -314,26 +314,35 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-[var(--border)] pb-4 sm:mb-6">
-        {onBack ? (
+      {embedded ? (
+        <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-[var(--border)] pb-4 sm:mb-6">
           <button type="button" onClick={onBack} className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos">
             <ArrowLeft size={17} />
           </button>
-        ) : (
+          <motion.div
+            layoutId="exams-import-heading"
+            transition={{ type: "spring", stiffness: 280, damping: 35 }}
+            className="min-w-0 flex-1 rounded-lg"
+          >
+            <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</p>
+            <h1 className="mt-0.5 text-[21px] font-extrabold tracking-[-.03em] sm:text-[24px]">Importar ensayo</h1>
+            <p className="mt-0.5 text-[11px] leading-5 text-[var(--muted)] sm:text-[12px]">
+              Selecciona un paquete .paessed, .zip o final.json para revisarlo y guardarlo.
+            </p>
+          </motion.div>
+        </div>
+      ) : (
+        <div className="mb-6 flex items-start gap-3">
           <Link href="/app/ensayos" className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos"><ArrowLeft size={17} /></Link>
-        )}
-        <motion.div
-          layoutId={embedded ? "exams-import-heading" : undefined}
-          transition={{ type: "spring", stiffness: 280, damping: 35 }}
-          className="min-w-0 flex-1 rounded-lg"
-        >
-          <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</p>
-          <h1 className="mt-0.5 text-[21px] font-extrabold tracking-[-.03em] sm:text-[24px]">Importar ensayo</h1>
-          <p className="mt-0.5 text-[11px] leading-5 text-[var(--muted)] sm:text-[12px]">
-            Selecciona un paquete .paessed, .zip o final.json para revisarlo y guardarlo.
-          </p>
-        </motion.div>
-      </div>
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</div>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em]">Añade un ensayo a PAESSED</h1>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              Selecciona el archivo .paessed generado por el importador. El navegador abre el paquete, busca final.json, comprueba preguntas y assets y muestra una vista previa antes de guardarlo.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_380px]">
         <section className="space-y-4">
