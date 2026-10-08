@@ -161,14 +161,14 @@ function ExamQuestionMap({ count, title }: { count: number; title: string }) {
         <div
           role="img"
           aria-label={title + ": " + count + " preguntas sin resultados individuales disponibles"}
-          className="grid w-full max-w-[300px] grid-cols-[repeat(10,minmax(0,1fr))] gap-1.5"
+          className="grid w-full max-w-[350px] grid-cols-[repeat(13,minmax(0,1fr))] gap-1"
         >
           {Array.from({ length: count }, (_, index) => (
             <span
               key={index}
               aria-hidden="true"
               title={"Pregunta " + (index + 1) + ": resultado no disponible"}
-              className="aspect-square min-w-0 rounded-[4px] bg-[var(--surface-4)] ring-1 ring-inset ring-[var(--border)]"
+              className="aspect-square min-w-0 rounded-[3px] bg-[var(--surface-4)] ring-1 ring-inset ring-[var(--border)]"
             />
           ))}
         </div>
