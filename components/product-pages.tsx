@@ -7,6 +7,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  Bookmark,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,8 @@ import {
   Flame,
   Gamepad2,
   Lock,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Route,
   Search,
@@ -476,6 +479,10 @@ export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isPracticing, setIsPracticing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
@@ -489,13 +496,41 @@ export function PlaygroundExperience() {
   const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
   const questions = playgroundQuestions.filter((question) =>
     (year === "all" || String(question.year) === year) &&
-    (axis === "all" || question.axis === axis)
+    (axis === "all" || question.axis === axis) &&
+    (!savedOnly || savedQuestionIds.includes(question.id))
   );
   const visibleOrder = order.filter((id) => questions.some((question) => question.id === id));
   const current = questions.find((question) => question.id === visibleOrder[position]);
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
+  const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
+      if (Array.isArray(stored)) {
+        const validIds = new Set(playgroundQuestions.map((question) => question.id));
+        setSavedQuestionIds(stored.filter((id): id is string => typeof id === "string" && validIds.has(id)));
+      }
+    } catch {
+      setSaveError("No se pudieron cargar las preguntas guardadas de este navegador.");
+    }
+  }, []);
+
+  const toggleSavedQuestion = () => {
+    if (!current) return;
+    const updated = currentSaved
+      ? savedQuestionIds.filter((id) => id !== current.id)
+      : [...savedQuestionIds, current.id];
+    try {
+      localStorage.setItem("paessed-playground-saved-questions", JSON.stringify(updated));
+      setSavedQuestionIds(updated);
+      setSaveError(null);
+    } catch {
+      setSaveError("No se pudo guardar la pregunta en este navegador.");
+    }
+  };
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("paessed-playground-paper-theme");
@@ -592,6 +627,7 @@ export function PlaygroundExperience() {
     setRevealed({});
     setPendingAction(null);
     setSettingsOpen(false);
+    setSidebarVisible(false);
     window.scrollTo({ top: 0, behavior: "instant" });
     setIsPracticing(true);
   };
@@ -627,7 +663,7 @@ export function PlaygroundExperience() {
   };
 
   return (
-    <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing}>
+    <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing} immersiveSidebarOpen={isPracticing && sidebarVisible}>
       <AnimatePresence initial={false} mode="popLayout">
       {!isPracticing ? (
       <motion.div
@@ -653,6 +689,16 @@ export function PlaygroundExperience() {
             <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
           </span>
           <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Banco de demostración</span>
+          <button
+            type="button"
+            aria-pressed={savedOnly}
+            onClick={() => { setSavedOnly((previous) => !previous); setSelectedStartQuestion("random"); }}
+            className={"inline-flex min-h-8 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-bold transition-colors " +
+              (savedOnly ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-2)]")}
+          >
+            <Bookmark size={14} fill={savedOnly ? "currentColor" : "none"} aria-hidden="true" />
+            Solo guardadas ({savedQuestionIds.length})
+          </button>
         </section>
 
         <section className="surface overflow-hidden rounded-[20px]" aria-labelledby="playground-setup-title">
@@ -660,7 +706,7 @@ export function PlaygroundExperience() {
             <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Configura tu sesión</p>
             <h2 id="playground-setup-title" className="mt-1.5 text-[22px] font-extrabold tracking-[-.035em] sm:text-[25px]">Practica a tu manera</h2>
             <p className="mt-1 text-[13px] leading-6 text-[var(--muted)]">
-              Las preguntas se mezclan automáticamente. Puedes limitar los temas o comenzar por una pregunta específica.
+              Las preguntas se mezclan automáticamente. Puedes limitar los temas, practicar solo las guardadas o elegir por dónde comenzar.
             </p>
           </div>
 
@@ -725,7 +771,7 @@ export function PlaygroundExperience() {
           </div>
         </section>
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-          Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
+          Las preguntas guardadas quedan en este navegador. Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
       </motion.div>
       ) : (
@@ -751,6 +797,18 @@ export function PlaygroundExperience() {
               >
                 <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setSidebarVisible((previous) => !previous)}
+                aria-label={sidebarVisible ? "Ocultar barra lateral" : "Mostrar barra lateral"}
+                aria-pressed={sidebarVisible}
+                title={sidebarVisible ? "Ocultar sidebar" : "Mostrar sidebar"}
+                className={"hidden min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-[12px] font-bold transition-colors lg:inline-flex " +
+                  (sidebarVisible ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+              >
+                {sidebarVisible ? <PanelLeftClose size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
+                <span className="hidden xl:inline">Sidebar</span>
+              </button>
 
               <motion.div
                 layoutId="playground-config"
@@ -763,7 +821,19 @@ export function PlaygroundExperience() {
                 </p>
               </motion.div>
 
-              <div className="relative shrink-0" ref={settingsRef}>
+              <button
+                type="button"
+                onClick={toggleSavedQuestion}
+                disabled={!current}
+                aria-label={currentSaved ? "Quitar pregunta de guardadas" : "Guardar esta pregunta"}
+                aria-pressed={currentSaved}
+                title={currentSaved ? "Pregunta guardada · Quitar" : "Guardar pregunta"}
+                className={"grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors disabled:opacity-40 " +
+                  (currentSaved ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+              >
+                <Bookmark size={19} fill={currentSaved ? "currentColor" : "none"} aria-hidden="true" />
+              </button>
+                            <div className="relative shrink-0" ref={settingsRef}>
                 <button
                   type="button"
                   aria-label="Ajustes de apariencia del ensayo"
@@ -817,6 +887,7 @@ export function PlaygroundExperience() {
                 </AnimatePresence>
               </div>
             </div>
+            {saveError && <p role="alert" className="px-4 pb-2 text-right text-[11px] text-rose-500">{saveError}</p>}
           </motion.header>
 
           <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
@@ -836,7 +907,7 @@ export function PlaygroundExperience() {
                     {current.stem}
                   </h2>
 
-                  <div role="group" aria-label="Alternativas de respuesta" className="mt-4 max-w-[1060px] space-y-2 sm:mt-5">
+                  <div role="group" aria-label="Alternativas de respuesta" className="mt-4 flex max-w-[1060px] flex-col items-start gap-2 sm:mt-5">
                     {current.options.map((option, index) => {
                       const letter = playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
@@ -856,10 +927,10 @@ export function PlaygroundExperience() {
                           aria-pressed={selected}
                           disabled={isRevealed}
                           onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                          className={"flex min-h-[43px] w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-1.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[47px] sm:px-4 sm:py-2 " + tone}
+                          className={"inline-flex min-h-[43px] w-fit max-w-full min-w-[112px] cursor-pointer items-start gap-3 rounded-lg border px-3 py-1.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[47px] sm:px-4 sm:py-2 " + tone}
                         >
                           <span style={playgroundQuestionFont} className="shrink-0 text-[16px] font-semibold leading-7 text-[var(--pg-fg)] sm:text-[18px]">{letter})</span>
-                          <span style={playgroundQuestionFont} className="pt-px text-[16px] leading-7 text-[var(--pg-fg)] sm:text-[18px]">{option}</span>
+                          <span style={playgroundQuestionFont} className="min-w-0 break-words pt-px text-[16px] leading-7 text-[var(--pg-fg)] sm:text-[18px]">{option}</span>
                           {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
                         </button>
                       );
