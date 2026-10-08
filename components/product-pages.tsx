@@ -460,9 +460,19 @@ const playgroundQuestions: PlaygroundQuestion[] = [
 const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
 const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
+function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
+  const ids = questions.map((question) => question.id);
+  for (let index = ids.length - 1; index > 0; index--) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [ids[index], ids[randomIndex]] = [ids[randomIndex], ids[index]];
+  }
+  return ids;
+}
+
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
+  const [order, setOrder] = useState<string[]>([]);
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
@@ -472,67 +482,108 @@ export function PlaygroundExperience() {
     (year === "all" || String(question.year) === year) &&
     (axis === "all" || question.axis === axis)
   );
-  const activePosition = Math.min(position, Math.max(0, questions.length - 1));
-  const current = questions[activePosition];
+
+  // Shuffle only on the client; never use randomness during server rendering.
+  // Rebuild the round when the filters change.
+  useEffect(() => {
+    const matching = playgroundQuestions.filter((question) =>
+      (year === "all" || String(question.year) === year) &&
+      (axis === "all" || question.axis === axis)
+    );
+    setOrder(shufflePlaygroundQuestions(matching));
+    setPosition(0);
+  }, [year, axis]);
+
+  const visibleOrder = order.filter((id) => questions.some((question) => question.id === id));
+  const current = questions.find((question) => question.id === visibleOrder[position]);
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
 
+  const nextRandom = () => {
+    if (position < visibleOrder.length - 1) {
+      setPosition((previous) => previous + 1);
+      return;
+    }
+    // All matching questions have been shown; start a new shuffled round.
+    const nextOrder = shufflePlaygroundQuestions(questions);
+    if (nextOrder.length > 1 && nextOrder[0] === current?.id) {
+      [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+    }
+    setOrder(nextOrder);
+    setPosition(0);
+    setAnswers({});
+    setRevealed({});
+  };
+
   return (
-    <AppShell title="Playground" eyebrow="Banco de preguntas">
-      <div className="mx-auto max-w-[980px]">
-        <header className="mb-3">
-          <h1 className="text-[2.1rem] font-extrabold tracking-[-.04em]">Playground</h1>
-          <p className="mt-0.5 text-[13px] text-[var(--muted)]">Elige una pregunta y practica a tu ritmo.</p>
+    <AppShell title="Playground" eyebrow="Banco de preguntas" wide>
+      <div className="mx-auto w-full max-w-[1370px]">
+        <header className="mb-5">
+          <h1 className="text-[2.1rem] font-extrabold leading-tight tracking-[-.04em]">Playground</h1>
+          <p className="mt-3 text-[13px] leading-5 text-[var(--muted)]">
+            Elige una pregunta y practica a tu ritmo.
+          </p>
         </header>
 
-        <section aria-label="Filtros de preguntas" className="surface mb-3 flex flex-wrap items-end gap-2 rounded-[14px] px-3 py-2.5 sm:px-4 sm:py-3">
+        <section aria-label="Filtros de preguntas" className="surface mb-4 flex flex-wrap items-end gap-2 rounded-[14px] px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="min-w-[120px] flex-1 sm:flex-none">
             <label htmlFor="playground-year" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Año (modelo)</label>
-            <select id="playground-year" value={year} onChange={(event) => { setYear(event.target.value); setPosition(0); }} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
+            <select id="playground-year" value={year} onChange={(event) => setYear(event.target.value)} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
               <option value="all">Todos</option>
               {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
+
           <div className="min-w-[170px] flex-[2] sm:max-w-[285px]">
             <label htmlFor="playground-axis" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Eje temático</label>
-            <select id="playground-axis" value={axis} onChange={(event) => { setAxis(event.target.value); setPosition(0); }} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
+            <select id="playground-axis" value={axis} onChange={(event) => setAxis(event.target.value)} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
               <option value="all">Todos los ejes</option>
               {axes.map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
-          <div className="min-w-[120px] flex-1 sm:ml-auto sm:max-w-[180px]">
+
+          <div className="min-w-[140px] flex-1 sm:ml-auto sm:max-w-[190px]">
             <label htmlFor="playground-jump" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Ir a pregunta</label>
-            <select id="playground-jump" value={current?.id ?? ""} onChange={(event) => { const next = questions.findIndex((question) => question.id === event.target.value); if (next >= 0) setPosition(next); }} disabled={!questions.length} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50">
-              {!questions.length && <option value="">Sin resultados</option>}
+            <select
+              id="playground-jump"
+              value={current?.id ?? ""}
+              onChange={(event) => {
+                const selectedIndex = visibleOrder.indexOf(event.target.value);
+                if (selectedIndex >= 0) setPosition(selectedIndex);
+              }}
+              disabled={!current}
+              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50"
+            >
+              {!current && <option value="">Preparando…</option>}
               {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year}</option>)}
             </select>
           </div>
         </section>
 
         {current ? (
-          <article className="overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e7eb] px-4 py-3 sm:px-6">
+          <article className="flex min-h-[600px] flex-col overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e7eb] px-4 py-3 sm:px-7">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-[6px] bg-[#eef2ff] px-2 py-1 text-[12px] font-bold text-[#1f2937]">N.º {current.number}</span>
                 <span className="rounded-[6px] bg-[#f3f4f6] px-2 py-1 text-[12px] font-bold text-[#1f2937]">{current.year}</span>
                 <span className="rounded-[6px] border border-[#e5e7eb] px-2 py-1 text-[12px] font-medium text-[#475569]">{current.collection}</span>
               </div>
-              <span className="text-xs font-semibold tabular-nums text-[#64748b]">{activePosition + 1} de {questions.length}</span>
+              <span className="text-xs font-medium text-[#64748b]">Orden aleatorio</span>
             </div>
 
-            <div className="px-5 pb-7 pt-6 sm:px-9 sm:pb-9 sm:pt-8">
+            <div className="flex flex-1 flex-col px-5 pb-7 pt-7 sm:px-10 sm:pb-9 sm:pt-9 lg:px-12">
               <div className="mb-6 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#64748b]">
                 <span className="font-bold">{current.axis}</span>
                 <span aria-hidden="true">·</span>
                 <span>{current.topic}</span>
               </div>
 
-              <h2 style={playgroundQuestionFont} className="max-w-[820px] whitespace-pre-line text-[21px] font-normal leading-[1.8] text-[#111827] sm:text-[22px]">
+              <h2 style={playgroundQuestionFont} className="max-w-[1040px] whitespace-pre-line text-[21px] font-normal leading-[1.8] text-[#111827] sm:text-[22px]">
                 {current.stem}
               </h2>
 
-              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 space-y-1 sm:mt-9">
+              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 max-w-[1100px] space-y-2.5 sm:mt-9">
                 {current.options.map((option, index) => {
                   const letter = playgroundAnswerLetters[index];
                   const selected = selectedAnswer === letter;
@@ -543,8 +594,8 @@ export function PlaygroundExperience() {
                     : wrong
                       ? "border-rose-400 bg-rose-50"
                       : selected
-                        ? "border-[#cbd5e1] bg-[#f8fafc]"
-                        : "border-transparent bg-transparent hover:border-[#e5e7eb] hover:bg-[#fafafa]";
+                        ? "border-[#f97316] bg-[#fff7ed] ring-1 ring-[#fed7aa]"
+                        : "border-[#d9dfe8] bg-[#f8fafc] hover:border-[#f59e0b] hover:bg-[#fffaf5] hover:shadow-sm";
                   return (
                     <button
                       key={letter}
@@ -552,7 +603,7 @@ export function PlaygroundExperience() {
                       aria-pressed={selected}
                       disabled={isRevealed}
                       onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                      className={"flex min-h-[44px] w-full items-start gap-2 rounded-[8px] border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
+                      className={"flex min-h-[52px] w-full cursor-pointer items-start gap-3 rounded-[9px] border px-4 py-2.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
                     >
                       <span style={playgroundQuestionFont} className="shrink-0 text-[18px] font-semibold leading-8 text-[#111827]">{letter})</span>
                       <span style={playgroundQuestionFont} className="pt-[1px] text-[18px] leading-8 text-[#111827]">{option}</span>
@@ -563,7 +614,7 @@ export function PlaygroundExperience() {
               </div>
 
               {isRevealed && (
-                <div role="status" className={"mt-7 rounded-lg border p-4 text-sm text-[#1f2937] " + (isCorrect
+                <div role="status" className={"mt-7 max-w-[1100px] rounded-lg border p-4 text-sm text-[#1f2937] " + (isCorrect
                   ? "border-emerald-200 bg-emerald-50"
                   : "border-rose-200 bg-rose-50")}>
                   <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
@@ -571,8 +622,8 @@ export function PlaygroundExperience() {
                 </div>
               )}
 
-              <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[#e5e7eb] pt-5">
-                <button type="button" onClick={() => setPosition(activePosition - 1)} disabled={activePosition === 0} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
+              <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-[#e5e7eb] pt-6">
+                <button type="button" onClick={() => setPosition((previous) => Math.max(0, previous - 1))} disabled={position === 0} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
                   <ChevronLeft size={17} /> Anterior
                 </button>
                 <div className="ml-auto flex items-center gap-2">
@@ -585,23 +636,27 @@ export function PlaygroundExperience() {
                       Reintentar
                     </button>
                   )}
-                  <button type="button" onClick={() => setPosition(activePosition + 1)} disabled={activePosition === questions.length - 1} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
-                    Siguiente <ChevronRight size={17} />
+                  <button type="button" onClick={nextRandom} disabled={questions.length <= 1} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
+                    Otra aleatoria <ChevronRight size={17} />
                   </button>
                 </div>
               </div>
             </div>
           </article>
-        ) : (
+        ) : questions.length === 0 ? (
           <section className="surface rounded-[20px] px-6 py-14 text-center">
             <h2 className="text-lg font-extrabold">No hay preguntas para estos filtros</h2>
             <p className="mt-2 text-sm text-[var(--muted)]">Prueba con otro año o eje temático.</p>
-            <button type="button" onClick={() => { setYear("all"); setAxis("all"); setPosition(0); }} className="soft-button mt-5 rounded-xl px-5 py-3 text-xs font-extrabold">Limpiar filtros</button>
+            <button type="button" onClick={() => { setYear("all"); setAxis("all"); }} className="soft-button mt-5 rounded-xl px-5 py-3 text-xs font-extrabold">Limpiar filtros</button>
+          </section>
+        ) : (
+          <section className="min-h-[600px] rounded-[10px] border border-[#d9dde5] bg-white px-6 py-14 text-center text-sm text-[#64748b]">
+            Preparando una pregunta aleatoria…
           </section>
         )}
 
         <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-          Prototipo con preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
+          Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
       </div>
     </AppShell>
