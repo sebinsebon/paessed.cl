@@ -616,6 +616,7 @@ export function PlaygroundExperience() {
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
+  const [recentQuestionIds, setRecentQuestionIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isPracticing, setIsPracticing] = useState(false);
@@ -695,6 +696,35 @@ export function PlaygroundExperience() {
     setPendingAction(null);
     setSettingsOpen(false);
   };
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("paessed-playground-recent-questions") ?? "[]");
+      if (!Array.isArray(stored)) return;
+      const validIds = new Set(playgroundQuestions.map((question) => question.id));
+      const unique = Array.from(new Set(stored.filter((id): id is string => typeof id === "string" && validIds.has(id))));
+      setRecentQuestionIds(unique.slice(0, 5));
+    } catch {
+      // Browser storage can be disabled; the practice itself still works.
+    }
+  }, []);
+
+  // Record actual opened questions, not just the first question of each session.
+  useEffect(() => {
+    if (!isPracticing || !current?.id) return;
+    setRecentQuestionIds((previous) => {
+      const updated = [current.id, ...previous.filter((id) => id !== current.id)].slice(0, 5);
+      if (previous.length === updated.length && previous.every((id, index) => id === updated[index])) {
+        return previous;
+      }
+      try {
+        localStorage.setItem("paessed-playground-recent-questions", JSON.stringify(updated));
+      } catch {
+        // History remains available in memory if browser storage is unavailable.
+      }
+      return updated;
+    });
+  }, [isPracticing, current?.id]);
 
   useEffect(() => {
     try {
@@ -801,15 +831,13 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const startPractice = () => {
-    if (questions.length === 0) return;
-    const randomizedIds = shufflePlaygroundQuestions(questions);
-    if (selectedStartQuestion !== "random") {
-      const chosenIndex = randomizedIds.indexOf(selectedStartQuestion);
-      if (chosenIndex >= 0) {
-        randomizedIds.splice(chosenIndex, 1);
-        randomizedIds.unshift(selectedStartQuestion);
-      }
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string) => {
+    if (!pool.length) return;
+    const randomizedIds = shufflePlaygroundQuestions(pool);
+    const chosenIndex = randomizedIds.indexOf(firstId);
+    if (chosenIndex > 0) {
+      randomizedIds.splice(chosenIndex, 1);
+      randomizedIds.unshift(firstId);
     }
     setOrder(randomizedIds);
     setPosition(0);
@@ -821,6 +849,17 @@ export function PlaygroundExperience() {
     setSidebarVisible(false);
     window.scrollTo({ top: 0, behavior: "instant" });
     setIsPracticing(true);
+  };
+
+  const startPractice = () => beginSession(questions, selectedStartQuestion);
+
+  const revisitQuestion = (questionId: string) => {
+    // A history entry must always be reachable, even if the current filters exclude it.
+    setYear("all");
+    setAxis("all");
+    setSavedOnly(false);
+    setSelectedStartQuestion(questionId);
+    beginSession(playgroundQuestions, questionId);
   };
 
   const nextQuestion = () => {
@@ -961,6 +1000,54 @@ export function PlaygroundExperience() {
             </button>
           </div>
         </section>
+        <section className="mt-7" aria-labelledby="playground-recent-title">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 id="playground-recent-title" className="text-[18px] font-extrabold tracking-[-.025em] sm:text-[20px]">Últimas 5 preguntas</h2>
+              <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">Retoma las preguntas que abriste recientemente.</p>
+            </div>
+            {recentQuestionIds.length > 0 && (
+              <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[11px] font-bold text-[var(--muted)]">
+                {recentQuestionIds.length} {recentQuestionIds.length === 1 ? "reciente" : "recientes"}
+              </span>
+            )}
+          </div>
+          <div className="surface overflow-hidden rounded-2xl">
+            {recentQuestionIds.length === 0 ? (
+              <div className="px-5 py-7 text-center sm:py-9">
+                <p className="text-[13px] font-bold text-[var(--text)]">Aún no hay preguntas en tu historial</p>
+                <p className="mt-1 text-[12px] text-[var(--muted)]">Cuando empieces a practicar, las últimas preguntas aparecerán aquí.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[var(--border)]">
+                {recentQuestionIds.map((id) => {
+                  const question = playgroundQuestions.find((item) => item.id === id);
+                  if (!question) return null;
+                  return (
+                    <div key={id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                          <span className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[var(--text)]">N.º {question.number} · {question.year}</span>
+                          <span className="text-[var(--muted)]">{question.axis} · {question.topic}</span>
+                        </div>
+                        <p className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-5 text-[var(--text)]">{question.stem}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => revisitQuestion(question.id)}
+                        className="soft-button inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-lg px-3 text-[11px] font-extrabold sm:self-center"
+                        aria-label={"Volver a practicar pregunta número " + question.number}
+                      >
+                        Practicar de nuevo <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
           Las preguntas guardadas quedan en este navegador. Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
