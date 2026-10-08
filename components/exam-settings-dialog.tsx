@@ -209,8 +209,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                 </div>
                 <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-10 md:grid-cols-4">
                   {questions.map((_, index) => {
-                    let number = String(index + 1);
-                    try { number = inspectQuestion(record.finalJson, index).number; } catch { /* Show positional identifier. */ }
+                    const number = String(index + 1);
                     return (
                       <button
                         key={index}
