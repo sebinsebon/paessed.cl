@@ -474,7 +474,8 @@ function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
+  const [isPracticing, setIsPracticing] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -486,26 +487,29 @@ export function PlaygroundExperience() {
     (year === "all" || String(question.year) === year) &&
     (axis === "all" || question.axis === axis)
   );
-
-  // Shuffle only on the client; never use randomness during server rendering.
-  // Rebuild the round when the filters change.
-  useEffect(() => {
-    const matching = playgroundQuestions.filter((question) =>
-      (year === "all" || String(question.year) === year) &&
-      (axis === "all" || question.axis === axis)
-    );
-    setOrder(shufflePlaygroundQuestions(matching));
-    setPosition(0);
-  }, [year, axis]);
-
-  const activeFilterCount = Number(year !== "all") + Number(axis !== "all");
   const visibleOrder = order.filter((id) => questions.some((question) => question.id === id));
   const current = questions.find((question) => question.id === visibleOrder[position]);
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
 
-  // Confirmation expires after five seconds or when the displayed answer changes.
+  // The whole practice session occupies the viewport; only exceptionally long
+  // question content scrolls inside the paper, never behind its fixed footer.
+  useEffect(() => {
+    if (!isPracticing) return;
+    const priorOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsPracticing(false);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => {
+      document.body.style.overflow = priorOverflow;
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [isPracticing]);
+
+  // Both confirmation buttons revert after 5 seconds without the second click.
   useEffect(() => {
     if (!pendingAction) return;
     const timeoutId = window.setTimeout(() => setPendingAction(null), 5000);
@@ -516,17 +520,35 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const nextRandom = () => {
+  const startPractice = () => {
+    if (questions.length === 0) return;
+    const randomizedIds = shufflePlaygroundQuestions(questions);
+    if (selectedStartQuestion !== "random") {
+      const chosenIndex = randomizedIds.indexOf(selectedStartQuestion);
+      if (chosenIndex >= 0) {
+        randomizedIds.splice(chosenIndex, 1);
+        randomizedIds.unshift(selectedStartQuestion);
+      }
+    }
+    setOrder(randomizedIds);
+    setPosition(0);
+    setAnswers({});
+    setRevealed({});
+    setPendingAction(null);
+    setIsPracticing(true);
+  };
+
+  const nextQuestion = () => {
     if (position < visibleOrder.length - 1) {
       setPosition((previous) => previous + 1);
       return;
     }
-    // All matching questions have been shown; start a new shuffled round.
-    const nextOrder = shufflePlaygroundQuestions(questions);
-    if (nextOrder.length > 1 && nextOrder[0] === current?.id) {
-      [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
+    // Do not repeat within a round; reshuffle when the matching pool is exhausted.
+    const newOrder = shufflePlaygroundQuestions(questions);
+    if (newOrder.length > 1 && newOrder[0] === current?.id) {
+      [newOrder[0], newOrder[1]] = [newOrder[1], newOrder[0]];
     }
-    setOrder(nextOrder);
+    setOrder(newOrder);
     setPosition(0);
     setAnswers({});
     setRevealed({});
@@ -542,262 +564,239 @@ export function PlaygroundExperience() {
       if (!current || !selectedAnswer || isRevealed) return;
       setRevealed((previous) => ({ ...previous, [current.id]: true }));
     } else {
-      nextRandom();
+      nextQuestion();
     }
   };
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas" wide>
+      {/* Setup: same page skeleton and left alignment as Ensayos. */}
       <div className="mx-auto w-full max-w-[1460px] pb-5">
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">
-              Banco de preguntas
-            </p>
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">Banco de preguntas</p>
             <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
             <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
-              Practica preguntas de Matemática M1 a tu ritmo.
+              Prepara tu práctica de Matemática M1. Elige qué quieres reforzar y comienza.
             </p>
           </div>
         </header>
 
-        <section aria-label="Herramientas de práctica" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[14px] font-bold text-[var(--text)]">
-              <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
-            </span>
-            <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">
-              M1 · Práctica aleatoria
-            </span>
-          </div>
-          <div className="relative z-20 flex shrink-0 justify-end">
-          <button
-            type="button"
-            aria-expanded={filtersOpen}
-            aria-controls="playground-filters-panel"
-            onClick={() => setFiltersOpen((previous) => !previous)}
-            className={"inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 text-sm font-bold shadow-[0_1px_3px_rgba(15,23,42,.04)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] " +
-              (filtersOpen || activeFilterCount > 0
-                ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
-          >
-            <SlidersHorizontal size={16} aria-hidden="true" />
-            Filtros
-            {activeFilterCount > 0 && (
-              <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-[var(--primary)] px-1 text-[11px] font-extrabold text-white" aria-label={activeFilterCount + " filtros activos"}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-
-          {filtersOpen && (
-            <section
-              id="playground-filters-panel"
-              aria-label="Filtros de preguntas"
-              onKeyDown={(event) => { if (event.key === "Escape") setFiltersOpen(false); }}
-              className="surface-raised absolute right-0 top-[calc(100%+10px)] z-30 w-full max-w-[630px] rounded-[16px] border border-[var(--border)] p-4 shadow-[0_16px_40px_rgba(15,23,42,.14)] sm:p-5"
-            >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-extrabold text-[var(--text)]">Filtrar preguntas</h2>
-                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Personaliza qué preguntas pueden aparecer en tu práctica.</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Cerrar filtros"
-                  onClick={() => setFiltersOpen(false)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
-                >
-                  <X size={17} aria-hidden="true" />
-                </button>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="min-w-0">
-                  <label htmlFor="playground-year" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Año (modelo)</label>
-                  <select id="playground-year" value={year} onChange={(event) => setYear(event.target.value)} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2">
-                    <option value="all">Todos los años</option>
-                    {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
-                  </select>
-                </div>
-
-                <div className="min-w-0">
-                  <label htmlFor="playground-axis" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Eje temático</label>
-                  <select id="playground-axis" value={axis} onChange={(event) => setAxis(event.target.value)} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2">
-                    <option value="all">Todos los ejes</option>
-                    {axes.map((value) => <option key={value} value={value}>{value}</option>)}
-                  </select>
-                </div>
-
-                <div className="min-w-0 sm:col-span-2">
-                  <label htmlFor="playground-jump" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Ir a una pregunta específica</label>
-                  <select
-                    id="playground-jump"
-                    value={current?.id ?? ""}
-                    onChange={(event) => {
-                      const selectedIndex = visibleOrder.indexOf(event.target.value);
-                      if (selectedIndex >= 0) {
-                        setPosition(selectedIndex);
-                        setFiltersOpen(false);
-                      }
-                    }}
-                    disabled={!current}
-                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50"
-                  >
-                    {!current && <option value="">Sin preguntas disponibles</option>}
-                    {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-                <button
-                  type="button"
-                  disabled={activeFilterCount === 0}
-                  onClick={() => { setYear("all"); setAxis("all"); }}
-                  className="text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Limpiar filtros
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFiltersOpen(false)}
-                  className="tactile-primary min-h-9 rounded-lg px-4 text-xs font-extrabold"
-                >
-                  Listo
-                </button>
-              </div>
-            </section>
-          )}
-          </div>
+        <section aria-label="Banco de preguntas disponible" className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-4">
+          <span className="text-[14px] font-bold text-[var(--text)]">
+            <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
+          </span>
+          <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Banco de demostración</span>
         </section>
 
-        {current ? (
-          <article className="flex min-h-[600px] flex-col overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e7eb] px-4 py-3 sm:px-7">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-[6px] bg-[#eef2ff] px-2 py-1 text-[12px] font-bold text-[#1f2937]">N.º {current.number}</span>
-                <span className="rounded-[6px] bg-[#f3f4f6] px-2 py-1 text-[12px] font-bold text-[#1f2937]">{current.year}</span>
-                <span className="rounded-[6px] border border-[#e5e7eb] px-2 py-1 text-[12px] font-medium text-[#475569]">{current.collection}</span>
-              </div>
+        <section className="surface overflow-hidden rounded-[20px]" aria-labelledby="playground-setup-title">
+          <div className="border-b border-[var(--border)] px-5 py-5 sm:px-7">
+            <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Configura tu sesión</p>
+            <h2 id="playground-setup-title" className="mt-1.5 text-[22px] font-extrabold tracking-[-.035em] sm:text-[25px]">Practica a tu manera</h2>
+            <p className="mt-1 text-[13px] leading-6 text-[var(--muted)]">
+              Las preguntas se mezclan automáticamente. Puedes limitar los temas o comenzar por una pregunta específica.
+            </p>
+          </div>
+
+          <div className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-3 lg:py-7">
+            <div className="min-w-0">
+              <label htmlFor="playground-start-year" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Año</label>
+              <select
+                id="playground-start-year"
+                value={year}
+                onChange={(event) => { setYear(event.target.value); setSelectedStartQuestion("random"); }}
+                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
+              >
+                <option value="all">Todos los años</option>
+                {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
             </div>
 
-            <div className="flex flex-1 flex-col px-5 pt-7 sm:px-10 sm:pt-9 lg:px-12">
-              <div className="mb-6 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#64748b]">
-                <span className="font-bold">{current.axis}</span>
-                <span aria-hidden="true">·</span>
-                <span>{current.topic}</span>
-              </div>
-
-              <h2 style={playgroundQuestionFont} className="max-w-[1040px] whitespace-pre-line text-[21px] font-normal leading-[1.8] text-[#111827] sm:text-[22px]">
-                {current.stem}
-              </h2>
-
-              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 max-w-[1100px] space-y-2.5 sm:mt-9">
-                {current.options.map((option, index) => {
-                  const letter = playgroundAnswerLetters[index];
-                  const selected = selectedAnswer === letter;
-                  const correct = isRevealed && current.correct === letter;
-                  const wrong = isRevealed && selected && !correct;
-                  const tone = correct
-                    ? "border-emerald-400 bg-emerald-50"
-                    : wrong
-                      ? "border-rose-400 bg-rose-50"
-                      : selected
-                        ? "border-[#f97316] bg-[#fff7ed] ring-1 ring-[#fed7aa]"
-                        : "border-[#d9dfe8] bg-[#f8fafc] hover:border-[#f59e0b] hover:bg-[#fffaf5] hover:shadow-sm";
-                  return (
-                    <button
-                      key={letter}
-                      type="button"
-                      aria-pressed={selected}
-                      disabled={isRevealed}
-                      onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                      className={"flex min-h-[52px] w-full cursor-pointer items-start gap-3 rounded-[9px] border px-4 py-2.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
-                    >
-                      <span style={playgroundQuestionFont} className="shrink-0 text-[18px] font-semibold leading-8 text-[#111827]">{letter})</span>
-                      <span style={playgroundQuestionFont} className="pt-[1px] text-[18px] leading-8 text-[#111827]">{option}</span>
-                      {correct && <Check size={18} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {isRevealed && (
-                <div role="status" className={"mt-7 max-w-[1100px] rounded-lg border p-4 text-sm text-[#1f2937] " + (isCorrect
-                  ? "border-emerald-200 bg-emerald-50"
-                  : "border-rose-200 bg-rose-50")}>
-                  <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
-                  <p className="mt-1 leading-6">{current.explanation}</p>
-                </div>
-              )}
-
+            <div className="min-w-0">
+              <label htmlFor="playground-start-axis" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Eje temático</label>
+              <select
+                id="playground-start-axis"
+                value={axis}
+                onChange={(event) => { setAxis(event.target.value); setSelectedStartQuestion("random"); }}
+                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
+              >
+                <option value="all">Todos los ejes</option>
+                {axes.map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
             </div>
 
-            <footer className="mt-10 shrink-0 border-t border-[#e5e7eb] bg-[#fcfcfd] px-5 pb-7 pt-5 sm:px-10 sm:pb-8 sm:pt-6 lg:px-12">
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setPendingAction(null); setPosition((previous) => Math.max(0, previous - 1)); }}
-                  disabled={position === 0}
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronLeft size={17} /> Anterior
-                </button>
-                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                  {!isRevealed ? (
-                    <button
-                      type="button"
-                      onClick={() => confirmAction("check")}
-                      disabled={!selectedAnswer}
-                      aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
-                      className="tactile-primary min-h-11 rounded-lg px-5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      {pendingAction === "check" ? "Confirmar" : "Comprobar"}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setPendingAction(null); setRevealed((previous) => ({ ...previous, [current.id]: false })); }}
-                      className="min-h-11 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc]"
-                    >
-                      Reintentar
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => confirmAction("next")}
-                    disabled={questions.length <= 1}
-                    aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {pendingAction === "next" ? "Confirmar" : "Otra pregunta"} <ChevronRight size={17} />
-                  </button>
-                </div>
-              </div>
-              {pendingAction && (
-                <p role="status" className="mt-3 text-right text-[11px] font-medium text-[#64748b]">
-                  {pendingAction === "check" ? "Presiona Confirmar para revisar tu respuesta." : "Presiona Confirmar para cambiar de pregunta."} Se cancela en 5 segundos.
-                </p>
-              )}
-            </footer>
-          </article>
-        ) : questions.length === 0 ? (
-          <section className="surface rounded-[20px] px-6 py-14 text-center">
-            <h2 className="text-lg font-extrabold">No hay preguntas para estos filtros</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Prueba con otro año o eje temático.</p>
-            <button type="button" onClick={() => { setYear("all"); setAxis("all"); }} className="soft-button mt-5 rounded-xl px-5 py-3 text-xs font-extrabold">Limpiar filtros</button>
-          </section>
-        ) : (
-          <section className="min-h-[600px] rounded-[10px] border border-[#d9dde5] bg-white px-6 py-14 text-center text-sm text-[#64748b]">
-            Preparando una pregunta aleatoria…
-          </section>
-        )}
+            <div className="min-w-0">
+              <label htmlFor="playground-start-question" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Primera pregunta</label>
+              <select
+                id="playground-start-question"
+                value={selectedStartQuestion}
+                onChange={(event) => setSelectedStartQuestion(event.target.value)}
+                disabled={!questions.length}
+                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)] disabled:opacity-50"
+              >
+                <option value="random">Aleatoria</option>
+                {questions.map((question) => (
+                  <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-        <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-4 sm:px-7">
+            <p className="text-[12px] leading-5 text-[var(--muted)]">
+              {questions.length === 0
+                ? "No hay preguntas con estos filtros."
+                : questions.length + (questions.length === 1 ? " pregunta disponible" : " preguntas disponibles") + " · Una pregunta por pantalla"}
+            </p>
+            <button
+              type="button"
+              onClick={startPractice}
+              disabled={!questions.length}
+              className="tactile-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-6 text-[13px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Comenzar práctica <ArrowRight size={17} />
+            </button>
+          </div>
+        </section>
+        <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
           Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
       </div>
+
+      {/* Immersive practice: uses the viewport instead of the regular page scroll. */}
+      {isPracticing && (
+        <div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]" aria-label="Modo práctica de Playground">
+          <header className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
+            <div className="mx-auto flex min-h-[56px] w-full max-w-[1280px] items-center justify-between gap-3 px-3 sm:px-6">
+              <button
+                type="button"
+                onClick={() => { setPendingAction(null); setIsPracticing(false); }}
+                className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+              >
+                <ChevronLeft size={18} /> Volver a Playground
+              </button>
+              <div className="min-w-0 text-right">
+                <p className="truncate text-[12px] font-extrabold">Matemática M1</p>
+                <p className="truncate text-[10px] font-medium text-[var(--muted)]">
+                  {year === "all" ? "Todos los años" : year} · {axis === "all" ? "Todos los ejes" : axis}
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <main className="mx-auto flex min-h-0 w-full max-w-[1280px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
+            {current ? (
+              <article className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[#d9dde5] bg-white text-[#111827]">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#e5e7eb] px-4 py-2 sm:px-7 sm:py-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-[#eef2ff] px-2 py-1 text-[11px] font-bold text-[#1f2937]">N.º {current.number}</span>
+                    <span className="rounded-md bg-[#f3f4f6] px-2 py-1 text-[11px] font-bold text-[#1f2937]">{current.year}</span>
+                    <span className="hidden rounded-md border border-[#e5e7eb] px-2 py-1 text-[11px] font-medium text-[#475569] sm:inline">{current.collection}</span>
+                  </div>
+                  <span className="truncate text-right text-[11px] font-medium text-[#64748b]">{current.axis} · {current.topic}</span>
+                </div>
+
+                <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+                  <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[#111827] sm:text-[21px]">
+                    {current.stem}
+                  </h2>
+
+                  <div role="group" aria-label="Alternativas de respuesta" className="mt-4 max-w-[1060px] space-y-2 sm:mt-5">
+                    {current.options.map((option, index) => {
+                      const letter = playgroundAnswerLetters[index];
+                      const selected = selectedAnswer === letter;
+                      const correct = isRevealed && current.correct === letter;
+                      const wrong = isRevealed && selected && !correct;
+                      const tone = correct
+                        ? "border-emerald-400 bg-emerald-50"
+                        : wrong
+                          ? "border-rose-400 bg-rose-50"
+                          : selected
+                            ? "border-[#f97316] bg-[#fff7ed] ring-1 ring-[#fed7aa]"
+                            : "border-[#d9dfe8] bg-[#f8fafc] hover:border-[#f59e0b] hover:bg-[#fffaf5] hover:shadow-sm";
+                      return (
+                        <button
+                          key={letter}
+                          type="button"
+                          aria-pressed={selected}
+                          disabled={isRevealed}
+                          onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
+                          className={"flex min-h-[43px] w-full cursor-pointer items-start gap-3 rounded-lg border px-3 py-1.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[47px] sm:px-4 sm:py-2 " + tone}
+                        >
+                          <span style={playgroundQuestionFont} className="shrink-0 text-[16px] font-semibold leading-7 text-[#111827] sm:text-[18px]">{letter})</span>
+                          <span style={playgroundQuestionFont} className="pt-px text-[16px] leading-7 text-[#111827] sm:text-[18px]">{option}</span>
+                          {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {isRevealed && (
+                    <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[#1f2937] sm:text-[13px] " + (isCorrect
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-rose-200 bg-rose-50")}>
+                      <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
+                      <p className="mt-1">{current.explanation}</p>
+                    </div>
+                  )}
+                </div>
+
+                <footer className="shrink-0 border-t border-[#e5e7eb] bg-[#fcfcfd] px-3 py-2.5 sm:px-7 sm:py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPendingAction(null); setPosition((previous) => Math.max(0, previous - 1)); }}
+                      disabled={position === 0}
+                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft size={16} /> Anterior
+                    </button>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                      {!isRevealed ? (
+                        <button
+                          type="button"
+                          onClick={() => confirmAction("check")}
+                          disabled={!selectedAnswer}
+                          aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
+                          className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          {pendingAction === "check" ? "Confirmar" : "Comprobar"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setPendingAction(null); setRevealed((previous) => ({ ...previous, [current.id]: false })); }}
+                          className="min-h-10 rounded-lg border border-[#e5e7eb] bg-white px-4 text-[11px] font-bold text-[#334155] hover:bg-[#f8fafc]"
+                        >
+                          Reintentar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => confirmAction("next")}
+                        disabled={questions.length <= 1}
+                        aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
+                        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white px-3 text-[11px] font-bold text-[#334155] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {pendingAction === "next" ? "Confirmar" : "Otra pregunta"} <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  {pendingAction && (
+                    <p role="status" className="mt-1.5 text-right text-[10px] font-medium text-[#64748b]">
+                      {pendingAction === "check" ? "Confirma para revisar." : "Confirma para cambiar de pregunta."} Se cancela en 5 segundos.
+                    </p>
+                  )}
+                </footer>
+              </article>
+            ) : (
+              <section className="flex flex-1 items-center justify-center rounded-xl border border-[#d9dde5] bg-white p-5 text-center text-sm text-[#64748b]">
+                Preparando tu práctica…
+              </section>
+            )}
+          </main>
+        </div>
+      )}
     </AppShell>
   );
 }
