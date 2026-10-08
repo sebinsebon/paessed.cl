@@ -3,6 +3,7 @@
 import JSZip from "jszip";
 import Link from "next/link";
 import { ChangeEvent, DragEvent, ReactNode, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -263,7 +264,7 @@ export async function importExamFile(file: File): Promise<ImportedExamSummary> {
   return parsed.summary;
 }
 
-export function ImportExamExperience() {
+export function ImportExamPanel({ embedded = false, onBack, onImported }: { embedded?: boolean; onBack?: () => void; onImported?: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedPackage | null>(null);
   const [status, setStatus] = useState<"idle" | "reading" | "ready" | "saving" | "saved" | "error">("idle");
@@ -297,6 +298,7 @@ export function ImportExamExperience() {
       await saveImportedExam(record);
       setStatus("saved");
       setMessage("Ensayo importado localmente. Ya aparece en tu sección Ensayos.");
+      onImported?.();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "No se pudo guardar el ensayo.");
@@ -311,16 +313,26 @@ export function ImportExamExperience() {
   };
 
   return (
-    <AppShell title="Importar ensayo" eyebrow="Contenido local">
-      <div className="mb-6 flex items-start gap-3">
-        <Link href="/app/ensayos" className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos"><ArrowLeft size={17} /></Link>
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</div>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em]">Añade un ensayo a PAESSED</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            Selecciona el archivo .paessed generado por el importador. El navegador abre el paquete, busca final.json, comprueba preguntas y assets y muestra una vista previa antes de guardarlo.
+    <>
+      <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-[var(--border)] pb-4 sm:mb-6">
+        {onBack ? (
+          <button type="button" onClick={onBack} className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos">
+            <ArrowLeft size={17} />
+          </button>
+        ) : (
+          <Link href="/app/ensayos" className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos"><ArrowLeft size={17} /></Link>
+        )}
+        <motion.div
+          layoutId={embedded ? "exams-import-heading" : undefined}
+          transition={{ type: "spring", stiffness: 280, damping: 35 }}
+          className="min-w-0 flex-1 rounded-lg"
+        >
+          <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</p>
+          <h1 className="mt-0.5 text-[21px] font-extrabold tracking-[-.03em] sm:text-[24px]">Importar ensayo</h1>
+          <p className="mt-0.5 text-[11px] leading-5 text-[var(--muted)] sm:text-[12px]">
+            Selecciona un paquete .paessed, .zip o final.json para revisarlo y guardarlo.
           </p>
-        </div>
+        </motion.div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_380px]">
@@ -417,13 +429,25 @@ export function ImportExamExperience() {
             <PackageCheck size={16} />{status === "saving" ? "Importando…" : status === "saved" ? "Importado" : "Importar ensayo"}
           </button>
 
-          {status === "saved" && <Link href="/app/ensayos" className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</Link>}
+          {status === "saved" && (onBack ? (
+            <button type="button" onClick={onBack} className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</button>
+          ) : (
+            <Link href="/app/ensayos" className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</Link>
+          ))}
 
           <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">
             El paquete y final.json se guardan en IndexedDB del navegador. Cuando conectemos backend, este mismo paso podrá enviar el paquete al servicio de ingestión.
           </p>
         </aside>
       </div>
+    </>
+  );
+}
+
+export function ImportExamExperience() {
+  return (
+    <AppShell title="Importar ensayo" eyebrow="Contenido local">
+      <ImportExamPanel />
     </AppShell>
   );
 }
