@@ -18,7 +18,9 @@ import {
   Route,
   Search,
   Settings,
+  SlidersHorizontal,
   Sparkles,
+  X,
   Target,
   Trophy,
   UserRound,
@@ -472,6 +474,7 @@ function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -494,6 +497,7 @@ export function PlaygroundExperience() {
     setPosition(0);
   }, [year, axis]);
 
+  const activeFilterCount = Number(year !== "all") + Number(axis !== "all");
   const visibleOrder = order.filter((id) => questions.some((question) => question.id === id));
   const current = questions.find((question) => question.id === visibleOrder[position]);
   const selectedAnswer = current ? answers[current.id] : undefined;
@@ -526,40 +530,106 @@ export function PlaygroundExperience() {
           </p>
         </header>
 
-        <section aria-label="Filtros de preguntas" className="surface mb-4 flex flex-wrap items-end gap-2 rounded-[14px] px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="min-w-[120px] flex-1 sm:flex-none">
-            <label htmlFor="playground-year" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Año (modelo)</label>
-            <select id="playground-year" value={year} onChange={(event) => setYear(event.target.value)} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
-              <option value="all">Todos</option>
-              {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
-            </select>
-          </div>
+        <div className="relative z-20 mb-4 flex justify-end">
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="playground-filters-panel"
+            onClick={() => setFiltersOpen((previous) => !previous)}
+            className={"inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 text-sm font-bold shadow-[0_1px_3px_rgba(15,23,42,.04)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] " +
+              (filtersOpen || activeFilterCount > 0
+                ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-[var(--primary)] px-1 text-[11px] font-extrabold text-white" aria-label={activeFilterCount + " filtros activos"}>
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
-          <div className="min-w-[170px] flex-[2] sm:max-w-[285px]">
-            <label htmlFor="playground-axis" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Eje temático</label>
-            <select id="playground-axis" value={axis} onChange={(event) => setAxis(event.target.value)} className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2">
-              <option value="all">Todos los ejes</option>
-              {axes.map((value) => <option key={value} value={value}>{value}</option>)}
-            </select>
-          </div>
-
-          <div className="min-w-[140px] flex-1 sm:ml-auto sm:max-w-[190px]">
-            <label htmlFor="playground-jump" className="mb-1 block text-[10px] font-bold text-[var(--muted)]">Ir a pregunta</label>
-            <select
-              id="playground-jump"
-              value={current?.id ?? ""}
-              onChange={(event) => {
-                const selectedIndex = visibleOrder.indexOf(event.target.value);
-                if (selectedIndex >= 0) setPosition(selectedIndex);
-              }}
-              disabled={!current}
-              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50"
+          {filtersOpen && (
+            <section
+              id="playground-filters-panel"
+              aria-label="Filtros de preguntas"
+              onKeyDown={(event) => { if (event.key === "Escape") setFiltersOpen(false); }}
+              className="surface-raised absolute right-0 top-[calc(100%+10px)] z-30 w-full max-w-[630px] rounded-[16px] border border-[var(--border)] p-4 shadow-[0_16px_40px_rgba(15,23,42,.14)] sm:p-5"
             >
-              {!current && <option value="">Preparando…</option>}
-              {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year}</option>)}
-            </select>
-          </div>
-        </section>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-extrabold text-[var(--text)]">Filtrar preguntas</h2>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Personaliza qué preguntas pueden aparecer en tu práctica.</p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Cerrar filtros"
+                  onClick={() => setFiltersOpen(false)}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                >
+                  <X size={17} aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <label htmlFor="playground-year" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Año (modelo)</label>
+                  <select id="playground-year" value={year} onChange={(event) => setYear(event.target.value)} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2">
+                    <option value="all">Todos los años</option>
+                    {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </div>
+
+                <div className="min-w-0">
+                  <label htmlFor="playground-axis" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Eje temático</label>
+                  <select id="playground-axis" value={axis} onChange={(event) => setAxis(event.target.value)} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2">
+                    <option value="all">Todos los ejes</option>
+                    {axes.map((value) => <option key={value} value={value}>{value}</option>)}
+                  </select>
+                </div>
+
+                <div className="min-w-0 sm:col-span-2">
+                  <label htmlFor="playground-jump" className="mb-1.5 block text-[11px] font-bold text-[var(--muted)]">Ir a una pregunta específica</label>
+                  <select
+                    id="playground-jump"
+                    value={current?.id ?? ""}
+                    onChange={(event) => {
+                      const selectedIndex = visibleOrder.indexOf(event.target.value);
+                      if (selectedIndex >= 0) {
+                        setPosition(selectedIndex);
+                        setFiltersOpen(false);
+                      }
+                    }}
+                    disabled={!current}
+                    className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50"
+                  >
+                    {!current && <option value="">Sin preguntas disponibles</option>}
+                    {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+                <button
+                  type="button"
+                  disabled={activeFilterCount === 0}
+                  onClick={() => { setYear("all"); setAxis("all"); }}
+                  className="text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Limpiar filtros
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="tactile-primary min-h-9 rounded-lg px-4 text-xs font-extrabold"
+                >
+                  Listo
+                </button>
+              </div>
+            </section>
+          )}
+        </div>
 
         {current ? (
           <article className="flex min-h-[600px] flex-col overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
