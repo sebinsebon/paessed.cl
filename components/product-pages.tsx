@@ -410,7 +410,6 @@ export function ExamsExperience() {
 type PlaygroundQuestion = {
   id: string;
   number: number;
-  test: "M1" | "M2";
   year: number;
   collection: string;
   axis: string;
@@ -424,7 +423,7 @@ type PlaygroundQuestion = {
 /** Original examples for the UI prototype: not official DEMRE questions. */
 const playgroundQuestions: PlaygroundQuestion[] = [
   {
-    id: "m1-2026-01", number: 1, test: "M1", year: 2026,
+    id: "m1-2026-01", number: 1, year: 2026,
     collection: "Ensayo de práctica", axis: "Números", topic: "Decimales",
     stem: "¿Cuál es el valor de 2,32 + 17,4?",
     options: ["19,72", "19,44", "19,36", "18,72", "19,06"],
@@ -432,7 +431,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
     explanation: "Alineamos las comas decimales: 2,32 + 17,40 = 19,72.",
   },
   {
-    id: "m1-2026-02", number: 2, test: "M1", year: 2026,
+    id: "m1-2026-02", number: 2, year: 2026,
     collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad",
     stem: "La distancia de reacción de un vehículo es directamente proporcional a su velocidad. Si a 110 km/h recorre 33 m, ¿cuántos metros recorre a 30 km/h?",
     options: ["3 m", "6 m", "9 m", "10 m", "11 m"],
@@ -440,7 +439,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
     explanation: "La razón es 33 ÷ 110 = 0,3. A 30 km/h recorre 30 × 0,3 = 9 metros.",
   },
   {
-    id: "m1-2025-03", number: 3, test: "M1", year: 2025,
+    id: "m1-2025-03", number: 3, year: 2025,
     collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza",
     stem: "Dos triángulos son semejantes. El lado de 4 cm del primero corresponde a uno de 10 cm del segundo. ¿Cuánto mide en el segundo triángulo el lado que corresponde a uno de 6 cm del primero?",
     options: ["10 cm", "12 cm", "14 cm", "15 cm", "18 cm"],
@@ -448,45 +447,28 @@ const playgroundQuestions: PlaygroundQuestion[] = [
     explanation: "La razón de semejanza es 10 ÷ 4 = 2,5. Por lo tanto, 6 × 2,5 = 15 cm.",
   },
   {
-    id: "m1-2025-04", number: 4, test: "M1", year: 2025,
+    id: "m1-2025-04", number: 4, year: 2025,
     collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Porcentajes",
     stem: "De un grupo de 50 estudiantes, 18 prefieren estudiar por la mañana. ¿Qué porcentaje del grupo representan esos estudiantes?",
     options: ["18 %", "25 %", "32 %", "36 %", "50 %"],
     correct: "D",
     explanation: "18 de 50 equivale a 18 ÷ 50 = 0,36, es decir, 36 %.",
   },
-  {
-    id: "m2-2026-01", number: 1, test: "M2", year: 2026,
-    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Ecuaciones cuadráticas",
-    stem: "¿Cuál es el conjunto solución de la ecuación x² − 5x + 6 = 0?",
-    options: ["{1, 6}", "{2, 3}", "{−2, −3}", "{−1, −6}", "{0, 5}"],
-    correct: "B",
-    explanation: "Factorizamos: (x − 2)(x − 3) = 0. Las soluciones son x = 2 y x = 3.",
-  },
-  {
-    id: "m2-2025-02", number: 2, test: "M2", year: 2025,
-    collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Probabilidad",
-    stem: "Una bolsa contiene 3 fichas rojas y 2 azules. Se extraen dos fichas, una tras otra y sin reposición. ¿Cuál es la probabilidad de que ambas sean rojas?",
-    options: ["1/10", "1/5", "1/4", "3/10", "3/5"],
-    correct: "D",
-    explanation: "La probabilidad es (3/5) × (2/4) = 6/20 = 3/10.",
-  },
+
 ];
 
 const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
 const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 export function PlaygroundExperience() {
-  const [test, setTest] = useState<"M1" | "M2">("M1");
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
 
-  const testQuestions = playgroundQuestions.filter((question) => question.test === test);
-  const axes = Array.from(new Set(testQuestions.map((question) => question.axis)));
-  const questions = testQuestions.filter((question) =>
+  const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
+  const questions = playgroundQuestions.filter((question) =>
     (year === "all" || String(question.year) === year) &&
     (axis === "all" || question.axis === axis)
   );
@@ -495,13 +477,6 @@ export function PlaygroundExperience() {
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
-
-  const changeTest = (value: "M1" | "M2") => {
-    setTest(value);
-    setYear("all");
-    setAxis("all");
-    setPosition(0);
-  };
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas">
@@ -512,18 +487,11 @@ export function PlaygroundExperience() {
         </header>
 
         <section aria-label="Filtros de preguntas" className="surface mb-4 flex flex-wrap items-end gap-3 rounded-2xl p-3 sm:p-4">
-          <div className="min-w-[95px] flex-1 sm:flex-none">
-            <label htmlFor="playground-test" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Prueba</label>
-            <select id="playground-test" value={test} onChange={(event) => changeTest(event.target.value as "M1" | "M2")} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--text)] outline-offset-2">
-              <option value="M1">M1</option>
-              <option value="M2">M2</option>
-            </select>
-          </div>
           <div className="min-w-[120px] flex-1 sm:flex-none">
             <label htmlFor="playground-year" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Año (modelo)</label>
             <select id="playground-year" value={year} onChange={(event) => { setYear(event.target.value); setPosition(0); }} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2">
               <option value="all">Todos</option>
-              {[...new Set(testQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+              {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
             </select>
           </div>
           <div className="min-w-[170px] flex-[2] sm:max-w-[285px]">
@@ -547,7 +515,6 @@ export function PlaygroundExperience() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-8">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-[var(--primary-soft)] px-2.5 py-1.5 text-xs font-extrabold text-[var(--primary)]">N.º {current.number}</span>
-                <span className="rounded-md bg-[var(--secondary-soft)] px-2.5 py-1.5 text-xs font-bold text-[var(--secondary)]">{current.test}</span>
                 <span className="rounded-md bg-[var(--surface-2)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)]">{current.year}</span>
                 <span className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--muted)]">{current.collection}</span>
               </div>
