@@ -1019,7 +1019,7 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
         aria-hidden="true"
         size={112}
         strokeWidth={1.6}
-        className="pointer-events-none absolute -right-1 top-1 z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
+        className="pointer-events-none absolute right-[2px] top-[14px] z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
       />
       <div className="relative z-10">
         <div className="min-w-0">
@@ -1094,7 +1094,7 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
         aria-hidden="true"
         size={116}
         strokeWidth={1.6}
-        className="pointer-events-none absolute -right-1 -top-3 z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
+        className="pointer-events-none absolute right-[2px] top-[-2px] z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
       />
       <div className="relative z-10">
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
