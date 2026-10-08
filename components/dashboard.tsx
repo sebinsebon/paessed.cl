@@ -1434,7 +1434,7 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
           aria-hidden="true"
           initial={reducedMotion ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: reducedMotion ? 0 : .35, ease: "easeOut" }}
+          transition={{ duration: reducedMotion ? 0 : .16, ease: "easeOut" }}
           className="pointer-events-none fixed z-[85] rounded-[20px]"
           style={{
             top: spotlight.top,
@@ -1452,10 +1452,10 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
         initial={reducedMotion ? false : { opacity: 0, y: 10, scale: .99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
-          layout: { duration: reducedMotion ? 0 : .65, ease: [.22, 1, .36, 1] },
-          opacity: { duration: reducedMotion ? 0 : .32, ease: "easeOut" },
-          y: { duration: reducedMotion ? 0 : .48, ease: [.22, 1, .36, 1] },
-          scale: { duration: reducedMotion ? 0 : .48, ease: [.22, 1, .36, 1] },
+          layout: { duration: reducedMotion ? 0 : .32, ease: [.22, 1, .36, 1] },
+          opacity: { duration: reducedMotion ? 0 : .18, ease: "easeOut" },
+          y: { duration: reducedMotion ? 0 : .28, ease: [.22, 1, .36, 1] },
+          scale: { duration: reducedMotion ? 0 : .28, ease: [.22, 1, .36, 1] },
         }}
         className={`surface-raised fixed left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5 ${
           step === tourSteps.length - 1
@@ -1544,10 +1544,20 @@ export function Dashboard() {
 
     let scrollFrame = 0;
     let setupFrame = window.requestAnimationFrame(() => {
-      const target = getVisibleTourTarget(tourSteps[tourStep].key);
-      if (!target) return;
+      const key = tourSteps[tourStep].key;
+      const focusedTarget = getVisibleTourTarget(key);
+      if (!focusedTarget) return;
 
-      const rect = target.getBoundingClientRect();
+      // Progress and Playground occupy the same desktop row. Use one shared
+      // camera anchor so moving the spotlight between them does not scroll
+      // again by a few pixels to re-center the shorter card.
+      const shareRow = window.matchMedia("(min-width: 1024px)").matches
+        && (key === "progress" || key === "learn");
+      const cameraTarget = shareRow
+        ? getVisibleTourTarget("progress") ?? focusedTarget
+        : focusedTarget;
+
+      const rect = cameraTarget.getBoundingClientRect();
       const headerBottom = 16;
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
       const panelHeight = panel?.offsetHeight ?? 0;
@@ -1572,7 +1582,7 @@ export function Dashboard() {
         return;
       }
 
-      const duration = 720;
+      const duration = 420;
       let startedAt: number | null = null;
       const animateScroll = (time: number) => {
         if (startedAt === null) startedAt = time;
