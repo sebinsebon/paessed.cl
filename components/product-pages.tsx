@@ -7,6 +7,7 @@ import {
   BarChart3,
   BookOpen,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleDot,
   Clock3,
@@ -406,96 +407,235 @@ export function ExamsExperience() {
   );
 }
 
-const questionBank = [
-  { id: 32640, year: 2026, domain: "Álgebra y Funciones", topic: "Funciones lineales", difficulty: "Media" },
-  { id: 32619, year: 2026, domain: "Números", topic: "Potencias y raíces", difficulty: "Media" },
-  { id: 32531, year: 2025, domain: "Geometría", topic: "Semejanza", difficulty: "Alta" },
-  { id: 32456, year: 2024, domain: "Probabilidad y Estadística", topic: "Frecuencia relativa", difficulty: "Baja" },
+type PlaygroundQuestion = {
+  id: string;
+  number: number;
+  test: "M1" | "M2";
+  year: number;
+  collection: string;
+  axis: string;
+  topic: string;
+  stem: string;
+  options: [string, string, string, string, string];
+  correct: string;
+  explanation: string;
+};
+
+/** Original examples for the UI prototype: not official DEMRE questions. */
+const playgroundQuestions: PlaygroundQuestion[] = [
+  {
+    id: "m1-2026-01", number: 1, test: "M1", year: 2026,
+    collection: "Ensayo de práctica", axis: "Números", topic: "Decimales",
+    stem: "¿Cuál es el valor de 2,32 + 17,4?",
+    options: ["19,72", "19,44", "19,36", "18,72", "19,06"],
+    correct: "A",
+    explanation: "Alineamos las comas decimales: 2,32 + 17,40 = 19,72.",
+  },
+  {
+    id: "m1-2026-02", number: 2, test: "M1", year: 2026,
+    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad",
+    stem: "La distancia de reacción de un vehículo es directamente proporcional a su velocidad. Si a 110 km/h recorre 33 m, ¿cuántos metros recorre a 30 km/h?",
+    options: ["3 m", "6 m", "9 m", "10 m", "11 m"],
+    correct: "C",
+    explanation: "La razón es 33 ÷ 110 = 0,3. A 30 km/h recorre 30 × 0,3 = 9 metros.",
+  },
+  {
+    id: "m1-2025-03", number: 3, test: "M1", year: 2025,
+    collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza",
+    stem: "Dos triángulos son semejantes. El lado de 4 cm del primero corresponde a uno de 10 cm del segundo. ¿Cuánto mide en el segundo triángulo el lado que corresponde a uno de 6 cm del primero?",
+    options: ["10 cm", "12 cm", "14 cm", "15 cm", "18 cm"],
+    correct: "D",
+    explanation: "La razón de semejanza es 10 ÷ 4 = 2,5. Por lo tanto, 6 × 2,5 = 15 cm.",
+  },
+  {
+    id: "m1-2025-04", number: 4, test: "M1", year: 2025,
+    collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Porcentajes",
+    stem: "De un grupo de 50 estudiantes, 18 prefieren estudiar por la mañana. ¿Qué porcentaje del grupo representan esos estudiantes?",
+    options: ["18 %", "25 %", "32 %", "36 %", "50 %"],
+    correct: "D",
+    explanation: "18 de 50 equivale a 18 ÷ 50 = 0,36, es decir, 36 %.",
+  },
+  {
+    id: "m2-2026-01", number: 1, test: "M2", year: 2026,
+    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Ecuaciones cuadráticas",
+    stem: "¿Cuál es el conjunto solución de la ecuación x² − 5x + 6 = 0?",
+    options: ["{1, 6}", "{2, 3}", "{−2, −3}", "{−1, −6}", "{0, 5}"],
+    correct: "B",
+    explanation: "Factorizamos: (x − 2)(x − 3) = 0. Las soluciones son x = 2 y x = 3.",
+  },
+  {
+    id: "m2-2025-02", number: 2, test: "M2", year: 2025,
+    collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Probabilidad",
+    stem: "Una bolsa contiene 3 fichas rojas y 2 azules. Se extraen dos fichas, una tras otra y sin reposición. ¿Cuál es la probabilidad de que ambas sean rojas?",
+    options: ["1/10", "1/5", "1/4", "3/10", "3/5"],
+    correct: "D",
+    explanation: "La probabilidad es (3/5) × (2/4) = 6/20 = 3/10.",
+  },
 ];
 
+const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
+const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
+
 export function PlaygroundExperience() {
-  const [selected, setSelected] = useState(questionBank[0]);
-  const [choice, setChoice] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
+  const [test, setTest] = useState<"M1" | "M2">("M1");
+  const [year, setYear] = useState("all");
+  const [axis, setAxis] = useState("all");
+  const [position, setPosition] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+
+  const testQuestions = playgroundQuestions.filter((question) => question.test === test);
+  const axes = Array.from(new Set(testQuestions.map((question) => question.axis)));
+  const questions = testQuestions.filter((question) =>
+    (year === "all" || String(question.year) === year) &&
+    (axis === "all" || question.axis === axis)
+  );
+  const activePosition = Math.min(position, Math.max(0, questions.length - 1));
+  const current = questions[activePosition];
+  const selectedAnswer = current ? answers[current.id] : undefined;
+  const isRevealed = current ? Boolean(revealed[current.id]) : false;
+  const isCorrect = Boolean(current && selectedAnswer === current.correct);
+
+  const changeTest = (value: "M1" | "M2") => {
+    setTest(value);
+    setYear("all");
+    setAxis("all");
+    setPosition(0);
+  };
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas">
-      <section className="mb-6">
-        <div className="inline-flex items-center gap-2 rounded-full bg-[var(--secondary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--secondary)]"><Gamepad2 size={14} />EXPLORA SIN PRESIÓN</div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-[-.03em]">Practica preguntas reales</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">Filtra por eje, tema o año y prueba preguntas sin alterar tu ruta principal.</p>
-      </section>
+      <div className="mx-auto max-w-[1020px]">
+        <header className="mb-5">
+          <h1 className="text-2xl font-extrabold tracking-[-.035em] sm:text-3xl">Playground</h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">Elige una pregunta y practica a tu ritmo.</p>
+        </header>
 
-      <div className="grid gap-4 lg:grid-cols-[330px_minmax(0,1fr)]">
-        <aside className="surface rounded-2xl p-4">
-          <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-xs text-[var(--muted)]">
-            <Search size={15} />
-            Buscar tema o pregunta
+        <section aria-label="Filtros de preguntas" className="surface mb-4 flex flex-wrap items-end gap-3 rounded-2xl p-3 sm:p-4">
+          <div className="min-w-[95px] flex-1 sm:flex-none">
+            <label htmlFor="playground-test" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Prueba</label>
+            <select id="playground-test" value={test} onChange={(event) => changeTest(event.target.value as "M1" | "M2")} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--text)] outline-offset-2">
+              <option value="M1">M1</option>
+              <option value="M2">M2</option>
+            </select>
           </div>
-          <div className="mt-4 space-y-2">
-            {questionBank.map((item) => {
-              const active = item.id === selected.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => { setSelected(item); setChoice(null); setChecked(false); }}
-                  className={"w-full rounded-xl border p-3 text-left transition " + (active ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/20" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-extrabold text-[var(--muted)]">#{item.id}</div>
-                    <div className="text-[9px] font-extrabold text-[var(--muted-2)]">{item.year}</div>
-                  </div>
-                  <div className="mt-1 text-xs font-extrabold">{item.topic}</div>
-                  <div className="mt-1 text-[10px] text-[var(--muted)]">{item.domain} · {item.difficulty}</div>
-                </button>
-              );
-            })}
+          <div className="min-w-[120px] flex-1 sm:flex-none">
+            <label htmlFor="playground-year" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Año (modelo)</label>
+            <select id="playground-year" value={year} onChange={(event) => { setYear(event.target.value); setPosition(0); }} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2">
+              <option value="all">Todos</option>
+              {[...new Set(testQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
           </div>
-        </aside>
-
-        <section className="surface-raised rounded-[24px] p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-extrabold">
-            <span className="rounded-full bg-[var(--secondary-soft)] px-3 py-1.5 text-[var(--secondary)]">{selected.domain}</span>
-            <span className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[var(--muted)]">{selected.topic}</span>
-            <span className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[var(--muted)]">{selected.year}</span>
+          <div className="min-w-[170px] flex-[2] sm:max-w-[285px]">
+            <label htmlFor="playground-axis" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Eje temático</label>
+            <select id="playground-axis" value={axis} onChange={(event) => { setAxis(event.target.value); setPosition(0); }} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2">
+              <option value="all">Todos los ejes</option>
+              {axes.map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
           </div>
-
-          <div className="mt-6 text-lg font-bold leading-8">
-            La distancia de reacción de un vehículo se modela mediante f(x) = ax. Si a 110 km/h la distancia es 33 m, ¿cuál es la distancia de reacción a 30 km/h?
-          </div>
-
-          <div className="mt-7 space-y-3">
-            {["15 m", "10 m", "9 m", "1 m"].map((option, index) => (
-              <button
-                key={option}
-                onClick={() => { setChoice(option); setChecked(false); }}
-                className={"flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition " + (choice === option ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
-              >
-                <span className="grid h-8 w-8 place-items-center rounded-xl bg-[var(--surface-3)] text-xs font-extrabold">{String.fromCharCode(65 + index)}</span>
-                <span className="font-bold">{option}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 border-t border-[var(--border)] pt-5">
-            {checked && (
-              <div className={"mb-4 rounded-2xl border p-4 " + (choice === "9 m"
-                ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
-                : "border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20")}>
-                <div className={"text-xs font-extrabold " + (choice === "9 m" ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300")}>
-                  {choice === "9 m" ? "Correcto" : "Revisa la proporcionalidad"}
-                </div>
-                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                  Si 110 km/h corresponden a 33 m, la constante es 33/110 = 0,3. Entonces f(30) = 0,3 · 30 = 9 m.
-                </p>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <div className="text-[10px] font-bold text-[var(--muted)]">Pregunta #{selected.id} · DEMRE</div>
-              <button onClick={() => setChecked(true)} disabled={!choice} className="tactile-primary rounded-xl px-5 py-3 text-xs font-extrabold disabled:opacity-45">Comprobar</button>
-            </div>
+          <div className="min-w-[120px] flex-1 sm:ml-auto sm:max-w-[180px]">
+            <label htmlFor="playground-jump" className="mb-1 block text-[11px] font-bold text-[var(--muted)]">Ir a pregunta</label>
+            <select id="playground-jump" value={current?.id ?? ""} onChange={(event) => { const next = questions.findIndex((question) => question.id === event.target.value); if (next >= 0) setPosition(next); }} disabled={!questions.length} className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--text)] outline-offset-2 disabled:opacity-50">
+              {!questions.length && <option value="">Sin resultados</option>}
+              {questions.map((question) => <option key={question.id} value={question.id}>N.º {question.number} · {question.year}</option>)}
+            </select>
           </div>
         </section>
+
+        {current ? (
+          <article className="surface overflow-hidden rounded-[20px]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-8">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-[var(--primary-soft)] px-2.5 py-1.5 text-xs font-extrabold text-[var(--primary)]">N.º {current.number}</span>
+                <span className="rounded-md bg-[var(--secondary-soft)] px-2.5 py-1.5 text-xs font-bold text-[var(--secondary)]">{current.test}</span>
+                <span className="rounded-md bg-[var(--surface-2)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)]">{current.year}</span>
+                <span className="rounded-md border border-[var(--border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--muted)]">{current.collection}</span>
+              </div>
+              <span className="text-xs font-semibold tabular-nums text-[var(--muted)]">{activePosition + 1} de {questions.length}</span>
+            </div>
+
+            <div className="px-5 pb-7 pt-6 sm:px-10 sm:pb-9 sm:pt-8">
+              <div className="mb-7 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
+                <span className="font-bold">{current.axis}</span>
+                <span aria-hidden="true">·</span>
+                <span>{current.topic}</span>
+              </div>
+
+              <h2 style={playgroundQuestionFont} className="max-w-[830px] whitespace-pre-line text-[20px] font-normal leading-[1.65] tracking-normal text-[var(--text)] sm:text-[22px]">
+                {current.stem}
+              </h2>
+
+              <div role="group" aria-label="Alternativas de respuesta" className="mt-7 space-y-1.5 sm:mt-9">
+                {current.options.map((option, index) => {
+                  const letter = playgroundAnswerLetters[index];
+                  const selected = selectedAnswer === letter;
+                  const correct = isRevealed && current.correct === letter;
+                  const wrong = isRevealed && selected && !correct;
+                  const tone = correct
+                    ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/25"
+                    : wrong
+                      ? "border-rose-400 bg-rose-50 dark:border-rose-700 dark:bg-rose-950/25"
+                      : selected
+                        ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                        : "border-transparent hover:border-[var(--border)] hover:bg-[var(--surface-2)]";
+                  return (
+                    <button
+                      key={letter}
+                      type="button"
+                      aria-pressed={selected}
+                      disabled={isRevealed}
+                      onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
+                      className={"flex min-h-[51px] w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default " + tone}
+                    >
+                      <span style={playgroundQuestionFont} className="shrink-0 text-[18px] leading-7 font-semibold">{letter})</span>
+                      <span style={playgroundQuestionFont} className="pt-px text-[18px] leading-7">{option}</span>
+                      {correct && <Check size={18} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600 dark:text-emerald-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isRevealed && (
+                <div role="status" className={"mt-7 rounded-xl border p-4 text-sm " + (isCorrect
+                  ? "border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/20"
+                  : "border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/20")}>
+                  <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
+                  <p className="mt-1 leading-6">{current.explanation}</p>
+                </div>
+              )}
+
+              <div className="mt-9 flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-5">
+                <button type="button" onClick={() => setPosition(activePosition - 1)} disabled={activePosition === 0} className="soft-button inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40">
+                  <ChevronLeft size={17} /> Anterior
+                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  {!isRevealed ? (
+                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: true }))} disabled={!selectedAnswer} className="tactile-primary min-h-11 rounded-xl px-5 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
+                      Comprobar
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: false }))} className="soft-button min-h-11 rounded-xl px-4 text-xs font-extrabold">
+                      Reintentar
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setPosition(activePosition + 1)} disabled={activePosition === questions.length - 1} className="soft-button inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-40">
+                    Siguiente <ChevronRight size={17} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        ) : (
+          <section className="surface rounded-[20px] px-6 py-14 text-center">
+            <h2 className="text-lg font-extrabold">No hay preguntas para estos filtros</h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">Prueba con otro año o eje temático.</p>
+            <button type="button" onClick={() => { setYear("all"); setAxis("all"); setPosition(0); }} className="soft-button mt-5 rounded-xl px-5 py-3 text-xs font-extrabold">Limpiar filtros</button>
+          </section>
+        )}
+
+        <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+          Prototipo con preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
+        </p>
       </div>
     </AppShell>
   );
