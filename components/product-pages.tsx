@@ -522,15 +522,29 @@ export function PlaygroundExperience() {
 
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas" wide>
-      <div className="mx-auto w-full max-w-[1370px]">
-        <header className="mb-5">
-          <h1 className="text-[2.1rem] font-extrabold leading-tight tracking-[-.04em]">Playground</h1>
-          <p className="mt-3 text-[13px] leading-5 text-[var(--muted)]">
-            Elige una pregunta y practica a tu ritmo.
-          </p>
+      <div className="mx-auto w-full max-w-[1460px] pb-5">
+        <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">
+              Banco de preguntas
+            </p>
+            <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
+            <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
+              Practica preguntas de Matemática M1 a tu ritmo.
+            </p>
+          </div>
         </header>
 
-        <div className="relative z-20 mb-4 flex justify-end">
+        <section aria-label="Herramientas de práctica" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[14px] font-bold text-[var(--text)]">
+              <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"}
+            </span>
+            <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">
+              M1 · Práctica aleatoria
+            </span>
+          </div>
+          <div className="relative z-20 flex shrink-0 justify-end">
           <button
             type="button"
             aria-expanded={filtersOpen}
@@ -629,7 +643,8 @@ export function PlaygroundExperience() {
               </div>
             </section>
           )}
-        </div>
+          </div>
+        </section>
 
         {current ? (
           <article className="flex min-h-[600px] flex-col overflow-hidden rounded-[10px] border border-[#d9dde5] bg-white text-[#111827] shadow-none">
