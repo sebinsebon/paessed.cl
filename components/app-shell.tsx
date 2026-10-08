@@ -22,7 +22,7 @@ function useAppTheme() {
   return { dark, setDark };
 }
 
-export function AppShell({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow?: string }) {
+export function AppShell({ children, title, eyebrow, wide = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean }) {
   const router = useRouter();
   const { dark, setDark } = useAppTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
@@ -61,7 +61,7 @@ export function AppShell({ children, title, eyebrow }: { children: ReactNode; ti
         aria-label={eyebrow ? eyebrow + " · " + title : title}
         className="min-h-screen transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]"
       >
-        <div className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7">{children}</div>
+        <div className={`mx-auto w-full px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7 ${wide ? "max-w-none" : "max-w-[1280px]"}`}>{children}</div>
       </main>
       <MobileNav />
     </div>
