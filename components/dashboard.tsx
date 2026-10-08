@@ -947,13 +947,12 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
     >
       <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
         <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
-          <div
+          <BookOpen
             aria-hidden="true"
-            className="pointer-events-none absolute -left-6 -top-6 z-0 flex h-44 w-44 rotate-[-10deg] items-center justify-center rounded-[36px] sm:h-52 sm:w-52 sm:rounded-[42px]"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--surface))" }}
-          >
-            <BookOpen size={150} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.16]" />
-          </div>
+            size={160}
+            strokeWidth={1.6}
+            className="pointer-events-none absolute -left-1 -top-3 z-0 h-36 w-36 rotate-[-10deg] text-[var(--primary)] opacity-[.07] sm:h-40 sm:w-40"
+          />
           <div className="relative z-10">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
@@ -1016,13 +1015,12 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
     <section className={embedded ? "relative isolate h-full overflow-hidden bg-transparent p-5" : "surface relative isolate overflow-hidden rounded-[20px] p-5"}>
-      <div
+      <Trophy
         aria-hidden="true"
-        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 rotate-[10deg] items-center justify-center rounded-[34px]"
-        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--surface))" }}
-      >
-        <Trophy size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--primary)] opacity-[.16]" />
-      </div>
+        size={112}
+        strokeWidth={1.6}
+        className="pointer-events-none absolute -right-1 top-1 z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
+      />
       <div className="relative z-10">
         <div className="min-w-0">
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
@@ -1092,13 +1090,12 @@ function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-learn" className={`surface relative isolate overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
-      <div
+      <Gamepad2
         aria-hidden="true"
-        className="pointer-events-none absolute -right-5 -top-4 z-0 flex h-40 w-40 rotate-[8deg] items-center justify-center rounded-[34px]"
-        style={{ backgroundColor: "color-mix(in srgb, var(--secondary) 8%, var(--surface))" }}
-      >
-        <Gamepad2 size={116} strokeWidth={1.6} className="h-[72%] w-[72%] text-[var(--secondary)] opacity-[.16]" />
-      </div>
+        size={116}
+        strokeWidth={1.6}
+        className="pointer-events-none absolute -right-1 -top-3 z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
+      />
       <div className="relative z-10">
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
         <h3 className="mt-2 text-lg font-extrabold">Practica a tu manera</h3>
