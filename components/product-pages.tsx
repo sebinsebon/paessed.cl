@@ -479,6 +479,7 @@ export function PlaygroundExperience() {
   const [position, setPosition] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [pendingAction, setPendingAction] = useState<"check" | "next" | null>(null);
 
   const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
   const questions = playgroundQuestions.filter((question) =>
@@ -504,6 +505,17 @@ export function PlaygroundExperience() {
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
 
+  // Confirmation expires after five seconds or when the displayed answer changes.
+  useEffect(() => {
+    if (!pendingAction) return;
+    const timeoutId = window.setTimeout(() => setPendingAction(null), 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [pendingAction, current?.id, selectedAnswer]);
+
+  useEffect(() => {
+    setPendingAction(null);
+  }, [current?.id, selectedAnswer]);
+
   const nextRandom = () => {
     if (position < visibleOrder.length - 1) {
       setPosition((previous) => previous + 1);
@@ -518,6 +530,20 @@ export function PlaygroundExperience() {
     setPosition(0);
     setAnswers({});
     setRevealed({});
+  };
+
+  const confirmAction = (action: "check" | "next") => {
+    if (pendingAction !== action) {
+      setPendingAction(action);
+      return;
+    }
+    setPendingAction(null);
+    if (action === "check") {
+      if (!current || !selectedAnswer || isRevealed) return;
+      setRevealed((previous) => ({ ...previous, [current.id]: true }));
+    } else {
+      nextRandom();
+    }
   };
 
   return (
@@ -538,7 +564,7 @@ export function PlaygroundExperience() {
         <section aria-label="Herramientas de práctica" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[14px] font-bold text-[var(--text)]">
-              <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"}
+              <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
             </span>
             <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">
               M1 · Práctica aleatoria
@@ -654,10 +680,9 @@ export function PlaygroundExperience() {
                 <span className="rounded-[6px] bg-[#f3f4f6] px-2 py-1 text-[12px] font-bold text-[#1f2937]">{current.year}</span>
                 <span className="rounded-[6px] border border-[#e5e7eb] px-2 py-1 text-[12px] font-medium text-[#475569]">{current.collection}</span>
               </div>
-              <span className="text-xs font-medium text-[#64748b]">Orden aleatorio</span>
             </div>
 
-            <div className="flex flex-1 flex-col px-5 pb-7 pt-7 sm:px-10 sm:pb-9 sm:pt-9 lg:px-12">
+            <div className="flex flex-1 flex-col px-5 pt-7 sm:px-10 sm:pt-9 lg:px-12">
               <div className="mb-6 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#64748b]">
                 <span className="font-bold">{current.axis}</span>
                 <span aria-hidden="true">·</span>
@@ -707,26 +732,55 @@ export function PlaygroundExperience() {
                 </div>
               )}
 
-              <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-[#e5e7eb] pt-6">
-                <button type="button" onClick={() => setPosition((previous) => Math.max(0, previous - 1))} disabled={position === 0} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
+            </div>
+
+            <footer className="mt-10 shrink-0 border-t border-[#e5e7eb] bg-[#fcfcfd] px-5 pb-7 pt-5 sm:px-10 sm:pb-8 sm:pt-6 lg:px-12">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setPendingAction(null); setPosition((previous) => Math.max(0, previous - 1)); }}
+                  disabled={position === 0}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                >
                   <ChevronLeft size={17} /> Anterior
                 </button>
-                <div className="ml-auto flex items-center gap-2">
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                   {!isRevealed ? (
-                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: true }))} disabled={!selectedAnswer} className="tactile-primary min-h-11 rounded-lg px-5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-45">
-                      Comprobar
+                    <button
+                      type="button"
+                      onClick={() => confirmAction("check")}
+                      disabled={!selectedAnswer}
+                      aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
+                      className="tactile-primary min-h-11 rounded-lg px-5 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      {pendingAction === "check" ? "Confirmar" : "Comprobar"}
                     </button>
                   ) : (
-                    <button type="button" onClick={() => setRevealed((previous) => ({ ...previous, [current.id]: false }))} className="min-h-11 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc]">
+                    <button
+                      type="button"
+                      onClick={() => { setPendingAction(null); setRevealed((previous) => ({ ...previous, [current.id]: false })); }}
+                      className="min-h-11 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:bg-[#f8fafc]"
+                    >
                       Reintentar
                     </button>
                   )}
-                  <button type="button" onClick={nextRandom} disabled={questions.length <= 1} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40">
-                    Otra aleatoria <ChevronRight size={17} />
+                  <button
+                    type="button"
+                    onClick={() => confirmAction("next")}
+                    disabled={questions.length <= 1}
+                    aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-4 text-xs font-bold text-[#334155] transition-colors hover:border-[#cbd5e1] hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {pendingAction === "next" ? "Confirmar" : "Otra pregunta"} <ChevronRight size={17} />
                   </button>
                 </div>
               </div>
-            </div>
+              {pendingAction && (
+                <p role="status" className="mt-3 text-right text-[11px] font-medium text-[#64748b]">
+                  {pendingAction === "check" ? "Presiona Confirmar para revisar tu respuesta." : "Presiona Confirmar para cambiar de pregunta."} Se cancela en 5 segundos.
+                </p>
+              )}
+            </footer>
           </article>
         ) : questions.length === 0 ? (
           <section className="surface rounded-[20px] px-6 py-14 text-center">
