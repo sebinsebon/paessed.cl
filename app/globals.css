@@ -260,12 +260,10 @@ html.dark [data-sileo-toast] {
 }
 
 
+/* The tour spotlight is drawn above the page in viewport coordinates.
+   Avoid separate outlines/stacking contexts on the card itself. */
 .tour-focus {
-  position: relative;
-  z-index: 80 !important;
-  outline: 3px solid color-mix(in srgb, var(--primary) 82%, white 8%);
-  outline-offset: 5px;
-  border-radius: 18px;
+  outline: none;
 }
 
 @keyframes critical-aura {
