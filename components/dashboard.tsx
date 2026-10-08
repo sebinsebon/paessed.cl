@@ -1336,9 +1336,9 @@ function MobileNav() {
 const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
-  { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
   { key: "exams-summary", title: "Realiza ensayos completos", body: "Desde aquí puedes hacer un ensayo PAES M1, consultar tu último resultado y medir tu dominio con 65 preguntas." },
   { key: "progress", title: "Sigue la evolución de tus puntajes", body: "Este gráfico muestra cómo han cambiado tus resultados reales de ensayos durante el mes." },
+  { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
   { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
 ];
 
@@ -1429,8 +1429,12 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
         )}
       </div>
       {spotlight && (
-        <div
+        <motion.div
+          key={item.key}
           aria-hidden="true"
+          initial={reducedMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: reducedMotion ? 0 : .35, ease: "easeOut" }}
           className="pointer-events-none fixed z-[85] rounded-[20px]"
           style={{
             top: spotlight.top,
@@ -1445,13 +1449,13 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
       <motion.div
         data-tour-panel
         layout="position"
-        initial={reducedMotion ? false : { opacity: 0, y: 18, scale: .97 }}
+        initial={reducedMotion ? false : { opacity: 0, y: 10, scale: .99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
-          layout: { duration: reducedMotion ? 0 : .52, ease: [.22, 1, .36, 1] },
-          opacity: { duration: reducedMotion ? 0 : .2 },
-          y: { duration: reducedMotion ? 0 : .25 },
-          scale: { duration: reducedMotion ? 0 : .25 },
+          layout: { duration: reducedMotion ? 0 : .65, ease: [.22, 1, .36, 1] },
+          opacity: { duration: reducedMotion ? 0 : .32, ease: "easeOut" },
+          y: { duration: reducedMotion ? 0 : .48, ease: [.22, 1, .36, 1] },
+          scale: { duration: reducedMotion ? 0 : .48, ease: [.22, 1, .36, 1] },
         }}
         className={`surface-raised fixed left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5 ${
           step === tourSteps.length - 1
@@ -1533,37 +1537,59 @@ export function Dashboard() {
 
   const tourKey = tourOpen ? tourSteps[tourStep].key : "";
 
-  // Scroll the currently visible (mobile/desktop) section into the safe area
-  // between the top of the viewport and the tour panel.
+  // Keep the focused section clear of the tour panel. A cancellable, consistent
+  // eased scroll is smoother than the browser-dependent native smooth scroll.
   useEffect(() => {
     if (!tourOpen) return;
 
-    const frame = window.requestAnimationFrame(() => {
+    let scrollFrame = 0;
+    let setupFrame = window.requestAnimationFrame(() => {
       const target = getVisibleTourTarget(tourSteps[tourStep].key);
       if (!target) return;
 
       const rect = target.getBoundingClientRect();
-      const headerBottom = 16; // The top nav scrolls with the page; only compact actions stay floating.
+      const headerBottom = 16;
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
-      // Use the final layout, not the panel's in-flight animated position.
       const panelHeight = panel?.offsetHeight ?? 0;
       const settledBottomPanelTop = window.innerHeight - 24 - panelHeight;
       const lastStep = tourStep === tourSteps.length - 1;
-      // The last step places the coach panel at the TOP; position the
-      // highlighted exam section immediately below the panel's bottom edge.
       const desiredTop = lastStep
         ? Math.max(headerBottom, 84 + panelHeight + 22)
         : (() => {
             const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, settledBottomPanelTop - 20));
             const freeHeight = Math.max(0, freeBottom - headerBottom);
-            // Center small sections; align tall ones to their beginning.
             return headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
           })();
-      const top = Math.max(0, window.scrollY + rect.top - desiredTop);
+
+      const startY = window.scrollY;
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const destination = Math.min(maxY, Math.max(0, startY + rect.top - desiredTop));
+      const distance = destination - startY;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+
+      if (reducedMotion || Math.abs(distance) < 2) {
+        window.scrollTo({ top: destination, behavior: "instant" });
+        return;
+      }
+
+      const duration = 720;
+      let startedAt: number | null = null;
+      const animateScroll = (time: number) => {
+        if (startedAt === null) startedAt = time;
+        const progress = Math.min(1, (time - startedAt) / duration);
+        const eased = progress < .5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        window.scrollTo({ top: startY + distance * eased, behavior: "instant" });
+        if (progress < 1) scrollFrame = window.requestAnimationFrame(animateScroll);
+      };
+      scrollFrame = window.requestAnimationFrame(animateScroll);
     });
-    return () => window.cancelAnimationFrame(frame);
+
+    return () => {
+      window.cancelAnimationFrame(setupFrame);
+      window.cancelAnimationFrame(scrollFrame);
+    };
   }, [tourOpen, tourStep]);
 
   return (
