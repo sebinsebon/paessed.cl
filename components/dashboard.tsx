@@ -1340,13 +1340,106 @@ const tourSteps = [
   { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
 ];
 
+/** Mobile and desktop mount separate copies; target the one actually rendered. */
+function getVisibleTourTarget(key: string): HTMLElement | null {
+  return Array.from(document.querySelectorAll<HTMLElement>(`[id="tour-${key}"]`))
+    .find((element) => element.getClientRects().length > 0) ?? null;
+}
+
+type TourSpotlight = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
 function Tour({ open, step, setStep, close }: { open: boolean; step: number; setStep: (n: number) => void; close: () => void }) {
   const reducedMotion = useReducedMotion();
+  const [spotlight, setSpotlight] = useState<TourSpotlight | null>(null);
+
+  // A viewport-level cutout avoids z-index/stacking-context problems inside the
+  // dashboard grids, and follows the target during smooth scrolling.
+  useEffect(() => {
+    if (!open) {
+      setSpotlight(null);
+      return;
+    }
+
+    const target = getVisibleTourTarget(tourSteps[step].key);
+    let frame = 0;
+    const measure = () => {
+      if (!target || !target.getClientRects().length) {
+        setSpotlight(null);
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const clampX = (value: number) => Math.max(0, Math.min(viewportWidth, value));
+      const clampY = (value: number) => Math.max(0, Math.min(viewportHeight, value));
+      const padding = 7;
+      setSpotlight({
+        top: clampY(rect.top - padding),
+        bottom: clampY(rect.bottom + padding),
+        left: clampX(rect.left - padding),
+        right: clampX(rect.right + padding),
+        viewportWidth,
+        viewportHeight,
+      });
+    };
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+    window.addEventListener("scroll", scheduleMeasure, { passive: true });
+    window.addEventListener("resize", scheduleMeasure);
+    const observer = new ResizeObserver(scheduleMeasure);
+    if (target) observer.observe(target);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleMeasure);
+      window.removeEventListener("resize", scheduleMeasure);
+      observer.disconnect();
+    };
+  }, [open, step]);
+
   if (!open) return null;
   const item = tourSteps[step];
+  const dimmer = "absolute bg-slate-950/45 backdrop-blur-[1px] pointer-events-auto";
+
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[1px]" />
+      <div className="pointer-events-none fixed inset-0 z-[70]" aria-hidden="true">
+        {spotlight ? (
+          <>
+            <div className={dimmer} style={{ top: 0, left: 0, width: "100%", height: spotlight.top }} />
+            <div className={dimmer} style={{ top: spotlight.bottom, left: 0, width: "100%", bottom: 0 }} />
+            <div className={dimmer} style={{ top: spotlight.top, left: 0, width: spotlight.left, height: spotlight.bottom - spotlight.top }} />
+            <div className={dimmer} style={{ top: spotlight.top, left: spotlight.right, right: 0, height: spotlight.bottom - spotlight.top }} />
+          </>
+        ) : (
+          <div className={dimmer + " inset-0"} />
+        )}
+      </div>
+      {spotlight && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-[85] rounded-[20px]"
+          style={{
+            top: spotlight.top,
+            left: spotlight.left,
+            width: Math.max(0, spotlight.right - spotlight.left),
+            height: Math.max(0, spotlight.bottom - spotlight.top),
+            outline: "3px solid var(--primary)",
+            outlineOffset: 0,
+          }}
+        />
+      )}
       <motion.div
         data-tour-panel
         layout="position"
@@ -1438,13 +1531,13 @@ export function Dashboard() {
 
   const tourKey = tourOpen ? tourSteps[tourStep].key : "";
 
-  // Keep the highlighted section between the fixed header and tour dialog.
-  // This also navigates to the first section when the tour is reopened.
+  // Scroll the currently visible (mobile/desktop) section into the safe area
+  // between the top of the viewport and the tour panel.
   useEffect(() => {
     if (!tourOpen) return;
 
     const frame = window.requestAnimationFrame(() => {
-      const target = document.getElementById("tour-" + tourSteps[tourStep].key);
+      const target = getVisibleTourTarget(tourSteps[tourStep].key);
       if (!target) return;
 
       const rect = target.getBoundingClientRect();
