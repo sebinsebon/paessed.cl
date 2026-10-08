@@ -248,6 +248,21 @@ async function parseFile(file: File): Promise<ParsedPackage> {
   };
 }
 
+/** Drag-and-drop entry point shared by the Ensayos list and the importer. */
+export async function importExamFile(file: File): Promise<ImportedExamSummary> {
+  const parsed = await parseFile(file);
+  if (parsed.fatalError) throw new Error(parsed.fatalError);
+  if (parsed.summary.questionCount === 0) {
+    throw new Error("El archivo no contiene una lista de preguntas reconocible.");
+  }
+  await saveImportedExam({
+    summary: parsed.summary,
+    finalJson: parsed.finalJson,
+    archive: parsed.archive,
+  });
+  return parsed.summary;
+}
+
 export function ImportExamExperience() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [parsed, setParsed] = useState<ParsedPackage | null>(null);
