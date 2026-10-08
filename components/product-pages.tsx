@@ -1046,7 +1046,7 @@ export function PlaygroundExperience() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(75dvh,640px)] w-[min(360px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl
+                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(75dvh,640px)] w-[min(360px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
                     >
                       <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
                       <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
