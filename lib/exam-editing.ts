@@ -198,7 +198,7 @@ export function applyQuestionPatch(source: unknown, index: number, patch: Questi
     const previousValue = readPath(question, originalView.answerPath);
     const usesNumericCode = typeof previousValue === "number";
     const hasValidOptionKey = originalView.options.some((option) => option.key === patch.answer);
-    const hasNumericCode = usesNumericCode && /^\\d+$/.test(patch.answer) && Number(patch.answer) >= 0 && Number(patch.answer) <= originalView.options.length;
+    const hasNumericCode = usesNumericCode && /^[0-9]+$/.test(patch.answer) && Number(patch.answer) >= 0 && Number(patch.answer) <= originalView.options.length;
     if (originalView.options.length && !hasValidOptionKey && !hasNumericCode) {
       throw new Error(usesNumericCode ? "Usa el índice numérico que utiliza este solucionario." : "La respuesta debe coincidir con una de las alternativas.");
     }
