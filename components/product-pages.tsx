@@ -499,8 +499,12 @@ export function PlaygroundExperience() {
     (axis === "all" || question.axis === axis) &&
     (!savedOnly || savedQuestionIds.includes(question.id))
   );
-  const visibleOrder = order.filter((id) => questions.some((question) => question.id === id));
-  const current = questions.find((question) => question.id === visibleOrder[position]);
+  // Keep the session's question pool stable even if a bookmark is removed mid-practice.
+  const sessionQuestions = isPracticing
+    ? playgroundQuestions.filter((question) => order.includes(question.id))
+    : questions;
+  const visibleOrder = order.filter((id) => sessionQuestions.some((question) => question.id === id));
+  const current = sessionQuestions.find((question) => question.id === visibleOrder[position]);
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
@@ -638,7 +642,7 @@ export function PlaygroundExperience() {
       return;
     }
     // Do not repeat within a round; reshuffle when the matching pool is exhausted.
-    const newOrder = shufflePlaygroundQuestions(questions);
+    const newOrder = shufflePlaygroundQuestions(sessionQuestions);
     if (newOrder.length > 1 && newOrder[0] === current?.id) {
       [newOrder[0], newOrder[1]] = [newOrder[1], newOrder[0]];
     }
@@ -980,7 +984,7 @@ export function PlaygroundExperience() {
                       <button
                         type="button"
                         onClick={() => confirmAction("next")}
-                        disabled={questions.length <= 1}
+                        disabled={sessionQuestions.length <= 1}
                         aria-label={pendingAction === "next" ? "Confirmar nueva pregunta" : "Otra pregunta"}
                         className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                       >
