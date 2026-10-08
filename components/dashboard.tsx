@@ -1492,6 +1492,8 @@ export function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Only remember scrollY during the tour; no extra listeners or storage.
   const tourOrigin = useRef<number | null>(null);
+  // Preserve the exact scroll destination between the two cards in the desktop row.
+  const sharedRowFocusTop = useRef<number | null>(null);
   const startTour = () => {
     if (tourOrigin.current === null) tourOrigin.current = window.scrollY;
     setTourStep(0);
@@ -1540,7 +1542,10 @@ export function Dashboard() {
   // Keep the focused section clear of the tour panel. A cancellable, consistent
   // eased scroll is smoother than the browser-dependent native smooth scroll.
   useEffect(() => {
-    if (!tourOpen) return;
+    if (!tourOpen) {
+      sharedRowFocusTop.current = null;
+      return;
+    }
 
     let scrollFrame = 0;
     let setupFrame = window.requestAnimationFrame(() => {
@@ -1573,7 +1578,14 @@ export function Dashboard() {
 
       const startY = window.scrollY;
       const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      const destination = Math.min(maxY, Math.max(0, startY + rect.top - desiredTop));
+      const plannedDestination = Math.min(maxY, Math.max(0, startY + rect.top - desiredTop));
+      // A change in coach text height must not trigger a second camera
+      // adjustment when focusing Playground immediately after Progress.
+      if (!shareRow) sharedRowFocusTop.current = null;
+      const destination = shareRow && sharedRowFocusTop.current !== null
+        ? Math.min(maxY, sharedRowFocusTop.current)
+        : plannedDestination;
+      if (shareRow) sharedRowFocusTop.current = destination;
       const distance = destination - startY;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
