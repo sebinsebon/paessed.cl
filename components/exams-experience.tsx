@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useState, type DragEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -42,6 +43,11 @@ type SortOrder = "recent" | "oldest" | "score-high" | "score-low" | "name";
 type UploadFeedback = { kind: "success" | "error"; message: string };
 
 const EXAMS_PER_PAGE = 5;
+
+const ImportExamPanel = dynamic(
+  () => import("@/components/import-exam").then((module) => module.ImportExamPanel),
+  { loading: () => <div role="status" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--muted)]">Preparando importador…</div> },
+);
 
 // These are illustrative records from the original prototype, not student data.
 const exampleExams: ExamRow[] = [
@@ -290,6 +296,7 @@ export function ExamsExperience() {
   const [settingsExamId, setSettingsExamId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [showImportPanel, setShowImportPanel] = useState(false);
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
 
   useEffect(() => {
@@ -341,9 +348,21 @@ export function ExamsExperience() {
 
   return (
     <AppShell title="Ensayos" eyebrow="Historial y práctica" wide>
-      <div className="mx-auto w-full max-w-[1460px] pb-5">
+      <AnimatePresence initial={false} mode="popLayout">
+        {!showImportPanel ? (
+          <motion.div
+            key="exams-home"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -18, scale: 0.99 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto w-full max-w-[1460px] pb-5"
+          >
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="min-w-0">
+          <motion.div
+            layoutId="exams-import-heading"
+            transition={{ type: "spring", stiffness: 280, damping: 35 }}
+            className="min-w-0">
             <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">
               Historial y práctica
             </p>
@@ -351,14 +370,15 @@ export function ExamsExperience() {
             <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
               Revisa tus resultados, explora las preguntas y continúa practicando.
             </p>
-          </div>
-          <Link
-            href="/app/ensayos/importar"
+          </motion.div>
+          <button
+            type="button"
+            onClick={() => { window.scrollTo({ top: 0, behavior: "instant" }); setShowImportPanel(true); }}
             className="tactile-primary inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-[12px] font-extrabold focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)]"
           >
             <Upload size={17} strokeWidth={2.4} />
             Importar ensayo
-          </Link>
+          </button>
         </header>
 
         <section aria-label="Buscar y ordenar ensayos" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -476,7 +496,34 @@ export function ExamsExperience() {
             </p>
           </div>
         </section>
-      </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="exams-import"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto w-full max-w-[1460px] pb-5"
+          >
+            <ImportExamPanel
+              embedded
+              onBack={() => {
+                setShowImportPanel(false);
+                void listImportedExams().then(setImportedExams).catch(() => setImportError(true));
+              }}
+              onImported={() => {
+                void listImportedExams().then((items) => {
+                  setImportedExams(items);
+                  setSearch("");
+                  setSort("recent");
+                  setPage(1);
+                }).catch(() => setImportError(true));
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {settingsExamId && (
         <ExamSettingsDialog
           examId={settingsExamId}
