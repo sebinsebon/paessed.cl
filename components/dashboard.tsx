@@ -1014,12 +1014,12 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
-    <section className={embedded ? "relative isolate h-full overflow-hidden bg-transparent p-5" : "surface relative isolate overflow-hidden rounded-[20px] p-5"}>
+    <section className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
       <Trophy
         aria-hidden="true"
         size={112}
         strokeWidth={1.6}
-        className="pointer-events-none absolute right-[2px] top-[14px] z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
+        className="pointer-events-none absolute right-[12px] top-[14px] z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
       />
       <div className="relative z-10">
         <div className="min-w-0">
@@ -1040,10 +1040,10 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
         </div>
       </div>
 
-      <motion.div whileHover={{ scale: 1.01 }} className="relative z-10 mt-4">
+      <motion.div whileHover={{ scale: 1.01 }} className="relative z-10 mt-auto pt-4">
         <Link
           href="/app/ensayos"
-          className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold"
+          className="tactile-primary inline-flex min-h-[80px] w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-xs font-extrabold"
         >
           REALIZAR UN ENSAYO
           <ArrowUpRight size={16} />
@@ -1094,7 +1094,7 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
         aria-hidden="true"
         size={116}
         strokeWidth={1.6}
-        className="pointer-events-none absolute right-[2px] top-[-2px] z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
+        className="pointer-events-none absolute right-[6px] top-[-2px] z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
       />
       <div className="relative z-10">
         <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
