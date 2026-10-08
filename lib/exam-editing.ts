@@ -195,10 +195,14 @@ export function applyQuestionPatch(source: unknown, index: number, patch: Questi
   if (patch.answer !== originalView.answer) {
     if (!originalView.answerEditable || !originalView.answerPath) throw new Error("La respuesta tiene una estructura avanzada que no se puede editar en este formulario.");
     if (!patch.answer.trim()) throw new Error("Debes elegir una respuesta correcta.");
-    if (originalView.options.length && !originalView.options.some((option) => option.key === patch.answer)) {
-      throw new Error("La respuesta debe coincidir con una de las alternativas.");
+    const previousValue = readPath(question, originalView.answerPath);
+    const usesNumericCode = typeof previousValue === "number";
+    const hasValidOptionKey = originalView.options.some((option) => option.key === patch.answer);
+    const hasNumericCode = usesNumericCode && /^\\d+$/.test(patch.answer) && Number(patch.answer) >= 0 && Number(patch.answer) <= originalView.options.length;
+    if (originalView.options.length && !hasValidOptionKey && !hasNumericCode) {
+      throw new Error(usesNumericCode ? "Usa el índice numérico que utiliza este solucionario." : "La respuesta debe coincidir con una de las alternativas.");
     }
-    writePath(question, originalView.answerPath, castLike(readPath(question, originalView.answerPath), patch.answer));
+    writePath(question, originalView.answerPath, castLike(previousValue, patch.answer));
   }
   return cloned;
 }
