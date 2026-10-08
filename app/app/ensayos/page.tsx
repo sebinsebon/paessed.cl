@@ -1,4 +1,4 @@
-import { ExamsExperience } from "@/components/product-pages";
+import { ExamsExperience } from "@/components/exams-experience";
 
 export default function ExamsPage() {
   return <ExamsExperience />;
