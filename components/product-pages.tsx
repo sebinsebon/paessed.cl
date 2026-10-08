@@ -1065,7 +1065,7 @@ export function PlaygroundExperience() {
               >
                 <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
                 <p key={sessionFilters.year + ":" + sessionFilters.axis + ":" + sessionFilters.savedOnly} className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
-                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis}${sessionFilters.savedOnly ? " · Guardadas" : ""}
+                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
               </motion.div>
 
