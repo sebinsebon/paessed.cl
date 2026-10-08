@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed, announce } from "@/components/app-navigation";
+
 import {
   AnimatePresence,
   motion,
@@ -13,13 +16,13 @@ import {
   BookOpen,
   Calculator,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleHelp,
   Flame,
   Gamepad2,
   Gauge,
   Home,
-  Medal,
   Moon,
   Play,
   ScanLine,
@@ -34,11 +37,9 @@ import {
   BarChart3,
   Triangle,
   TrendingUp,
-  Pencil,
   Route,
-  Clock3,
-  ShieldCheck,
   ArrowUpRight,
+  UserRound,
 } from "lucide-react";
 import {
   CSSProperties,
@@ -52,24 +53,6 @@ import {
 } from "react";
 
 /** Sileo’s native header renders the bell and title; the body below holds the subtitle. */
-function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
-  sileo.clear();
-  const options = {
-    title,
-    description: subtitle,
-    // The top-edge layout places the badge ABOVE the description. CSS anchors
-    // its viewport bottom-right without overriding Sileo’s morph geometry.
-    position: "top-right" as const,
-    icon: variant === "info"
-      ? <Bell size={17} strokeWidth={2.3} color="#fb923c" />
-      : <Check size={17} strokeWidth={2.6} color="#10b981" />,
-    duration: 3000,
-    autopilot: { expand: 0, collapse: 2400 },
-  };
-  if (variant === "success") sileo.success(options);
-  else sileo.info(options);
-}
-
 const MASTERY = {
   Dominado: { color: "#10b981", soft: "#ecfdf5", darkSoft: "#0b2a24" },
   Fuerte: { color: "#6366f1", soft: "#eef2ff", darkSoft: "#1d2048" },
@@ -177,6 +160,35 @@ function masteryStyle(state: MasteryState): MasteryCSS {
   return { "--mastery": MASTERY[state].color };
 }
 
+/**
+ * Carousel-only mastery color.
+ * Keeps perceived lightness/chroma steady while hue travels from red to green.
+ */
+function carouselMasteryColor(percentage: number) {
+  const pct = Math.max(0, Math.min(100, percentage));
+
+  // Bright mastery family from the dashboard reference:
+  // critical orange → regular gold → strong lime → mastered green.
+  if (pct >= 85) return "#77E637";
+  if (pct >= 75) return "#ACE637";
+  if (pct >= 60) return "#E6B537";
+  if (pct >= 40) return "#E69A37";
+  return "#E67D37";
+}
+
+function carouselMasteryStyle(percentage: number): MasteryCSS {
+  // Only the carousel progress fill uses this palette; the card keeps its axis color.
+  const pct = Math.max(0, Math.min(100, percentage));
+  const gradient =
+    pct >= 85 ? "linear-gradient(90deg, #b6f35c, #64db35)" :
+    pct >= 75 ? "linear-gradient(90deg, #c6ed4b, #83dc39)" :
+    pct >= 60 ? "linear-gradient(90deg, #f3c64a, #c4df40)" :
+    pct >= 40 ? "linear-gradient(90deg, #f6a34a, #ebca42)" :
+    "linear-gradient(90deg, #ed5954, #f3953f)";
+
+  return { "--mastery": carouselMasteryColor(pct), background: gradient };
+}
+
 function MasteryBadge({ state }: { state: MasteryState }) {
   const item = MASTERY[state];
   return (
@@ -194,183 +206,10 @@ function MasteryBadge({ state }: { state: MasteryState }) {
   );
 }
 
-function Sidebar({ tourFocus, dark }: { tourFocus: boolean; dark: boolean }) {
-  const nav = [
-    ["Inicio", Home, true, ""],
-    ["Aprender", Route, false, "Ruta"],
-    ["Ensayos", Trophy, false, ""],
-    ["Scanner", ScanLine, false, ""],
-    ["Playground", Gamepad2, false, "Pronto"],
-  ] as const;
-
-  return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-[264px] border-r border-[var(--border)] bg-[var(--surface)] px-5 py-5 lg:flex lg:flex-col">
-      <div className="mb-7 flex w-full justify-center">
-        <div className="w-[178px]">
-          <img
-            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
-            alt="PAESSED"
-            className="block h-auto w-full"
-          />
-          <div className="mt-1 text-[10px] font-extrabold tracking-[.16em] text-[var(--muted)]">MATEMÁTICA M1</div>
-        </div>
-      </div>
-
-      <nav className={tourFocus ? "tour-focus" : ""}>
-        <div className="space-y-1.5">
-          {nav.map(([label, Icon, active, badge]) => (
-            <motion.button
-              whileHover={{ x: active ? 0 : 3 }}
-              whileTap={{ scale: 0.985 }}
-              key={label}
-              className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors ${
-                active
-                  ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-pressed)]"
-                  : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
-              }`}
-            >
-              <Icon size={18} />
-              <span className="flex-1">{label}</span>
-              {badge && (
-                <span className={`rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
-                  {badge}
-                </span>
-              )}
-            </motion.button>
-          ))}
-        </div>
-      </nav>
-
-      <div className="mt-auto space-y-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
-          <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)]">
-            <ShieldCheck size={16} className="text-[var(--primary)]" />
-            Modo Offline Ready
-            <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,.45)]" />
-          </div>
-        </div>
-        <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">PAESSED adapta tu ruta con evidencia real, no con un puntaje inventado.</p>
-      </div>
-    </aside>
-  );
-}
-
-function TopMetric({ icon: Icon, children, accent = false, iconColor }: { icon: ComponentType<{ size?: number; className?: string; style?: CSSProperties }>; children: React.ReactNode; accent?: boolean; iconColor?: string }) {
-  return (
-    <div
-      className="flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-bold"
-      style={accent
-        ? { borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--primary-soft)", color: "#fb923c" }
-        : { borderColor: "var(--border)", background: "var(--surface)", color: "var(--muted)" }}
-    >
-      <Icon size={15} style={iconColor ? { color: iconColor } : undefined} />
-      {children}
-    </div>
-  );
-}
-
-function Topbar({
-  dark,
-  setDark,
-  monthlyGoal,
-  onTour,
-}: {
-  dark: boolean;
-  setDark: (v: boolean) => void;
-  monthlyGoal: number;
-  onTour: () => void;
-}) {
-  const notificationOpen = useRef(false);
-  const notificationTimer = useRef<number | null>(null);
-
-  const toggleNotifications = () => {
-    if (notificationOpen.current) {
-      sileo.clear();
-      notificationOpen.current = false;
-      if (notificationTimer.current) window.clearTimeout(notificationTimer.current);
-      return;
-    }
-
-    announce("Notificaciones", "No tienes avisos pendientes todavía.");
-    notificationOpen.current = true;
-    notificationTimer.current = window.setTimeout(() => {
-      notificationOpen.current = false;
-    }, 3000);
-  };
-
-  useEffect(() => {
-    // Switching themes clears Sileo globally. Keep the bell's open/closed
-    // state in sync so the first click after a theme switch opens it again.
-    notificationOpen.current = false;
-    if (notificationTimer.current) window.clearTimeout(notificationTimer.current);
-  }, [dark]);
-
-  useEffect(() => () => {
-    if (notificationTimer.current) window.clearTimeout(notificationTimer.current);
-  }, []);
-
-  return (
-    <header className="fixed left-0 right-0 top-0 z-40 flex h-[68px] items-center border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] px-4 backdrop-blur-lg lg:left-[264px] lg:px-6">
-      <div className="flex w-full items-center gap-2">
-        <div className="mr-auto flex items-center gap-2 lg:hidden">
-          <img
-            src={dark ? "/paessed-logo-dark.svg" : "/paessed-logo.svg"}
-            alt="PAESSED"
-            className="block h-auto w-[122px]"
-          />
-        </div>
-        <div className="hidden items-center gap-2 lg:flex">
-          <TopMetric icon={Flame} accent iconColor="#fb923c">14 días</TopMetric>
-          <TopMetric icon={Medal}>Nv. 17 · 1.240 XP</TopMetric>
-          <TopMetric icon={Target}>Objetivo 3/5</TopMetric>
-          <TopMetric icon={TrendingUp}>Meta {monthlyGoal} pts</TopMetric>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <motion.button
-            whileTap={{ scale: .92 }}
-            aria-label="Mostrar ayuda"
-            onClick={onTour}
-            className="soft-button hidden h-9 w-9 items-center justify-center rounded-xl sm:flex"
-          >
-            <CircleHelp size={17} />
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: .92 }}
-            aria-label="Notificaciones"
-            onClick={toggleNotifications}
-            className="soft-button relative flex h-9 w-9 items-center justify-center rounded-xl"
-          >
-            <Bell size={17} className="text-[var(--text)]" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
-          </motion.button>
-          <motion.button
-            whileTap={{ rotate: -8, scale: .92 }}
-            aria-label="Cambiar tema"
-            onClick={() => setDark(!dark)}
-            className="soft-button flex h-9 w-9 items-center justify-center rounded-xl"
-          >
-            {dark ? <Sun size={17} className="text-[#ffb86a]" /> : <Moon size={17} className="text-[var(--secondary)]" />}
-          </motion.button>
-          <button className="ml-1 flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-[var(--surface-2)]">
-            <div
-              className="grid h-8 w-8 place-items-center rounded-full border text-[10px] font-extrabold"
-              style={{ borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--surface-2)", color: "var(--text)" }}
-            >SB</div>
-            <div className="hidden text-left sm:block">
-              <div className="text-xs font-extrabold">Seba</div>
-              <div className="text-[10px] text-[var(--muted)]">4° Medio</div>
-            </div>
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
 function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis: Axis; onOpen: (axis: Axis) => void; mobile?: boolean; duplicate?: boolean }) {
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
+  const axisColor = MASTERY[axis.state].color;
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -386,9 +225,9 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         <div
           className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border"
           style={{
-            color: MASTERY[axis.state].color,
-            borderColor: `color-mix(in srgb, ${MASTERY[axis.state].color} 25%, var(--border))`,
-            background: `color-mix(in srgb, ${MASTERY[axis.state].color} 10%, var(--surface))`,
+            color: axisColor,
+            borderColor: `color-mix(in srgb, ${axisColor} 25%, var(--border))`,
+            background: `color-mix(in srgb, ${axisColor} 10%, var(--surface))`,
           }}
         >
           <Icon size={19} />
@@ -401,7 +240,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
             </div>
             <span
               className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
-              style={{ color: MASTERY[axis.state].color, background: `color-mix(in srgb, ${MASTERY[axis.state].color} 11%, var(--surface))` }}
+              style={{ color: axisColor, background: `color-mix(in srgb, ${axisColor} 11%, var(--surface))` }}
             >
               {axis.percentage}%
             </span>
@@ -414,11 +253,23 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           initial={{ width: 0 }}
           animate={{ width: `${axis.percentage}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={masteryStyle(axis.state)}
+          style={carouselMasteryStyle(axis.percentage)}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
-        <span className="font-semibold" style={{ color: MASTERY[axis.state].color }}>Estado: {axis.state}</span>
+        <span className="font-semibold text-[var(--muted)]">
+          Estado:{" "}
+          <span
+            style={{
+              ...carouselMasteryStyle(axis.percentage),
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {axis.state}
+          </span>
+        </span>
         <span className="truncate text-right text-[var(--muted)]">{axis.weakest}</span>
       </div>
     </motion.button>
@@ -647,102 +498,120 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section id="tour-mission" className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[var(--primary-soft)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--primary)]">Misión de hoy</span>
-            <MasteryBadge state="Crítico" />
-          </div>
-          <span className="text-[10px] font-bold text-[var(--muted)]">Se renueva cada día</span>
-        </div>
-
-        <div className="mt-4 max-w-2xl">
-          <p className="text-xs font-bold text-[var(--danger)]">Refuerza tu punto más débil</p>
-          <h2 className="mt-1 text-[22px] font-extrabold tracking-[-.02em] sm:text-[26px]">Triángulos y Teorema de Tales</h2>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--muted)]">Cinco preguntas enfocadas en una de tus debilidades actuales para que tu progreso de hoy tenga una razón clara.</p>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Clock3 size={14} className="text-[var(--primary)]" /> ~6 min</span>
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Target size={14} className="text-[var(--secondary)]" /> 5 preguntas</span>
-          <span className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[11px] font-bold text-[var(--muted)]"><Medal size={14} className="text-[var(--primary)]" /> +30 XP</span>
-        </div>
-
-        <motion.button
-          whileHover={{ scale: 1.008 }}
-          onClick={() => announce("Misión de hoy", "Abriríamos tu práctica adaptativa de 5 preguntas.", "success")}
-          className="tactile-primary mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold sm:w-auto"
-        >
-          <Play size={17} fill="currentColor" /> EMPEZAR PRÁCTICA DE HOY
-          <span className="rounded-md bg-black/15 px-2 py-1 text-[10px]">+30 XP</span>
-        </motion.button>
-      </div>
-    </section>
-  );
-}
-
-function MonthlyGoal({ goal, setGoal }: { goal: number; setGoal: (n: number) => void }) {
-  const [editing, setEditing] = useState(false);
-  const last = 742;
-  const gap = Math.max(goal - last, 0);
-  const pct = Math.min(100, Math.round((last / goal) * 100));
-  return (
-    <section className="surface relative rounded-[20px] p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><Target size={15} className="text-[var(--primary)]" /> Meta del mes</div>
-          <h3 className="mt-2 text-2xl font-extrabold">{goal} pts</h3>
-          <p className="mt-1 text-xs text-[var(--muted)]">PAESSED te la propuso según tus ensayos.</p>
-        </div>
-        <button onClick={() => setEditing(!editing)} className="soft-button flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[10px] font-extrabold"><Pencil size={13} /> Editar</button>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <div className="text-[10px] font-bold text-[var(--muted)]">Último ensayo real</div>
-            <div className="mt-1 text-xl font-extrabold">{last} pts</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] font-bold text-[var(--muted)]">Brecha</div>
-            <div className="mt-1 text-sm font-extrabold text-[var(--primary)]">+{gap} pts</div>
-          </div>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: .9, ease: [.22,1,.36,1] }} className="h-full rounded-full bg-[var(--primary)]" />
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {editing && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-            <div className="mt-3 border-t border-[var(--border)] pt-3">
-              <p className="mb-2 text-[10px] font-bold text-[var(--muted)]">Elige una meta o vuelve a la sugerida.</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[760, 780, 800, 850].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setGoal(option);
-                      setEditing(false);
-                      announce("Meta mensual actualizada", `Tu nuevo objetivo es llegar a ${option} pts este mes.`, "success");
-                    }}
-                    className={`rounded-lg border px-2 py-2 text-[11px] font-extrabold ${goal === option ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-3)]"}`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+    <section
+      id="tour-mission"
+      className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}
+    >
+      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
+        <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
+          <BookOpen
+            aria-hidden="true"
+            size={160}
+            strokeWidth={1.6}
+            className="pointer-events-none absolute -left-1 -top-3 z-0 h-36 w-36 rotate-[-10deg] text-[var(--primary)] opacity-[.07] sm:h-40 sm:w-40"
+          />
+          <div className="relative z-10">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
+              <p className="mt-1 text-[13px] font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</p>
             </div>
+            <h2 className="mt-6 max-w-[470px] text-[24px] font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[25px]">
+              Aprende siguiendo una ruta personalizada
+            </h2>
+            <p className="mt-3 max-w-[480px] text-sm leading-6 text-[var(--muted)]">
+              Refuerza lo que necesitas, repasa a tu ritmo y avanza por cada eje de Matemática M1, paso a paso.
+            </p>
+          </div>
+
+          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="relative z-10 mt-8 self-start">
+            <Link
+              href="/app/aprender"
+              className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[13px] font-extrabold"
+            >
+              <Play size={17} fill="currentColor" />
+              EMPEZAR
+            </Link>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+
+        <div className="flex h-full w-full flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 lg:min-h-[306px]"> 
+          <div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-extrabold uppercase tracking-[.11em] text-[var(--muted)]">Tu ruta de aprendizaje</p>
+            <Route size={19} className="shrink-0 text-[var(--primary)]" strokeWidth={2} />
+          </div>
+
+          <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[var(--primary)]">Siguiente parada</p>
+            <p className="mt-1.5 text-base font-extrabold leading-6 text-[var(--text)]">Álgebra y Funciones</p>
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Aprende y practica a tu ritmo</p>
+          </div>
+
+          </div>
+          <div className="mt-6">
+          <div className="flex items-center justify-between gap-2 text-xs font-bold text-[var(--muted)]">
+            <span>Explora los ejes de M1</span>
+            <span className="tabular-nums">4 ejes</span>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2" aria-hidden="true">
+            <span className="h-2 rounded-full bg-[var(--primary)]" />
+            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
+            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
+            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
+          </div>
+          <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
+            Un paso a la vez, sin perder de vista lo que viene.
+          </p>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
 
-function ProgressMonth() {
+function ExamsCard({ embedded = false }: { embedded?: boolean }) {
+  return (
+    <section id="tour-exams-summary" className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
+      <Trophy
+        aria-hidden="true"
+        size={112}
+        strokeWidth={1.6}
+        className="pointer-events-none absolute right-[12px] top-[14px] z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
+      />
+      <div className="relative z-10">
+        <div className="min-w-0">
+          <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
+          <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em]">¿Listo para realizar un ensayo?</h3>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
+        </div>
+      </div>
+
+      <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+          <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
+          <div className="mt-1 text-lg font-extrabold">742 pts</div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+          <div className="text-[10px] font-bold text-[var(--muted)]">Formato</div>
+          <div className="mt-1 text-lg font-extrabold">65 preguntas</div>
+        </div>
+      </div>
+
+      <motion.div whileHover={{ scale: 1.01 }} className="relative z-10 mt-auto pt-4">
+        <Link
+          href="/app/ensayos"
+          className="tactile-primary inline-flex min-h-[80px] w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-xs font-extrabold"
+        >
+          REALIZAR UN ENSAYO
+          <ArrowUpRight size={16} />
+        </Link>
+      </motion.div>
+    </section>
+  );
+}
+
+
+function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
   const points = [690, 711, 728, 742];
   const labels = ["03", "10", "16", "21 sep"];
   const min = 670;
@@ -750,7 +619,7 @@ function ProgressMonth() {
   const coords = points.map((p, i) => ({ x: 28 + i * 98, y: 112 - ((p - min) / (max - min)) * 80 }));
   const path = coords.map((c, i) => `${i ? "L" : "M"}${c.x},${c.y}`).join(" ");
   return (
-    <section className="surface rounded-[20px] p-5">
+    <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Progreso de septiembre</div>
@@ -777,36 +646,129 @@ function ProgressMonth() {
 
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
-    <section id="tour-learn" className={`surface relative overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
-      <div className="relative">
-        <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]"><BookOpen size={15} className="text-[var(--secondary)]" /> Aprender</div>
-        <h3 className="mt-2 text-lg font-extrabold">Continúa tu ruta adaptativa</h3>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">El modo tipo Duolingo completo vive en Aprender. Inicio solo te deja volver rápido donde quedaste.</p>
-
-        <div className="mt-5 flex items-center justify-center gap-2">
-          {["done", "done", "current", "next", "next"].map((state, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <motion.div
-                animate={state === "current" ? { scale: [1, 1.08, 1] } : undefined}
-                transition={{ repeat: Infinity, duration: 2.8 }}
-                className={`grid h-9 w-9 place-items-center rounded-full border-2 text-xs font-extrabold ${state === "done" ? "border-emerald-500 bg-emerald-500 text-white" : state === "current" ? "border-[var(--primary)] bg-[var(--primary)] text-white shadow-[0_0_0_5px_color-mix(in_srgb,var(--primary)_14%,transparent)]" : "border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--muted)]"}`}
-              >
-                {state === "done" ? <Check size={15} /> : i + 1}
-              </motion.div>
-              {i < 4 && <div className="h-px w-5 bg-[var(--border-strong)]" />}
-            </div>
-          ))}
-        </div>
+    <section id="tour-learn" className={`surface relative isolate overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
+      <Gamepad2
+        aria-hidden="true"
+        size={116}
+        strokeWidth={1.6}
+        className="pointer-events-none absolute right-[6px] top-[-2px] z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
+      />
+      <div className="relative z-10">
+        <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
+        <h3 className="mt-2 text-lg font-extrabold">Practica a tu manera</h3>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Resuelve todas las preguntas que quieras y ajusta la práctica por año, eje temático y otros filtros.</p>
 
         <div className="mt-5 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
           <div>
-            <div className="text-xs font-extrabold">Semejanza y proporcionalidad</div>
-            <div className="mt-1 text-[10px] text-[var(--muted)]">Lección 3 de 5 · ~8 min</div>
+            <div className="text-xs font-extrabold">Pregunta aleatoria</div>
+            <div className="mt-1 text-[10px] text-[var(--muted)]">Empieza al instante o entra al Playground para personalizar la sesión.</div>
           </div>
-          <button onClick={() => announce("Ruta de aprendizaje", "Aprender abrirá tu ruta vertical completa estilo Duolingo.")} className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></button>
+          <Link href="/app/playground" className="soft-button flex items-center gap-1 rounded-lg px-3 py-2 text-[10px] font-extrabold">Abrir <ChevronRight size={14} /></Link>
         </div>
       </div>
     </section>
+  );
+}
+
+function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; learnFocus: boolean }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const examsRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const [shape, setShape] = useState({ width: 0, height: 0, examsLeft: 0, progressLeft: 0, progressTop: 0 });
+
+  useEffect(() => {
+    const shell = shellRef.current;
+    const exams = examsRef.current;
+    const progress = progressRef.current;
+    if (!shell || !exams || !progress) return;
+
+    const update = () => {
+      const shellRect = shell.getBoundingClientRect();
+      const examsRect = exams.getBoundingClientRect();
+      const progressRect = progress.getBoundingClientRect();
+
+      setShape({
+        width: shellRect.width,
+        height: shellRect.height,
+        examsLeft: examsRect.left - shellRect.left,
+        progressLeft: progressRect.left - shellRect.left,
+        progressTop: progressRect.top - shellRect.top,
+      });
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(shell);
+    observer.observe(exams);
+    observer.observe(progress);
+    return () => observer.disconnect();
+  }, []);
+
+  const inset = 0.5;
+  const r = 20;
+  const right = Math.max(inset, shape.width - inset);
+  const bottom = Math.max(inset, shape.height - inset);
+  const path = shape.width > 0 && shape.height > 0
+    ? [
+        `M ${shape.examsLeft + r} ${inset}`,
+        `H ${right - r}`,
+        `Q ${right} ${inset} ${right} ${inset + r}`,
+        `V ${bottom - r}`,
+        `Q ${right} ${bottom} ${right - r} ${bottom}`,
+        `H ${shape.progressLeft + r}`,
+        `Q ${shape.progressLeft} ${bottom} ${shape.progressLeft} ${bottom - r}`,
+        `V ${shape.progressTop + r}`,
+        `Q ${shape.progressLeft} ${shape.progressTop} ${shape.progressLeft + r} ${shape.progressTop}`,
+        `H ${shape.examsLeft - r}`,
+        `Q ${shape.examsLeft} ${shape.progressTop} ${shape.examsLeft} ${shape.progressTop - r}`,
+        `V ${inset + r}`,
+        `Q ${shape.examsLeft} ${inset} ${shape.examsLeft + r} ${inset}`,
+        "Z",
+      ].join(" ")
+    : "";
+
+  return (
+    <>
+      <div className="mt-4 grid gap-4 lg:hidden">
+        <DailyMission tourFocus={missionFocus} />
+        <ExamsCard />
+        <LearnCard tourFocus={learnFocus} />
+        <ProgressMonth />
+      </div>
+
+      <div ref={shellRef} className="relative mt-4 hidden lg:block">
+        {path && (
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
+            viewBox={`0 0 ${shape.width} ${shape.height}`}
+            preserveAspectRatio="none"
+          >
+            <path
+              d={path}
+              fill="var(--surface)"
+              stroke="var(--border)"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
+
+        <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
+          <DailyMission tourFocus={missionFocus} />
+          <div ref={examsRef}>
+            <ExamsCard embedded />
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
+          <LearnCard tourFocus={learnFocus} />
+          <div ref={progressRef}>
+            <ProgressMonth embedded />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -899,7 +861,7 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-rose-400" />Incorrecta</span>
             <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[3px] bg-[var(--muted-2)] opacity-60" />Omitida</span>
           </div>
-          <button className="soft-button rounded-lg px-3 py-2 text-[10px] font-extrabold text-[var(--primary)]">Ver todos</button>
+          <Link href="/app/ensayos" className="soft-button rounded-lg px-3 py-2 text-[10px] font-extrabold text-[var(--primary)]">Ver todos</Link>
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
@@ -909,43 +871,129 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function MobileNav() {
-  const items = [["Inicio", Home], ["Aprender", BookOpen], ["Ensayos", Trophy], ["Scanner", ScanLine]] as const;
-  return (
-    <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
-      {items.map(([label, Icon], i) => (
-        <button key={label} className={`flex min-w-[62px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${i === 0 ? "bg-[var(--primary)] text-white" : "text-[var(--muted)]"}`}>
-          <Icon size={17} />{label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
 const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
-  { key: "learn", title: "Tu ruta vive en Aprender", body: "Inicio muestra dónde quedaste; Aprender tendrá la experiencia completa estilo Duolingo." },
+  { key: "exams-summary", title: "Realiza ensayos completos", body: "Desde aquí puedes hacer un ensayo PAES M1, consultar tu último resultado y medir tu dominio con 65 preguntas." },
+  { key: "progress", title: "Sigue la evolución de tus puntajes", body: "Este gráfico muestra cómo han cambiado tus resultados reales de ensayos durante el mes." },
+  { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
   { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
 ];
 
+/** Mobile and desktop mount separate copies; target the one actually rendered. */
+function getVisibleTourTarget(key: string): HTMLElement | null {
+  return Array.from(document.querySelectorAll<HTMLElement>(`[id="tour-${key}"]`))
+    .find((element) => element.getClientRects().length > 0) ?? null;
+}
+
+type TourSpotlight = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
 function Tour({ open, step, setStep, close }: { open: boolean; step: number; setStep: (n: number) => void; close: () => void }) {
   const reducedMotion = useReducedMotion();
+  const [spotlight, setSpotlight] = useState<TourSpotlight | null>(null);
+
+  // A viewport-level cutout avoids z-index/stacking-context problems inside the
+  // dashboard grids, and follows the target during smooth scrolling.
+  useEffect(() => {
+    if (!open) {
+      setSpotlight(null);
+      return;
+    }
+
+    const target = getVisibleTourTarget(tourSteps[step].key);
+    let frame = 0;
+    const measure = () => {
+      if (!target || !target.getClientRects().length) {
+        setSpotlight(null);
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const clampX = (value: number) => Math.max(0, Math.min(viewportWidth, value));
+      const clampY = (value: number) => Math.max(0, Math.min(viewportHeight, value));
+      const padding = 7;
+      setSpotlight({
+        top: clampY(rect.top - padding),
+        bottom: clampY(rect.bottom + padding),
+        left: clampX(rect.left - padding),
+        right: clampX(rect.right + padding),
+        viewportWidth,
+        viewportHeight,
+      });
+    };
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+    window.addEventListener("scroll", scheduleMeasure, { passive: true });
+    window.addEventListener("resize", scheduleMeasure);
+    const observer = new ResizeObserver(scheduleMeasure);
+    if (target) observer.observe(target);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleMeasure);
+      window.removeEventListener("resize", scheduleMeasure);
+      observer.disconnect();
+    };
+  }, [open, step]);
+
   if (!open) return null;
   const item = tourSteps[step];
+  const dimmer = "absolute bg-slate-950/45 backdrop-blur-[1px] pointer-events-auto";
+
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[1px]" />
+      <div className="pointer-events-none fixed inset-0 z-[70]" aria-hidden="true">
+        {spotlight ? (
+          <>
+            <div className={dimmer} style={{ top: 0, left: 0, width: "100%", height: spotlight.top }} />
+            <div className={dimmer} style={{ top: spotlight.bottom, left: 0, width: "100%", bottom: 0 }} />
+            <div className={dimmer} style={{ top: spotlight.top, left: 0, width: spotlight.left, height: spotlight.bottom - spotlight.top }} />
+            <div className={dimmer} style={{ top: spotlight.top, left: spotlight.right, right: 0, height: spotlight.bottom - spotlight.top }} />
+          </>
+        ) : (
+          <div className={dimmer + " inset-0"} />
+        )}
+      </div>
+      {spotlight && (
+        <motion.div
+          key={item.key}
+          aria-hidden="true"
+          initial={reducedMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: reducedMotion ? 0 : .16, ease: "easeOut" }}
+          className="pointer-events-none fixed z-[85] rounded-[20px]"
+          style={{
+            top: spotlight.top,
+            left: spotlight.left,
+            width: Math.max(0, spotlight.right - spotlight.left),
+            height: Math.max(0, spotlight.bottom - spotlight.top),
+            outline: "3px solid var(--primary)",
+            outlineOffset: 0,
+          }}
+        />
+      )}
       <motion.div
         data-tour-panel
         layout="position"
-        initial={reducedMotion ? false : { opacity: 0, y: 18, scale: .97 }}
+        initial={reducedMotion ? false : { opacity: 0, y: 10, scale: .99 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
-          layout: { duration: reducedMotion ? 0 : .52, ease: [.22, 1, .36, 1] },
-          opacity: { duration: reducedMotion ? 0 : .2 },
-          y: { duration: reducedMotion ? 0 : .25 },
-          scale: { duration: reducedMotion ? 0 : .25 },
+          layout: { duration: reducedMotion ? 0 : .32, ease: [.22, 1, .36, 1] },
+          opacity: { duration: reducedMotion ? 0 : .18, ease: "easeOut" },
+          y: { duration: reducedMotion ? 0 : .28, ease: [.22, 1, .36, 1] },
+          scale: { duration: reducedMotion ? 0 : .28, ease: [.22, 1, .36, 1] },
         }}
         className={`surface-raised fixed left-1/2 z-[110] w-[calc(100%-28px)] max-w-lg -translate-x-1/2 rounded-2xl p-4 sm:p-5 ${
           step === tourSteps.length - 1
@@ -979,8 +1027,11 @@ export function Dashboard() {
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   // Only remember scrollY during the tour; no extra listeners or storage.
   const tourOrigin = useRef<number | null>(null);
+  // Preserve the exact scroll destination between the two cards in the desktop row.
+  const sharedRowFocusTop = useRef<number | null>(null);
   const startTour = () => {
     if (tourOrigin.current === null) tourOrigin.current = window.scrollY;
     setTourStep(0);
@@ -1009,11 +1060,6 @@ export function Dashboard() {
     localStorage.setItem("paessed-theme", value ? "dark" : "light");
   };
 
-  const updateGoal = (value: number) => {
-    setMonthlyGoal(value);
-    localStorage.setItem("paessed-monthly-goal", String(value));
-  };
-
   const closeTour = () => {
     const returnTo = tourOrigin.current;
     tourOrigin.current = null;
@@ -1031,41 +1077,83 @@ export function Dashboard() {
 
   const tourKey = tourOpen ? tourSteps[tourStep].key : "";
 
-  // Keep the highlighted section between the fixed header and tour dialog.
-  // This also navigates to the first section when the tour is reopened.
+  // Keep the focused section clear of the tour panel. A cancellable, consistent
+  // eased scroll is smoother than the browser-dependent native smooth scroll.
   useEffect(() => {
-    if (!tourOpen) return;
+    if (!tourOpen) {
+      sharedRowFocusTop.current = null;
+      return;
+    }
 
-    const frame = window.requestAnimationFrame(() => {
-      const target = document.getElementById("tour-" + tourSteps[tourStep].key);
-      if (!target) return;
+    let scrollFrame = 0;
+    let setupFrame = window.requestAnimationFrame(() => {
+      const key = tourSteps[tourStep].key;
+      const focusedTarget = getVisibleTourTarget(key);
+      if (!focusedTarget) return;
 
-      const rect = target.getBoundingClientRect();
-      const headerBottom = 84; // 68px fixed header plus visual breathing room.
+      // Progress and Playground occupy the same desktop row. Use one shared
+      // camera anchor so moving the spotlight between them does not scroll
+      // again by a few pixels to re-center the shorter card.
+      const shareRow = window.matchMedia("(min-width: 1024px)").matches
+        && (key === "progress" || key === "learn");
+      const cameraTarget = shareRow
+        ? getVisibleTourTarget("progress") ?? focusedTarget
+        : focusedTarget;
+
+      const rect = cameraTarget.getBoundingClientRect();
+      const headerBottom = 16;
       const panel = document.querySelector<HTMLElement>("[data-tour-panel]");
-      // Use the final layout, not the panel's in-flight animated position.
       const panelHeight = panel?.offsetHeight ?? 0;
       const settledBottomPanelTop = window.innerHeight - 24 - panelHeight;
       const lastStep = tourStep === tourSteps.length - 1;
-      // The last step places the coach panel at the TOP; position the
-      // highlighted exam section immediately below the panel's bottom edge.
       const desiredTop = lastStep
         ? Math.max(headerBottom, 84 + panelHeight + 22)
         : (() => {
             const freeBottom = Math.max(headerBottom + 120, Math.min(window.innerHeight - 16, settledBottomPanelTop - 20));
             const freeHeight = Math.max(0, freeBottom - headerBottom);
-            // Center small sections; align tall ones to their beginning.
             return headerBottom + Math.max(0, (freeHeight - rect.height) / 2);
           })();
-      const top = Math.max(0, window.scrollY + rect.top - desiredTop);
+
+      const startY = window.scrollY;
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const plannedDestination = Math.min(maxY, Math.max(0, startY + rect.top - desiredTop));
+      // A change in coach text height must not trigger a second camera
+      // adjustment when focusing Playground immediately after Progress.
+      if (!shareRow) sharedRowFocusTop.current = null;
+      const destination = shareRow && sharedRowFocusTop.current !== null
+        ? Math.min(maxY, sharedRowFocusTop.current)
+        : plannedDestination;
+      if (shareRow) sharedRowFocusTop.current = destination;
+      const distance = destination - startY;
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+
+      if (reducedMotion || Math.abs(distance) < 2) {
+        window.scrollTo({ top: destination, behavior: "instant" });
+        return;
+      }
+
+      const duration = 420;
+      let startedAt: number | null = null;
+      const animateScroll = (time: number) => {
+        if (startedAt === null) startedAt = time;
+        const progress = Math.min(1, (time - startedAt) / duration);
+        const eased = progress < .5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+        window.scrollTo({ top: startY + distance * eased, behavior: "instant" });
+        if (progress < 1) scrollFrame = window.requestAnimationFrame(animateScroll);
+      };
+      scrollFrame = window.requestAnimationFrame(animateScroll);
     });
-    return () => window.cancelAnimationFrame(frame);
+
+    return () => {
+      window.cancelAnimationFrame(setupFrame);
+      window.cancelAnimationFrame(scrollFrame);
+    };
   }, [tourOpen, tourStep]);
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)]">
+    <div className="min-h-screen bg-[var(--canvas)]" style={{ "--sidebar-width": sidebarCollapsed ? "0px" : "264px" } as CSSProperties}>
       <Toaster
         position="top-right"
         options={{
@@ -1082,42 +1170,23 @@ export function Dashboard() {
           },
         }}
       />
-      <Sidebar tourFocus={false} dark={dark} />
-      <Topbar dark={dark} setDark={setDark} monthlyGoal={monthlyGoal} onTour={startTour} />
-
-      <main className="min-h-screen pt-[68px] lg:pl-[264px]">
-        <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
-
+      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} goal={monthlyGoal} />
+      <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} />
+      <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
+      <main className="min-h-screen transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <section className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <span
-                  className="rounded-full border px-2.5 py-1 text-[11px] font-extrabold tracking-[.05em]"
-                  style={{ borderColor: "color-mix(in srgb, var(--primary) 25%, var(--border))", background: "var(--primary-soft)", color: "var(--primary)" }}
-                >67 días para la PAES</span>
-                <span className="text-[10px] font-bold text-[var(--muted)]">Septiembre · 2026</span>
-              </div>
-              <h1 className="text-[32px] font-extrabold leading-[40px] tracking-[-.025em] sm:text-[34px] sm:leading-[42px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
-              <p className="mt-2 text-[13px] font-medium leading-5 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
-            </div>
-            <div className="hidden items-center gap-2 md:flex">
-                            <span className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[10px] font-bold text-[var(--muted)]"><Zap size={14} className="text-[#fb923c]" /> 3/5 de hoy</span>
-            </div>
+          <section className="mb-6 px-[30px]">
+            <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+            <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
-            <DailyMission tourFocus={tourKey === "mission"} />
-            <MonthlyGoal goal={monthlyGoal} setGoal={updateGoal} />
-          </div>
+          <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,.85fr)]">
-            <ProgressMonth />
-            <LearnCard tourFocus={tourKey === "learn"} />
-          </div>
+          <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
 
           <div className="mt-7">
             <LastExams tourFocus={tourKey === "exams"} />

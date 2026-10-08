@@ -208,8 +208,8 @@ html.dark [data-sileo-toast] {
 }
 .domain-card-width {
   /* Four cards fill the rail; the next copy enters immediately as the first card exits. */
-  width: calc((100vw - 264px - 44px - 36px) / 4);
-  min-width: calc((100vw - 264px - 44px - 36px) / 4);
+  width: calc((100vw - var(--sidebar-width, 264px) - 44px - 36px) / 4);
+  min-width: calc((100vw - var(--sidebar-width, 264px) - 44px - 36px) / 4);
 }
 .mastery-card {
   position: relative;
@@ -260,12 +260,10 @@ html.dark [data-sileo-toast] {
 }
 
 
+/* The tour spotlight is drawn above the page in viewport coordinates.
+   Avoid separate outlines/stacking contexts on the card itself. */
 .tour-focus {
-  position: relative;
-  z-index: 80 !important;
-  outline: 3px solid color-mix(in srgb, var(--primary) 82%, white 8%);
-  outline-offset: 5px;
-  border-radius: 18px;
+  outline: none;
 }
 
 @keyframes critical-aura {

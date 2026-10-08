@@ -1,14 +1,16 @@
-# PAESSED — Dashboard de Inicio (prototipo v3.4)
+# PAESSED — Product UI prototype v4
 
-Prototipo funcional de **Inicio**, construido con la arquitectura acordada:
+Prototipo navegable de la experiencia completa de **PAESSED M1**, construido sobre el dashboard v3.x y el sistema visual de `DESIGN.md`.
+
+## Stack
 
 - Next.js 16.3.6 + React 19.2
 - Tailwind CSS 4.1
-- Motion para animación, gestos y transiciones
-- Sileo para feedback/toasts, reestilizado con los tokens visuales de PAESSED
+- Motion para animaciones y transiciones
+- Sileo para feedback/toasts del dashboard
 - Lucide React para iconografía
-- Light/Dark con los logos oficiales proporcionados
-- Sistema visual basado en `DESIGN.md`
+- Light/Dark con tokens semánticos de PAESSED
+- Plus Jakarta Sans
 
 ## Ejecutar
 
@@ -19,29 +21,61 @@ npm run dev
 
 Abrir `http://localhost:3000`.
 
-## Qué incluye
+## Flujo principal
 
-- Carrusel continuo de los 4 ejes M1; pausa y selección suave al hover, sin elevarse bajo la topbar.
-- Color semántico por **estado de dominio**, no por eje.
-- Estados: Dominado, Fuerte, Regular, Débil, Crítico y Sin suficiente evidencia.
-- Zoom/modal detallado al seleccionar un eje, con superficie sólida correcta en Light/Dark.
-- Misión diaria adaptativa.
-- Meta mensual propuesta por PAESSED y editable.
-- Racha, nivel, XP, objetivo diario y tema en topbar.
-- Resumen de progreso mensual y últimos ensayos.
-- Entrada compacta a `Aprender`; la ruta Duolingo completa queda para esa página.
-- Tour guiado de primera entrada al dashboard (persistido en localStorage).
-- Responsive: en móvil el carrusel continuo se convierte en cards swipeables/snap.
-- `prefers-reduced-motion` respetado.
+```text
+Landing pública
+→ diagnóstico inicial de 12 preguntas
+→ resultado y primera evidencia
+→ registro para guardar el progreso
+→ Inicio
+→ Aprender / Ensayos / Playground / Perfil
+```
 
-## Librerías de animación
+Rutas principales:
 
-Se usan **Motion** y **Sileo** directamente. Animate UI y SmoothUI funcionan como registros estilo shadcn (copian componentes al proyecto); se dejan para incorporar selectivamente cuando se elijan componentes concretos, evitando meter componentes solo por decoración.
+- `/` — landing pública.
+- `/login` — acceso de usuarios que ya tienen cuenta.
+- `/diagnostico` — diagnóstico inicial.
+- `/diagnostico/resultado` — primera lectura de dominio.
+- `/registro` — registro posterior al diagnóstico.
+- `/app/inicio` — dashboard post-diagnóstico.
+- `/app/aprender` — ruta adaptativa tipo micro-learning.
+- `/app/ensayos` — historial y progreso por ensayos.
+- `/app/ensayos/nuevo` — experiencia de ensayo de 65 preguntas.
+- `/app/ensayos/resultado` — resultado y siguiente acción.
+- `/app/playground` — exploración y práctica de preguntas.
+- `/app/perfil` — metas, preferencias y resumen.
 
-## v3.3
+## Decisiones UX
 
-La v3.3 aumenta ligeramente la escala de escritorio, mejora la jerarquía del saludo, desactiva el indicador de desarrollo de Next.js, refuerza la separación visual de los toasts Sileo y rediseña `Últimos ensayos` para mostrar las 65 preguntas en una grilla 13×5 incluyendo omitidas en gris. Ver `CHANGELOG_V3_3.md`.
+- El usuario puede probar PAESSED **sin registrarse**.
+- El registro aparece recién después del diagnóstico, cuando existe progreso que vale la pena guardar.
+- Inicio prioriza progreso y siguiente acción; la ruta completa vive en Aprender.
+- Los ensayos son la evidencia más fuerte del perfil.
+- Playground permite practicar sin alterar la ruta principal en este prototipo.
+- Los estados de dominio siguen siendo: Dominado, Fuerte, Regular, Débil y Crítico, más “Sin suficiente evidencia” como estado auxiliar.
+- Desktop usa sidebar persistente; móvil usa navegación inferior.
+- `prefers-reduced-motion` se respeta desde el sistema visual existente.
 
-## v3.4
+## Estado de datos
 
-Carrusel infinito arrastrable con mouse; título/subtítulo ordenados en toasts Sileo y campana amarilla; sol amarillo en modo oscuro; comparación de **correctas** entre ensayos en vez de diferencias de puntaje. Consulta `CHANGELOG_V3_4.md`.
+La v4 es todavía un **prototipo de producto**: usa datos demo/localStorage para demostrar los flujos y las interacciones. No simula que esos datos ya provengan del backend.
+
+La siguiente etapa de integración conectará:
+
+```text
+.paessed / final.json
+→ ingestión de contenido
+→ banco de preguntas
+→ sesión/usuarios
+→ respuestas del estudiante
+→ dominio y progreso
+→ UI de PAESSED
+```
+
+## Diseño
+
+`DESIGN.md` sigue siendo la fuente de verdad visual. La v4 reutiliza el lenguaje existente: naranja como motor de acción, índigo para aprendizaje, rojo para diagnóstico, esmeralda para dominio, superficies redondeadas y botones táctiles.
+
+Ver `CHANGELOG_V4.md` para el alcance de esta iteración.
