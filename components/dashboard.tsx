@@ -1014,7 +1014,7 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
-    <section className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
+    <section id="tour-exams-summary" className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
       <Trophy
         aria-hidden="true"
         size={112}
@@ -1062,7 +1062,7 @@ function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
   const coords = points.map((p, i) => ({ x: 28 + i * 98, y: 112 - ((p - min) / (max - min)) * 80 }));
   const path = coords.map((c, i) => `${i ? "L" : "M"}${c.x},${c.y}`).join(" ");
   return (
-    <section className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
+    <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Progreso de septiembre</div>
@@ -1337,6 +1337,8 @@ const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
   { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
+  { key: "exams-summary", title: "Realiza ensayos completos", body: "Desde aquí puedes hacer un ensayo PAES M1, consultar tu último resultado y medir tu dominio con 65 preguntas." },
+  { key: "progress", title: "Sigue la evolución de tus puntajes", body: "Este gráfico muestra cómo han cambiado tus resultados reales de ensayos durante el mes." },
   { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
 ];
 
