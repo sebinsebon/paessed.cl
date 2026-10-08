@@ -47,3 +47,6 @@ assert.equal(f.state.reviews[q.id].interval,1);
 // The daily mission, calendar-based streak and weekly XP should update only on completion.
 assert.equal(f.state.streak,1);assert.equal(f.state.history.length,1);
 console.log('PASS: lección reprobada bloquea avance, conserva errores, repaso corrige y reprograma, no se acreditan sesiones incompletas');
+// A new activity cannot silently overwrite an interrupted session.
+const hold=setup();hold.act('start-from-zero');hold.act('lesson','enteros');const id=hold.state.session.ids[0];hold.act('quiz-exit');hold.act('tab','practice');hold.act('start-review');assert.equal(hold.state.session.ids[0],id);
+console.log('PASS: una sesión pausada no puede ser reemplazada accidentalmente');
