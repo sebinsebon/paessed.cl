@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed } from "@/components/app-navigation";
+import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed, announce } from "@/components/app-navigation";
 
 import {
   AnimatePresence,

@@ -7,7 +7,7 @@ import { sileo } from "sileo";
 import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Gamepad2, Home, Moon, Route, Sun, Target, Trophy, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
+export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
   const options = {
     title,
