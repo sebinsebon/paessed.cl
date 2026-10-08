@@ -16,8 +16,6 @@ import {
   Flame,
   Gamepad2,
   Lock,
-  PanelLeftClose,
-  PanelLeftOpen,
   Play,
   Route,
   Search,
@@ -667,7 +665,7 @@ export function PlaygroundExperience() {
   };
 
   return (
-    <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing} immersiveSidebarOpen={isPracticing && sidebarVisible}>
+    <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing} immersiveSidebarOpen={isPracticing && sidebarVisible} onImmersiveSidebarToggle={() => setSidebarVisible((previous) => !previous)}>
       <AnimatePresence initial={false} mode="popLayout">
       {!isPracticing ? (
       <motion.div
@@ -801,19 +799,6 @@ export function PlaygroundExperience() {
               >
                 <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setSidebarVisible((previous) => !previous)}
-                aria-label={sidebarVisible ? "Ocultar barra lateral" : "Mostrar barra lateral"}
-                aria-pressed={sidebarVisible}
-                title={sidebarVisible ? "Ocultar sidebar" : "Mostrar sidebar"}
-                className={"hidden min-h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-[12px] font-bold transition-colors lg:inline-flex " +
-                  (sidebarVisible ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
-              >
-                {sidebarVisible ? <PanelLeftClose size={18} aria-hidden="true" /> : <PanelLeftOpen size={18} aria-hidden="true" />}
-                <span className="hidden xl:inline">Sidebar</span>
-              </button>
-
               <motion.div
                 layoutId="playground-config"
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
@@ -906,12 +891,12 @@ export function PlaygroundExperience() {
                   <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
                 </div>
 
-                <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+                <div key={current.id} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
                   <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                     {current.stem}
                   </h2>
 
-                  <div role="group" aria-label="Alternativas de respuesta" className="mt-4 flex max-w-[1060px] flex-col items-start gap-2 sm:mt-5">
+                  <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
                     {current.options.map((option, index) => {
                       const letter = playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
@@ -931,10 +916,10 @@ export function PlaygroundExperience() {
                           aria-pressed={selected}
                           disabled={isRevealed}
                           onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                          className={"inline-flex min-h-[43px] w-fit max-w-full min-w-[112px] cursor-pointer items-start gap-3 rounded-lg border px-3 py-1.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[47px] sm:px-4 sm:py-2 " + tone}
+                          className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " + tone}
                         >
-                          <span style={playgroundQuestionFont} className="shrink-0 text-[16px] font-semibold leading-7 text-[var(--pg-fg)] sm:text-[18px]">{letter})</span>
-                          <span style={playgroundQuestionFont} className="min-w-0 break-words pt-px text-[16px] leading-7 text-[var(--pg-fg)] sm:text-[18px]">{option}</span>
+                          <span style={playgroundQuestionFont} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                          <span style={playgroundQuestionFont} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
                           {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
                         </button>
                       );
