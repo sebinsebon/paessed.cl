@@ -22,12 +22,12 @@ function useAppTheme() {
   return { dark, setDark };
 }
 
-export function AppShell({ children, title, eyebrow, wide = false, immersive = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean; immersive?: boolean }) {
+export function AppShell({ children, title, eyebrow, wide = false, immersive = false, immersiveSidebarOpen = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean; immersive?: boolean; immersiveSidebarOpen?: boolean }) {
   const router = useRouter();
   const { dark, setDark } = useAppTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   // Temporarily hide navigation for a focused activity; do not change user sidebar preference.
-  const visuallyCollapsed = sidebarCollapsed || immersive;
+  const visuallyCollapsed = immersive ? !immersiveSidebarOpen : sidebarCollapsed;
   const [monthlyGoal, setMonthlyGoal] = useState(780);
 
   useEffect(() => {
