@@ -22,7 +22,7 @@ function useAppTheme() {
   return { dark, setDark };
 }
 
-export function AppShell({ children, title, eyebrow, wide = false, immersive = false, immersiveSidebarOpen = false }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean; immersive?: boolean; immersiveSidebarOpen?: boolean }) {
+export function AppShell({ children, title, eyebrow, wide = false, immersive = false, immersiveSidebarOpen = false, onImmersiveSidebarToggle }: { children: ReactNode; title: string; eyebrow?: string; wide?: boolean; immersive?: boolean; immersiveSidebarOpen?: boolean; onImmersiveSidebarToggle?: () => void }) {
   const router = useRouter();
   const { dark, setDark } = useAppTheme();
   const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
@@ -57,7 +57,12 @@ export function AppShell({ children, title, eyebrow, wide = false, immersive = f
         }}
       />
       <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />
-      {!immersive && <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />}
+      {(!immersive || onImmersiveSidebarToggle) && (
+        <SidebarToggle
+          collapsed={visuallyCollapsed}
+          onToggle={immersive ? onImmersiveSidebarToggle ?? toggleSidebar : toggleSidebar}
+        />
+      )}
       {!immersive && <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={sidebarCollapsed} />}
       <main
         aria-label={eyebrow ? eyebrow + " · " + title : title}
