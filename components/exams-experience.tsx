@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ImportExamPanel } from "@/components/import-exam";
-import { useEffect, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
-import { type ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
+import { type ImportedExamSummary, getImportedExam, listImportedExams } from "@/lib/local-imports";
+import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 
 type ExamRow = {
   id: string;
@@ -110,7 +111,60 @@ function buildRows(imported: ImportedExamSummary[]): ExamRow[] {
   ];
 }
 
+
+/** Read text from a locally imported exam. Demo records have no per-question prompts. */
+function importedQuestionStatements(document: unknown): string[] {
+  const record = (value: unknown): Record<string, unknown> | null =>
+    value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  const root = record(document);
+  if (!root) return [];
+  const nested = (name: string) => record(root[name])?.questions;
+  const questions = [
+    root.questions, root.items, nested("exam"), nested("test"), nested("content"), nested("data"),
+  ].find((value): value is unknown[] => Array.isArray(value));
+  if (!questions) return [];
+
+  const flatten = (value: unknown, depth = 0): string => {
+    if (depth > 7 || value === null || value === undefined) return "";
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    if (Array.isArray(value)) return value.map((item) => flatten(item, depth + 1)).filter(Boolean).join(" ");
+    const node = record(value);
+    if (!node) return "";
+    if (node.type === "math") return flatten(node.latex ?? node.value ?? node.content, depth + 1);
+    if (node.type === "table" && Array.isArray(node.rows)) return flatten(node.rows, depth + 1);
+    for (const name of ["text", "prompt", "statement", "stem", "content", "body", "question", "value"]) {
+      if (name in node) {
+        const content = flatten(node[name], depth + 1);
+        if (content) return content;
+      }
+    }
+    return "";
+  };
+
+  return questions.map((item) => {
+    const question = record(item);
+    if (!question) return "";
+    for (const field of ["stem", "prompt", "statement", "text", "content", "body"]) {
+      const content = flatten(question[field]).replace(/\s+/g, " ").trim();
+      if (content) return content.slice(0, 480);
+    }
+    return "";
+  });
+}
+
 function QuestionMap({ exam }: { exam: ExamRow }) {
+  const [hoveredQuestion, setHoveredQuestion] = useState<QuestionMapHoverData | null>(null);
+  const [importedStems, setImportedStems] = useState<string[] | null>(null);
+  const requestedExamId = useRef<string | null>(null);
+
+  const showQuestion = (element: HTMLElement, index: number, status: string) => {
+    setHoveredQuestion(positionQuestionMapHover(element, index + 1, status));
+    if (!exam.imported || requestedExamId.current === exam.imported.id) return;
+    requestedExamId.current = exam.imported.id;
+    void getImportedExam(exam.imported.id)
+      .then((record) => { if (record) setImportedStems(importedQuestionStatements(record.finalJson)); })
+      .catch(() => setImportedStems([]));
+  };
   const hasResult = exam.status === "completed" && exam.kind === "example";
   const count = Math.min(Math.max(exam.questionCount, 0), 500);
   const legend = [
@@ -123,15 +177,16 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
     <div className="min-w-0">
       <div className="mb-2.5 text-[11px] font-bold tabular-nums text-[var(--muted)]">{exam.questionCount} preguntas</div>
       {count > 0 ? (
-        <div
-          role="img"
-          aria-label={
-            hasResult
-              ? "Mapa ilustrativo: " + exam.correct + " correctas, " + exam.incorrect + " incorrectas y " + exam.omitted + " omitidas"
-              : exam.questionCount + " preguntas sin resultados individuales disponibles"
-          }
-          className="grid w-full max-w-[470px] grid-cols-[repeat(22,minmax(0,1fr))] gap-[3px] sm:gap-1"
-        >
+        <div className="w-full max-w-[470px] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2">
+          <div
+            role="img"
+            aria-label={
+              hasResult
+                ? "Mapa ilustrativo: " + exam.correct + " correctas, " + exam.incorrect + " incorrectas y " + exam.omitted + " omitidas"
+                : exam.questionCount + " preguntas sin resultados individuales disponibles"
+            }
+            className="grid grid-cols-[repeat(22,minmax(0,1fr))] gap-[3px] sm:gap-1"
+          >
           {Array.from({ length: count }, (_, index) => {
             const state = !hasResult ? "Sin resultado" : exampleOmitted.has(index) ? "Omitida" : exampleIncorrect.has(index) ? "Incorrecta" : "Correcta";
             const color = !hasResult
@@ -142,20 +197,33 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
                   ? "bg-rose-400"
                   : "bg-[var(--muted-2)] opacity-55";
             return (
-              <span
+              <motion.span
                 key={index}
-                aria-hidden="true"
-                title={"Pregunta " + (index + 1) + " · " + state + (hasResult ? " (ejemplo)" : "")}
-                className={"aspect-square min-w-0 rounded-[3px] " + color}
+                aria-label={"Pregunta " + (index + 1) + " · " + state + (hasResult ? " (ejemplo)" : "")}
+                whileHover={{ scale: 1.18, y: -1 }}
+                onMouseEnter={(event) => showQuestion(event.currentTarget, index, state)}
+                onMouseLeave={() => setHoveredQuestion(null)}
+                className={"relative aspect-square min-w-0 cursor-help rounded-[3px] hover:z-10 hover:ring-2 hover:ring-[var(--text)] hover:ring-offset-2 hover:ring-offset-[var(--surface)] " + color}
               />
             );
           })}
+          </div>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-3 text-xs text-[var(--muted)]">
           No se detectaron preguntas
         </div>
       )}
+      <QuestionMapHoverCard
+        data={hoveredQuestion && {
+          ...hoveredQuestion,
+          text: exam.imported
+            ? importedStems?.[hoveredQuestion.number - 1]
+              || exam.imported.preview[hoveredQuestion.number - 1]?.text
+              || (importedStems ? "El enunciado de esta pregunta no se pudo reconocer." : "Cargando enunciado…")
+            : undefined,
+        }}
+      />
       {hasResult ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5" aria-label="Distribución de respuestas de ejemplo">
           {legend.map((item) => (
