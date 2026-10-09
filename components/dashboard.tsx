@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed, announce } from "@/components/app-navigation";
 
 import {
@@ -774,6 +775,7 @@ function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; l
 
 function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?: (typeof exams)[number] }) {
   const squares = exam.answers.split("");
+  const [hoveredQuestion, setHoveredQuestion] = useState<QuestionMapHoverData | null>(null);
   const correct = squares.filter((a) => a === "g").length;
   const wrong = squares.filter((a) => a === "r").length;
   const omitted = squares.filter((a) => a === "o").length;
@@ -825,9 +827,10 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
               <motion.span
                 key={i}
                 whileHover={{ scale: 1.18, y: -1 }}
-                title={`Pregunta ${i + 1}: ${label}`}
+                onMouseEnter={(event) => setHoveredQuestion(positionQuestionMapHover(event.currentTarget, i + 1, label))}
+                onMouseLeave={() => setHoveredQuestion(null)}
                 aria-label={`Pregunta ${i + 1}: ${label}`}
-                className={`aspect-[1.35/1] min-h-[8px] rounded-[4px] ${a === "g" ? "bg-emerald-500" : a === "r" ? "bg-rose-400" : "bg-[var(--muted-2)] opacity-55"}`}
+                className={`relative cursor-help aspect-[1.35/1] min-h-[8px] rounded-[4px] hover:z-10 hover:ring-2 hover:ring-[var(--text)] hover:ring-offset-2 hover:ring-offset-[var(--surface)] ${a === "g" ? "bg-emerald-500" : a === "r" ? "bg-rose-400" : "bg-[var(--muted-2)] opacity-55"}`}
               />
             );
           })}
@@ -840,6 +843,7 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
         <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-[3px] bg-[var(--muted-2)] opacity-60" />{omitted} omitidas</span>
         <span className="ml-auto inline-flex items-center gap-1 text-[var(--primary)] opacity-90 transition-opacity group-hover:opacity-100">Ver análisis <ArrowUpRight size={13} /></span>
       </div>
+      <QuestionMapHoverCard data={hoveredQuestion} />
     </motion.button>
   );
 }
