@@ -123,37 +123,33 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
     <div className="min-w-0">
       <div className="mb-2.5 text-[11px] font-bold tabular-nums text-[var(--muted)]">{exam.questionCount} preguntas</div>
       {count > 0 ? (
-        <div className="w-full max-w-[470px] rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-          <div
-            role="img"
-            aria-label={
-              hasResult
-                ? "Mapa ilustrativo: " + exam.correct + " correctas, " + exam.incorrect + " incorrectas y " + exam.omitted + " omitidas"
-                : exam.questionCount + " preguntas sin resultados individuales disponibles"
-            }
-            className="grid gap-1.5"
-            style={{ gridTemplateColumns: "repeat(13, minmax(0, 1fr))" }}
-          >
-            {Array.from({ length: count }, (_, index) => {
-              const state = !hasResult ? "Sin resultado" : exampleOmitted.has(index) ? "Omitida" : exampleIncorrect.has(index) ? "Incorrecta" : "Correcta";
-              const color = !hasResult
-                ? "bg-[var(--muted-2)] opacity-55"
-                : state === "Correcta"
-                  ? "bg-emerald-500"
-                  : state === "Incorrecta"
-                    ? "bg-rose-400"
-                    : "bg-[var(--muted-2)] opacity-55";
-              return (
-                <motion.span
-                  key={index}
-                  aria-hidden="true"
-                  title={"Pregunta " + (index + 1) + " · " + state + (hasResult ? " (ejemplo)" : "")}
-                  whileHover={{ scale: 1.18, y: -1 }}
-                  className={"aspect-[1.35/1] min-h-[8px] min-w-0 rounded-[4px] " + color}
-                />
-              );
-            })}
-          </div>
+        <div
+          role="img"
+          aria-label={
+            hasResult
+              ? "Mapa ilustrativo: " + exam.correct + " correctas, " + exam.incorrect + " incorrectas y " + exam.omitted + " omitidas"
+              : exam.questionCount + " preguntas sin resultados individuales disponibles"
+          }
+          className="grid w-full max-w-[470px] grid-cols-[repeat(22,minmax(0,1fr))] gap-[3px] sm:gap-1"
+        >
+          {Array.from({ length: count }, (_, index) => {
+            const state = !hasResult ? "Sin resultado" : exampleOmitted.has(index) ? "Omitida" : exampleIncorrect.has(index) ? "Incorrecta" : "Correcta";
+            const color = !hasResult
+              ? "bg-[var(--muted-2)] opacity-55"
+              : state === "Correcta"
+                ? "bg-emerald-500"
+                : state === "Incorrecta"
+                  ? "bg-rose-400"
+                  : "bg-[var(--muted-2)] opacity-55";
+            return (
+              <span
+                key={index}
+                aria-hidden="true"
+                title={"Pregunta " + (index + 1) + " · " + state + (hasResult ? " (ejemplo)" : "")}
+                className={"aspect-square min-w-0 rounded-[3px] " + color}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-3 text-xs text-[var(--muted)]">
