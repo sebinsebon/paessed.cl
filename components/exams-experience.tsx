@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
 import { type ImportedExamSummary, getImportedExam, listImportedExams } from "@/lib/local-imports";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
@@ -422,6 +423,7 @@ export function ExamsExperience() {
             className="mx-auto w-full max-w-[1460px] pb-5"
           >
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <PageHeadingTransition>
           <motion.div
             layoutId="exams-import-heading"
             transition={{ type: "spring", stiffness: 280, damping: 35 }}
@@ -434,6 +436,7 @@ export function ExamsExperience() {
               Revisa tus resultados, explora las preguntas y continúa practicando.
             </p>
           </motion.div>
+          </PageHeadingTransition>
           <button
             type="button"
             onClick={() => { window.scrollTo({ top: 0, behavior: "instant" }); setShowImportPanel(true); }}
@@ -444,6 +447,8 @@ export function ExamsExperience() {
           </button>
         </header>
 
+        <PageContentTransition>
+        <div>
         <section aria-label="Buscar y ordenar ensayos" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[14px] font-bold text-[var(--text)]">
@@ -559,6 +564,8 @@ export function ExamsExperience() {
             </p>
           </div>
         </section>
+        </div>
+        </PageContentTransition>
           </motion.div>
         ) : (
           <motion.div
