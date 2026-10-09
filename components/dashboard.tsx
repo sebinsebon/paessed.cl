@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed, announce } from "@/components/app-navigation";
 
@@ -1183,18 +1184,22 @@ export function Dashboard() {
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <section className="mb-6 px-[30px]">
-            <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
-            <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
-          </section>
+          <PageHeadingTransition>
+            <section className="mb-6 px-[30px]">
+              <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+              <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
+            </section>
+          </PageHeadingTransition>
 
-          <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
-
-          <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
-
-          <div className="mt-7">
-            <LastExams tourFocus={tourKey === "exams"} />
-          </div>
+          <PageContentTransition>
+            <div>
+              <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
+              <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
+              <div className="mt-7">
+                <LastExams tourFocus={tourKey === "exams"} />
+              </div>
+            </div>
+          </PageContentTransition>
         </div>
       </main>
 
