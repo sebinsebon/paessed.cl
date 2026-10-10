@@ -104,26 +104,29 @@ export function Sidebar({
               {nav.map(([label, Icon, href, badge]) => {
                 const active = pathname === href || pathname.startsWith(href + "/");
                 return (
-                  <motion.div whileHover={{ x: active ? 0 : 3 }} whileTap={{ scale: 0.985 }} key={label}>
-                    <Link
-                      href={href}
-                      data-active={active ? "true" : undefined}
-                      tabIndex={collapsed ? -1 : undefined}
-                      className={`paessed-sidebar-nav-link group flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors ${
-                        active
-                          ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-pressed)]"
-                          : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
-                      }`}
-                    >
-                      <Icon size={18} />
-                      <span className="flex-1">{label}</span>
-                      {badge && (
-                        <span className={`rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
-                          {badge}
-                        </span>
-                      )}
-                    </Link>
-                  </motion.div>
+                  <Link
+                    key={label}
+                    href={href}
+                    data-active={active ? "true" : undefined}
+                    aria-current={active ? "page" : undefined}
+                    tabIndex={collapsed ? -1 : undefined}
+                    className={`paessed-sidebar-nav-link group relative isolate flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors duration-150 ${
+                      active
+                        ? "text-white"
+                        : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                    }`}
+                  >
+                    {active && (
+                      <span aria-hidden="true" className="paessed-sidebar-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)] shadow-[0_3px_0_var(--primary-pressed)]" />
+                    )}
+                    <Icon size={18} className="relative z-10 shrink-0" />
+                    <span className="relative z-10 flex-1">{label}</span>
+                    {badge && (
+                      <span className={`relative z-10 rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
                 );
               })}
             </div>
@@ -490,11 +493,16 @@ export function MobileNav() {
   ] as const;
   return (
     <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
-      {items.map(([label, Icon, href]) => (
-        <Link key={label} href={href} data-active={pathname === href || pathname.startsWith(href + "/") ? "true" : undefined} className={`paessed-mobile-nav-link flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${pathname === href || pathname.startsWith(href + "/") ? "bg-[var(--primary)] text-white" : "text-[var(--muted)]"}`}>
-          <Icon size={17} />{label}
-        </Link>
-      ))}
+      {items.map(([label, Icon, href]) => {
+        const active = pathname === href || pathname.startsWith(href + "/");
+        return (
+          <Link key={label} href={href} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
+            {active && <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />}
+            <Icon size={17} className="relative z-10" />
+            <span className="relative z-10">{label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
