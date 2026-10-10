@@ -286,6 +286,18 @@ html.dark [data-sileo-toast] {
   .domain-rail-mask { mask-image: none; -webkit-mask-image: none; }
 }
 
+/* The active pill animates only inside its link, never in the browser's
+   view-transition overlay. This keeps icons and labels in place. */
+.paessed-sidebar-active-indicator,
+.paessed-mobile-active-indicator {
+  animation: paessed-nav-pill-in 155ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes paessed-nav-pill-in {
+  from { opacity: .78; transform: translateY(2px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Keep navigation outside browser view-transition snapshots. The sidebar is
    remounted by each route, so animating its active pill in the top-level overlay
    could cover labels and appear offset between the old and new routes.
@@ -297,7 +309,7 @@ html.dark [data-sileo-toast] {
   }
 
   ::view-transition-group(paessed-page-heading) {
-    animation-duration: 370ms;
+    animation-duration: 230ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
   }
   ::view-transition-old(paessed-page-heading),
@@ -306,15 +318,15 @@ html.dark [data-sileo-toast] {
   }
 
   ::view-transition-group(paessed-page-content) {
-    animation-duration: 270ms;
+    animation-duration: 215ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
   }
 
   ::view-transition-old(paessed-page-content) {
-    animation: paessed-route-content-out 190ms ease-in both;
+    animation: paessed-route-content-out 125ms ease-in both;
   }
   ::view-transition-new(paessed-page-content) {
-    animation: paessed-route-content-in 290ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: paessed-route-content-in 210ms cubic-bezier(.22, 1, .36, 1) both;
   }
 
   @keyframes paessed-route-content-out {
@@ -322,7 +334,7 @@ html.dark [data-sileo-toast] {
     to { opacity: 0; }
   }
   @keyframes paessed-route-content-in {
-    from { opacity: 0; transform: translateY(9px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 }
