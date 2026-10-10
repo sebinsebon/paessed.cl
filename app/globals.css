@@ -290,12 +290,12 @@ html.dark [data-sileo-toast] {
    Native View Transitions run only during client navigations, with graceful fallback. */
 @supports (view-transition-name: paessed-page-heading) {
   @media (min-width: 1024px) {
-    .paessed-sidebar-nav-link[data-active="true"] {
+    .paessed-sidebar-active-indicator {
       view-transition-name: paessed-active-nav;
     }
   }
   @media (max-width: 1023px) {
-    .paessed-mobile-nav-link[data-active="true"] {
+    .paessed-mobile-active-indicator {
       view-transition-name: paessed-active-nav;
     }
   }
@@ -314,14 +314,15 @@ html.dark [data-sileo-toast] {
     mix-blend-mode: normal;
   }
 
+  /* Animate only the selection pill. Icons and labels stay fixed in the nav. */
   ::view-transition-group(paessed-active-nav) {
-    animation-duration: 310ms;
+    animation-duration: 300ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
     z-index: 10;
   }
   ::view-transition-old(paessed-active-nav),
   ::view-transition-new(paessed-active-nav) {
-    animation-duration: 210ms;
+    animation: none;
     mix-blend-mode: normal;
   }
 
