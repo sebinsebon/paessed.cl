@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { sileo } from "sileo";
 import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Gamepad2, Home, Moon, Route, Sun, Target, Trophy, UserRound, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
@@ -67,7 +67,7 @@ export function Sidebar({
   // Once navigation completes, the URL becomes the source of truth again.
   useEffect(() => setPendingHref(null), [pathname]);
   const selectedPath = pendingHref ?? pathname;
-  const selectLink = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const selectLink = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Modifier-clicks open another tab: leave the current page selection unchanged.
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setPendingHref(href);
@@ -493,7 +493,7 @@ export function MobileNav() {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   useEffect(() => setPendingHref(null), [pathname]);
   const selectedPath = pendingHref ?? pathname;
-  const selectLink = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const selectLink = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
     // Modifier-clicks open another tab: leave the current page selection unchanged.
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setPendingHref(href);
