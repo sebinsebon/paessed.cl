@@ -67,6 +67,11 @@ export function Sidebar({
   // Once navigation completes, the URL becomes the source of truth again.
   useEffect(() => setPendingHref(null), [pathname]);
   const selectedPath = pendingHref ?? pathname;
+  const selectLink = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Modifier-clicks open another tab: leave the current page selection unchanged.
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setPendingHref(href);
+  };
   const lastScore = 742;
   const goalProgress = Math.min(100, Math.round((lastScore / goal) * 100));
   const goalGap = Math.max(goal - lastScore, 0);
@@ -112,9 +117,9 @@ export function Sidebar({
                   <Link
                     key={label}
                     href={href}
-                    onClick={() => setPendingHref(href)}
+                    onClick={(event) => selectLink(event, href)}
                     data-active={active ? "true" : undefined}
-                    aria-current={active ? "page" : undefined}
+                    aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined}
                     tabIndex={collapsed ? -1 : undefined}
                     className={`paessed-sidebar-nav-link group relative isolate flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors duration-150 ${
                       active
@@ -488,6 +493,11 @@ export function MobileNav() {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   useEffect(() => setPendingHref(null), [pathname]);
   const selectedPath = pendingHref ?? pathname;
+  const selectLink = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Modifier-clicks open another tab: leave the current page selection unchanged.
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    setPendingHref(href);
+  };
   const items = [
     ["Inicio", Home, "/app/inicio"],
     ["Aprender", BookOpen, "/app/aprender"],
@@ -500,7 +510,7 @@ export function MobileNav() {
       {items.map(([label, Icon, href]) => {
         const active = selectedPath === href || selectedPath.startsWith(href + "/");
         return (
-          <Link key={label} href={href} onClick={() => setPendingHref(href)} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
+          <Link key={label} href={href} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
             {active && <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />}
             <Icon size={17} className="relative z-10" />
             <span className="relative z-10">{label}</span>
