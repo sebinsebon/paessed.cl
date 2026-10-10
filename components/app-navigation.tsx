@@ -62,6 +62,11 @@ export function Sidebar({
   goal: number;
 }) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  // The selected item responds to a click before the next route has rendered.
+  // Once navigation completes, the URL becomes the source of truth again.
+  useEffect(() => setPendingHref(null), [pathname]);
+  const selectedPath = pendingHref ?? pathname;
   const lastScore = 742;
   const goalProgress = Math.min(100, Math.round((lastScore / goal) * 100));
   const goalGap = Math.max(goal - lastScore, 0);
@@ -102,11 +107,12 @@ export function Sidebar({
           <nav className={tourFocus ? "tour-focus" : ""}>
             <div className="space-y-1.5">
               {nav.map(([label, Icon, href, badge]) => {
-                const active = pathname === href || pathname.startsWith(href + "/");
+                const active = selectedPath === href || selectedPath.startsWith(href + "/");
                 return (
                   <Link
                     key={label}
                     href={href}
+                    onClick={() => setPendingHref(href)}
                     data-active={active ? "true" : undefined}
                     aria-current={active ? "page" : undefined}
                     tabIndex={collapsed ? -1 : undefined}
@@ -172,35 +178,30 @@ export function SidebarToggle({
   const [hovered, setHovered] = useState(false);
   const [expandedReady, setExpandedReady] = useState(!collapsed);
   const [collapsedReady, setCollapsedReady] = useState(collapsed);
-  const collapseTimer = useRef<number | null>(null);
+  const previousCollapsed = useRef(collapsed);
 
   useEffect(() => {
+    // Don't introduce a 380ms blank state every time navigation remounts the shell.
+    if (previousCollapsed.current === collapsed) return;
+    previousCollapsed.current = collapsed;
+
     setHovered(false);
     setExpandedReady(false);
     setCollapsedReady(false);
-
+    // Match the sidebar spring closely, without delaying interaction.
     const timer = window.setTimeout(() => {
       if (collapsed) setCollapsedReady(true);
       else setExpandedReady(true);
-    }, 380);
+    }, 220);
 
     return () => window.clearTimeout(timer);
   }, [collapsed]);
 
-  useEffect(() => () => {
-    if (collapseTimer.current) window.clearTimeout(collapseTimer.current);
-  }, []);
-
   const collapseSidebar = () => {
-    if (!expandedReady || collapseTimer.current) return;
-
+    if (!expandedReady) return;
     setHovered(false);
-
-    collapseTimer.current = window.setTimeout(() => {
-      setExpandedReady(false);
-      collapseTimer.current = null;
-      onToggle();
-    }, 70);
+    setExpandedReady(false);
+    onToggle();
   };
 
   const expandSidebar = () => {
@@ -484,6 +485,9 @@ export function DashboardTopNav({
 
 export function MobileNav() {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  useEffect(() => setPendingHref(null), [pathname]);
+  const selectedPath = pendingHref ?? pathname;
   const items = [
     ["Inicio", Home, "/app/inicio"],
     ["Aprender", BookOpen, "/app/aprender"],
@@ -494,9 +498,9 @@ export function MobileNav() {
   return (
     <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
       {items.map(([label, Icon, href]) => {
-        const active = pathname === href || pathname.startsWith(href + "/");
+        const active = selectedPath === href || selectedPath.startsWith(href + "/");
         return (
-          <Link key={label} href={href} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
+          <Link key={label} href={href} onClick={() => setPendingHref(href)} data-active={active ? "true" : undefined} aria-current={active ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
             {active && <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />}
             <Icon size={17} className="relative z-10" />
             <span className="relative z-10">{label}</span>
