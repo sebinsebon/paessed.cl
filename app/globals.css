@@ -286,20 +286,11 @@ html.dark [data-sileo-toast] {
   .domain-rail-mask { mask-image: none; -webkit-mask-image: none; }
 }
 
-/* Shared-element page navigation: sidebar selection, heading morph, content settle.
-   Native View Transitions run only during client navigations, with graceful fallback. */
+/* Keep navigation outside browser view-transition snapshots. The sidebar is
+   remounted by each route, so animating its active pill in the top-level overlay
+   could cover labels and appear offset between the old and new routes.
+   Shared transitions still run for page headings and content. */
 @supports (view-transition-name: paessed-page-heading) {
-  @media (min-width: 1024px) {
-    .paessed-sidebar-active-indicator {
-      view-transition-name: paessed-active-nav;
-    }
-  }
-  @media (max-width: 1023px) {
-    .paessed-mobile-active-indicator {
-      view-transition-name: paessed-active-nav;
-    }
-  }
-
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
@@ -311,18 +302,6 @@ html.dark [data-sileo-toast] {
   }
   ::view-transition-old(paessed-page-heading),
   ::view-transition-new(paessed-page-heading) {
-    mix-blend-mode: normal;
-  }
-
-  /* Animate only the selection pill. Icons and labels stay fixed in the nav. */
-  ::view-transition-group(paessed-active-nav) {
-    animation-duration: 300ms;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
-    z-index: 10;
-  }
-  ::view-transition-old(paessed-active-nav),
-  ::view-transition-new(paessed-active-nav) {
-    animation: none;
     mix-blend-mode: normal;
   }
 
@@ -354,15 +333,12 @@ html.dark [data-sileo-toast] {
   ::view-transition-old(paessed-page-heading),
   ::view-transition-new(paessed-page-heading),
   ::view-transition-old(paessed-page-content),
-  ::view-transition-new(paessed-page-content),
-  ::view-transition-old(paessed-active-nav),
-  ::view-transition-new(paessed-active-nav) {
+  ::view-transition-new(paessed-page-content) {
     animation-duration: .001ms !important;
     animation-name: none !important;
   }
   ::view-transition-group(paessed-page-heading),
-  ::view-transition-group(paessed-page-content),
-  ::view-transition-group(paessed-active-nav) {
+  ::view-transition-group(paessed-page-content) {
     animation-duration: .001ms !important;
   }
 
