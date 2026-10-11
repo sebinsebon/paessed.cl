@@ -90,8 +90,9 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
   // Taking an essay uses the same collapsible immersive navigation as Playground.
   // The result page is fully standalone; no sidebar or mobile bar there.
   const examSession = pathname === "/app/ensayos/nuevo";
+  const importedExamSession = pathname.startsWith("/app/ensayos/importado/");
   const standaloneResult = pathname === "/app/ensayos/resultado";
-  const immersiveNav = examSession || immersiveView.immersive;
+  const immersiveNav = examSession || importedExamSession || immersiveView.immersive;
   const visuallyCollapsed = standaloneResult || (immersiveNav ? !immersiveView.sidebarOpen : collapsed);
   const context: AppNavigationContextValue = {
     dark, setDark, monthlyGoal, registerTour, setImmersiveView, registerImmersiveToggle,
