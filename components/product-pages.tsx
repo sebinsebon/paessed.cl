@@ -1035,7 +1035,7 @@ export function PlaygroundExperience() {
             </p>
           </div>
 
-          <motion.div layoutId="playground-config" transition={{ type: "spring", stiffness: 280, damping: 35 }} className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 xl:grid-cols-4 lg:py-7">
+          <motion.div layoutId="playground-config" transition={{ type: "spring", stiffness: 280, damping: 35 }} className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:py-7">
             <div className="min-w-0">
               <label htmlFor="playground-start-year" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Año</label>
               <select
@@ -1046,32 +1046,6 @@ export function PlaygroundExperience() {
               >
                 <option value="all">Todos los años</option>
                 {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </div>
-
-            <div className="min-w-0">
-              <label htmlFor="playground-start-axis" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Eje temático</label>
-              <select
-                id="playground-start-axis"
-                value={axis}
-                onChange={(event) => { setAxis(event.target.value); setSubeje("all"); setSelectedStartQuestion("random"); }}
-                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
-              >
-                <option value="all">Todos los ejes</option>
-                {axes.map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </div>
-
-            <div className="min-w-0">
-              <label htmlFor="playground-start-subeje" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Subeje temático</label>
-              <select
-                id="playground-start-subeje"
-                value={subeje}
-                onChange={(event) => { setSubeje(event.target.value); setSelectedStartQuestion("random"); }}
-                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
-              >
-                <option value="all">Todos los subejes</option>
-                {subejes.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
               </select>
             </div>
 
@@ -1091,6 +1065,14 @@ export function PlaygroundExperience() {
               </select>
             </div>
           </motion.div>
+
+          <div className="border-t border-[var(--border)] px-5 py-5 sm:px-7">
+            <PlaygroundTopicPicker
+              selected={selectedUnitIds}
+              onChange={(next) => { setSelectedUnitIds(next); setSelectedStartQuestion("random"); }}
+              questionCounts={topicCounts}
+            />
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-4 sm:px-7">
             <p className="text-[12px] leading-5 text-[var(--muted)]">
@@ -1191,8 +1173,8 @@ export function PlaygroundExperience() {
                 className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
               >
                 <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
-                <p key={sessionFilters.year + ":" + sessionFilters.axis + ":" + sessionFilters.subeje + ":" + sessionFilters.savedOnly} className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
-                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis} · {sessionFilters.subeje === "all" ? "Todos los subejes" : M1_UNITS.find((unit) => unit.id === sessionFilters.subeje)?.name ?? sessionFilters.subeje}{sessionFilters.savedOnly ? " · Guardadas" : ""}
+                <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
+                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
                 {queuedFilters && <p className="truncate text-center text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
               </motion.div>
@@ -1244,7 +1226,7 @@ export function PlaygroundExperience() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(75dvh,640px)] w-[min(360px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
+                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(80dvh,680px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
                     >
                       <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
                       <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
@@ -1289,30 +1271,12 @@ export function PlaygroundExperience() {
                               {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
                             </select>
                           </div>
-                          <div>
-                            <label htmlFor="playground-practice-axis" className="mb-1 block text-[11px] font-bold">Eje temático</label>
-                            <select
-                              id="playground-practice-axis"
-                              value={draftAxis}
-                              onChange={(event) => { setDraftAxis(event.target.value); setDraftSubeje("all"); setDraftQuestion("random"); }}
-                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
-                            >
-                              <option value="all">Todos los ejes</option>
-                              {axes.map((value) => <option key={value} value={value}>{value}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label htmlFor="playground-practice-subeje" className="mb-1 block text-[11px] font-bold">Subeje temático</label>
-                            <select
-                              id="playground-practice-subeje"
-                              value={draftSubeje}
-                              onChange={(event) => { setDraftSubeje(event.target.value); setDraftQuestion("random"); }}
-                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
-                            >
-                              <option value="all">Todos los subejes</option>
-                              {draftSubejes.map((unit) => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
-                            </select>
-                          </div>
+                          <PlaygroundTopicPicker
+                            selected={draftUnitIds}
+                            onChange={(next) => { setDraftUnitIds(next); setDraftQuestion("random"); setFilterDecisionOpen(false); }}
+                            questionCounts={draftTopicCounts}
+                            compact
+                          />
                           <label className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold">
                             <input type="checkbox" checked={draftSavedOnly} onChange={(event) => { setDraftSavedOnly(event.target.checked); setDraftQuestion("random"); }} />
                             Solo preguntas guardadas
