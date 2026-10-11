@@ -37,6 +37,7 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
+import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
 
 const learningNodes = [
   { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
@@ -502,6 +503,28 @@ const playgroundQuestions: PlaygroundQuestion[] = [
 
 ];
 
+type TopicFilters = { year: string; unitIds: M1UnitId[]; savedOnly: boolean };
+type QueuedTopicFilters = TopicFilters & { question: string };
+
+function filterPlaygroundQuestions(filters: TopicFilters, savedIds: readonly string[]) {
+  const selected = new Set(filters.unitIds);
+  return playgroundQuestions.filter((question) =>
+    (filters.year === "all" || String(question.year) === filters.year) &&
+    selected.has(question.unitId) &&
+    (!filters.savedOnly || savedIds.includes(question.id))
+  );
+}
+
+function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readonly string[]) {
+  const counts: Partial<Record<M1UnitId, number>> = {};
+  for (const question of playgroundQuestions) {
+    if (year !== "all" && String(question.year) !== year) continue;
+    if (savedOnly && !savedIds.includes(question.id)) continue;
+    counts[question.unitId] = (counts[question.unitId] ?? 0) + 1;
+  }
+  return counts;
+}
+
 const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
 const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
@@ -649,12 +672,11 @@ function PlaygroundScratchpad({
 
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
-  const [axis, setAxis] = useState("all");
-  const [subeje, setSubeje] = useState("all");
+  const [selectedUnitIds, setSelectedUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
-  const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", subeje: "all", savedOnly: false });
-  const [queuedFilters, setQueuedFilters] = useState<{ year: string; axis: string; subeje: string; savedOnly: boolean; question: string } | null>(null);
+  const [sessionFilters, setSessionFilters] = useState<TopicFilters>({ year: "all", unitIds: [...ALL_M1_UNIT_IDS], savedOnly: false });
+  const [queuedFilters, setQueuedFilters] = useState<QueuedTopicFilters | null>(null);
   const [filterDecisionOpen, setFilterDecisionOpen] = useState(false);
   const [filterNotice, setFilterNotice] = useState<string | null>(null);
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
@@ -668,8 +690,7 @@ export function PlaygroundExperience() {
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
-  const [draftAxis, setDraftAxis] = useState("all");
-  const [draftSubeje, setDraftSubeje] = useState("all");
+  const [draftUnitIds, setDraftUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
@@ -680,15 +701,8 @@ export function PlaygroundExperience() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [pendingAction, setPendingAction] = useState<"check" | null>(null);
 
-  const axes = M1_AXES.map((item) => item.name);
-  const subejes = M1_UNITS.filter((item) => axis === "all" || item.axisName === axis);
-  const draftSubejes = M1_UNITS.filter((item) => draftAxis === "all" || item.axisName === draftAxis);
-  const questions = playgroundQuestions.filter((question) =>
-    (year === "all" || String(question.year) === year) &&
-    (axis === "all" || question.axis === axis) &&
-    (subeje === "all" || question.unitId === subeje) &&
-    (!savedOnly || savedQuestionIds.includes(question.id))
-  );
+  const questions = filterPlaygroundQuestions({ year, unitIds: selectedUnitIds, savedOnly }, savedQuestionIds);
+  const topicCounts = playgroundUnitCounts(year, savedOnly, savedQuestionIds);
   // Keep the session's question pool stable even if a bookmark is removed mid-practice.
   const sessionQuestions = isPracticing
     ? playgroundQuestions.filter((question) => order.includes(question.id))
@@ -700,12 +714,8 @@ export function PlaygroundExperience() {
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
   const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
   const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
-  const draftQuestions = playgroundQuestions.filter((question) =>
-    (draftYear === "all" || String(question.year) === draftYear) &&
-    (draftAxis === "all" || question.axis === draftAxis) &&
-    (draftSubeje === "all" || question.unitId === draftSubeje) &&
-    (!draftSavedOnly || savedQuestionIds.includes(question.id))
-  );
+  const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, savedOnly: draftSavedOnly }, savedQuestionIds);
+  const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds);
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
     setStrokesByQuestion((previous) => ({ ...previous, [current.id]: next }));
@@ -716,8 +726,7 @@ export function PlaygroundExperience() {
       return;
     }
     setDraftYear(queuedFilters?.year ?? sessionFilters.year);
-    setDraftAxis(queuedFilters?.axis ?? sessionFilters.axis);
-    setDraftSubeje(queuedFilters?.subeje ?? sessionFilters.subeje);
+    setDraftUnitIds([...(queuedFilters?.unitIds ?? sessionFilters.unitIds)]);
     setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
     setDraftQuestion(queuedFilters?.question ?? "random");
     setFilterDecisionOpen(false);
@@ -725,7 +734,7 @@ export function PlaygroundExperience() {
     setSettingsOpen(true);
   };
   const commitPracticeFilters = (
-    filters: { year: string; axis: string; subeje: string; savedOnly: boolean; question: string },
+    filters: QueuedTopicFilters,
     matching: PlaygroundQuestion[],
     avoidId?: string
   ) => {
@@ -739,10 +748,9 @@ export function PlaygroundExperience() {
       [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
     }
     setYear(filters.year);
-    setAxis(filters.axis);
-    setSubeje(filters.subeje);
+    setSelectedUnitIds([...filters.unitIds]);
     setSavedOnly(filters.savedOnly);
-    setSessionFilters({ year: filters.year, axis: filters.axis, subeje: filters.subeje, savedOnly: filters.savedOnly });
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], savedOnly: filters.savedOnly });
     setSelectedStartQuestion(filters.question);
     setOrder(shuffled);
     setPosition(0);
@@ -757,7 +765,7 @@ export function PlaygroundExperience() {
 
   const applyPracticeFilters = (timing: "now" | "next") => {
     if (!draftQuestions.length) return;
-    const filters = { year: draftYear, axis: draftAxis, subeje: draftSubeje, savedOnly: draftSavedOnly, question: draftQuestion };
+    const filters: QueuedTopicFilters = { year: draftYear, unitIds: [...draftUnitIds], savedOnly: draftSavedOnly, question: draftQuestion };
     if (timing === "now") {
       commitPracticeFilters(filters, draftQuestions, current?.id);
     } else {
@@ -902,8 +910,8 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters = { year, axis, subeje, savedOnly }) => {
-    setSessionFilters({ year: filters.year, axis: filters.axis, subeje: filters.subeje, savedOnly: filters.savedOnly });
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, savedOnly }) => {
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], savedOnly: filters.savedOnly });
     if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
@@ -931,11 +939,10 @@ export function PlaygroundExperience() {
   const revisitQuestion = (questionId: string) => {
     // A history entry must always be reachable, even if the current filters exclude it.
     setYear("all");
-    setAxis("all");
-    setSubeje("all");
+    setSelectedUnitIds([...ALL_M1_UNIT_IDS]);
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
-    beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", subeje: "all", savedOnly: false });
+    beginSession(playgroundQuestions, questionId, { year: "all", unitIds: [...ALL_M1_UNIT_IDS], savedOnly: false });
   };
 
   // Advance deliberately only after checking an answer. Deferred filters take
@@ -943,12 +950,7 @@ export function PlaygroundExperience() {
   const advanceQuestion = () => {
     if (!isRevealed) return;
     if (queuedFilters) {
-      const matching = playgroundQuestions.filter((question) =>
-        (queuedFilters.year === "all" || String(question.year) === queuedFilters.year) &&
-        (queuedFilters.axis === "all" || question.axis === queuedFilters.axis) &&
-        (queuedFilters.subeje === "all" || question.unitId === queuedFilters.subeje) &&
-        (!queuedFilters.savedOnly || savedQuestionIds.includes(question.id))
-      );
+      const matching = filterPlaygroundQuestions(queuedFilters, savedQuestionIds);
       if (matching.length > 0) {
         commitPracticeFilters(queuedFilters, matching, current?.id);
         return;
