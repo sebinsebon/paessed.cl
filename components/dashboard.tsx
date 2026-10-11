@@ -831,7 +831,7 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
                 onMouseEnter={(event) => setHoveredQuestion(positionQuestionMapHover(event.currentTarget, i + 1, label))}
                 onMouseLeave={() => setHoveredQuestion(null)}
                 aria-label={`Pregunta ${i + 1}: ${label}`}
-                className={`relative cursor-help aspect-[1.35/1] min-h-[8px] rounded-[4px] hover:z-10 hover:ring-2 hover:ring-[var(--text)] hover:ring-offset-2 hover:ring-offset-[var(--surface)] ${a === "g" ? "bg-emerald-500" : a === "r" ? "bg-rose-400" : "bg-[var(--muted-2)] opacity-55"}`}
+                className={`relative cursor-help aspect-square min-h-[8px] rounded-[3px] hover:z-10 hover:ring-2 hover:ring-[var(--text)] hover:ring-offset-2 hover:ring-offset-[var(--surface)] ${a === "g" ? "bg-emerald-500" : a === "r" ? "bg-rose-400" : "bg-[var(--muted-2)] opacity-55"}`}
               />
             );
           })}
