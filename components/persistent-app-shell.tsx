@@ -87,7 +87,10 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
     }
   };
 
-  const visuallyCollapsed = immersiveView.immersive ? !immersiveView.sidebarOpen : collapsed;
+  // Dedicated exam-taking routes have their own fullscreen header and controls.
+  // Keep the persistent shell mounted without adding navigation to those pages.
+  const standaloneExam = pathname === "/app/ensayos/nuevo" || pathname === "/app/ensayos/resultado";
+  const visuallyCollapsed = standaloneExam || (immersiveView.immersive ? !immersiveView.sidebarOpen : collapsed);
   const context: AppNavigationContextValue = {
     dark, setDark, monthlyGoal, registerTour, setImmersiveView, registerImmersiveToggle,
   };
@@ -109,8 +112,8 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
             },
           }}
         />
-        <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />
-        {(!immersiveView.immersive || immersiveToggle.current) && (
+        {!standaloneExam && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />}
+        {!standaloneExam && (!immersiveView.immersive || immersiveToggle.current) && (
           <SidebarToggle
             collapsed={visuallyCollapsed}
             onToggle={immersiveView.immersive
@@ -118,11 +121,11 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
               : toggleSidebar}
           />
         )}
-        {!immersiveView.immersive && (
+        {!standaloneExam && !immersiveView.immersive && (
           <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={collapsed} />
         )}
         {children}
-        {!immersiveView.immersive && <MobileNav />}
+        {!standaloneExam && !immersiveView.immersive && <MobileNav />}
       </div>
     </AppNavigationContext.Provider>
   );
