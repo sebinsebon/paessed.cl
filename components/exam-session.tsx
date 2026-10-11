@@ -144,12 +144,12 @@ export function ExamSession() {
           >
             <ChevronLeft size={18} />
             <span className="hidden sm:inline">Volver a ensayos</span>
-            <span className="sm:hidden">Volver</span>
+            <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
 
           <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
             <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
-              <span>Matemática M1</span>
+              <span><span className="hidden sm:inline">Matemática </span>M1</span>
               <span className="text-[var(--secondary)]">Ensayos</span>
             </p>
             <p className="truncate text-[10px] font-medium text-[var(--muted)]">
