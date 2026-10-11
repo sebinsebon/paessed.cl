@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
-import { M1_AXES, M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
+import { M1_AXES, M1_UNITS, toggleM1AxisSelection, toggleM1UnitSelection, type M1UnitId } from "@/lib/m1-curriculum";
 
 export const ALL_M1_UNIT_IDS: M1UnitId[] = M1_UNITS.map((unit) => unit.id);
 
@@ -26,19 +26,8 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
     onChange(ALL_M1_UNIT_IDS.filter((id) => nextSet.has(id)));
   };
 
-  const toggleUnit = (id: M1UnitId) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    update([...next]);
-  };
-
-  const toggleAxis = (ids: readonly M1UnitId[]) => {
-    const fullySelected = ids.every((id) => selectedSet.has(id));
-    const next = new Set(selected);
-    ids.forEach((id) => fullySelected ? next.delete(id) : next.add(id));
-    update([...next]);
-  };
+  const toggleUnit = (id: M1UnitId) => update(toggleM1UnitSelection(selected, id));
+  const toggleAxis = (axisId: (typeof M1_AXES)[number]["id"]) => update(toggleM1AxisSelection(selected, axisId));
 
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
@@ -92,7 +81,7 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
                   type="button"
                   aria-pressed={checked}
                   aria-label={checked ? `Quitar todos los subejes de ${axis.name}` : `Seleccionar todos los subejes de ${axis.name}`}
-                  onClick={() => toggleAxis(ids)}
+                  onClick={() => toggleAxis(axis.id)}
                   className={`shrink-0 rounded-lg border px-2.5 py-2 text-[10px] font-extrabold transition-colors ${checked ? "border-orange-500/30 bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)] hover:border-[var(--primary)]"}`}
                 >
                   {checked ? "Quitar eje" : "Elegir eje"}
