@@ -6,6 +6,8 @@ import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, FileJson
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AppShell } from "@/components/app-shell";
+import { PaessedBlocks } from "@/components/paessed-blocks";
+import { readPaessed } from "@/lib/paessed-package";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 
@@ -78,24 +80,20 @@ function questionText(question: unknown): string {
   return "Pregunta sin texto reconocible.";
 }
 
-function getOptions(question: unknown): Array<{ key: string; text: string }> {
+function getOptions(question: unknown): Array<{ key: string; text: string; blocks?: unknown[] }> {
   if (!isRecord(question)) return [];
   const candidate = question.options ?? question.alternatives ?? question.choices ?? question.answers;
   if (!Array.isArray(candidate)) return [];
-
   return candidate.map((option, index) => {
-    if (typeof option === "string" || typeof option === "number") {
-      return { key: String.fromCharCode(65 + index), text: String(option) };
-    }
+    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: String(option) };
     if (isRecord(option)) {
-      const key = option.key ?? option.id ?? option.label ?? String.fromCharCode(65 + index);
-      const text = flatten(option.content ?? option.text ?? option.value ?? option.label).replace(/\s+/g, " ").trim();
-      return { key: String(key), text: text || "Alternativa sin texto reconocible." };
+      const key = option.label ?? option.key ?? option.id ?? String.fromCharCode(65 + index);
+      const text = flatten(option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
+      return { key: String(key), text: text || "Alternativa sin texto reconocible.", blocks: Array.isArray(option.blocks) ? option.blocks : undefined };
     }
     return { key: String.fromCharCode(65 + index), text: "Alternativa sin texto reconocible." };
   });
 }
-
 
 const PAPER_FONT: CSSProperties = { fontFamily: 'Georgia, "Times New Roman", serif' };
 const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
@@ -172,6 +170,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
   const [archive, setArchive] = useState<JSZip | null>(null);
   const [assetUrls, setAssetUrls] = useState<Array<{ path: string; url: string }>>([]);
+  const [paessedAssetUrls, setPaessedAssetUrls] = useState<Map<string, string>>(new Map());
+  const [resourceError, setResourceError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -235,12 +235,28 @@ export function ImportedExamViewer({ id }: { id: string }) {
   useEffect(() => {
     let cancelled = false;
     setArchive(null);
-    if (!record?.archive) return;
+    if (!record?.archive || record.summary.sourceKind === "paessed") return;
     void record.archive.arrayBuffer()
       .then((data) => JSZip.loadAsync(data))
       .then((zip) => { if (!cancelled) setArchive(zip); })
       .catch(() => { if (!cancelled) setArchive(null); });
     return () => { cancelled = true; };
+  }, [record]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls = new Map<string, string>();
+    setPaessedAssetUrls(new Map());
+    setResourceError("");
+    if (!record?.archive || record.summary.sourceKind !== "paessed") return;
+    void readPaessed(record.archive).then((parsed) => {
+      if (cancelled) return;
+      parsed.blobs.forEach((blob, resourceId) => urls.set(resourceId, URL.createObjectURL(blob)));
+      setPaessedAssetUrls(new Map(urls));
+    }).catch((error) => {
+      if (!cancelled) setResourceError(error instanceof Error ? error.message : "No se pudieron verificar los recursos del paquete.");
+    });
+    return () => { cancelled = true; urls.forEach((url) => URL.revokeObjectURL(url)); };
   }, [record]);
 
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
@@ -508,6 +524,10 @@ export function ImportedExamViewer({ id }: { id: string }) {
           </div>
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+            {record.summary.sourceKind === "paessed" && <>
+              <link rel="stylesheet" href="/paessed/katex/katex.min.css" />
+              <link rel="stylesheet" href="/paessed/block-renderer.css" />
+            </>}
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
@@ -523,9 +543,23 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
               {current ? (
                 <div className="relative flex min-h-full flex-col">
-                  <h2 style={PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
-                    {questionText(current)}
-                  </h2>
+                  {resourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{resourceError}</p>}
+                  {isRecord(current) && isRecord(current.curriculum) && (
+                    <p className="mb-3 text-[11px] font-medium text-[var(--pg-muted)]">
+                      {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
+                    </p>
+                  )}
+                  {isRecord(current) && Array.isArray(current.stem) ? (
+                    <>
+                      <div className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
+                        <PaessedBlocks blocks={current.stem} assetUrls={paessedAssetUrls} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 style={PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+                        {questionText(current)}
+                      </h2>
                   {assetUrls.length > 0 && (
                     <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-4">
                       {assetUrls.map((asset) => (
@@ -535,6 +569,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
                           className="max-h-[360px] max-w-full rounded-lg object-contain" />
                       ))}
                     </div>
+                  )}
+                      </>
                   )}
                   {currentOptions.length ? (
                     <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
@@ -547,7 +583,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                             className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
                               (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
                             <span style={PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                            <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>
+                            {option.blocks ? <PaessedBlocks blocks={option.blocks} assetUrls={paessedAssetUrls} /> : <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
                           </button>
                         );
                       })}

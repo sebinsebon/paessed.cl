@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import JSZip from "jszip";
+import {buildPaessedPackage} from "@/lib/paessed-export";
+import {validatePaessed} from "@/lib/paessed-package";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowDownToLine, Check, ChevronDown, FileJson2, Save, X } from "lucide-react";
 import {
@@ -28,12 +30,17 @@ function previewFor(document: unknown) {
 }
 
 async function exportPackage(record: ImportedExamRecord): Promise<void> {
-  const zip = record.archive ? await JSZip.loadAsync(record.archive) : new JSZip();
-  const existing = Object.keys(zip.files)
-    .filter((path) => /(^|\/)final\.json$/i.test(path))
-    .sort((a, b) => a.split("/").length - b.split("/").length);
-  zip.file(existing[0] ?? "final.json", JSON.stringify(record.finalJson, null, 2));
-  const result = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  let result: Blob;
+  if (isJsonObject(record.finalJson) && record.finalJson.format === "paessed-benchmark") {
+    result = await buildPaessedPackage(record);
+  } else {
+    const zip = record.archive ? await JSZip.loadAsync(record.archive) : new JSZip();
+    const existing = Object.keys(zip.files)
+      .filter((path) => /(^|\/)final\.json$/i.test(path))
+      .sort((a, b) => a.split("/").length - b.split("/").length);
+    zip.file(existing[0] ?? "final.json", JSON.stringify(record.finalJson, null, 2));
+    result = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  }
   const url = URL.createObjectURL(result);
   const name = record.summary.fileName.replace(/\.(zip|json|paessed)$/i, "") || "ensayo";
   const link = document.createElement("a");
@@ -122,6 +129,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
     setNotice("");
     try {
       const updatedJson = applyQuestionPatch(record.finalJson, active, form);
+      if(isJsonObject(updatedJson)&&updatedJson.format==="paessed-benchmark") validatePaessed(updatedJson);
       const updatedQuestions = getEditableQuestions(updatedJson);
       const next: ImportedExamRecord = {
         ...record,
@@ -241,7 +249,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                     </div>
                     <div className="grid gap-4 sm:grid-cols-[165px_minmax(0,1fr)]">
                       <div>
-                        <label htmlFor="exam-edit-id" className={labelClass}>Número / identificador</label>
+                        <label htmlFor="exam-edit-id" className={labelClass}>Número de pregunta</label>
                         <input id="exam-edit-id" className={fieldClass} value={form.number} onChange={(event) => { setForm({ ...form, number: event.target.value }); setNotice(""); }} />
                       </div>
                       <div>

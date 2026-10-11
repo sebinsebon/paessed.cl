@@ -5,6 +5,10 @@ export type ImportedExamSummary = {
   questionCount: number;
   idCount: number;
   answerCount: number;
+  verifiedAnswerCount?: number;
+  curriculumCount?: number;
+  curriculumPendingCount?: number;
+  curriculumDoubtfulCount?: number;
   assetCount: number;
   referencedAssetCount: number;
   importedAt: string;
@@ -18,6 +22,19 @@ export type ImportedExamRecord = {
   finalJson: unknown;
   archive?: Blob;
 };
+
+function refreshed(record:ImportedExamRecord):ImportedExamRecord {
+  const data=record.finalJson as {format?:unknown;questions?:Array<{answer?:{label?:unknown;status?:unknown};curriculum?:{eje?:unknown;subeje?:unknown;en_temario?:unknown}}>};
+  if(data?.format!=='paessed-benchmark'||!Array.isArray(data.questions))return record;
+  const questions=data.questions;
+  return {...record,summary:{...record.summary,
+    answerCount:questions.filter(q=>typeof q.answer?.label==='string'&&q.answer.label.length>0).length,
+    verifiedAnswerCount:questions.filter(q=>typeof q.answer?.label==='string'&&q.answer.status==='verified').length,
+    curriculumCount:questions.filter(q=>typeof q.curriculum?.eje==='string'&&typeof q.curriculum.subeje==='string').length,
+    curriculumPendingCount:questions.filter(q=>!q.curriculum?.eje||!q.curriculum?.subeje).length,
+    curriculumDoubtfulCount:questions.filter(q=>!!q.curriculum?.eje&&q.curriculum.en_temario==='dudoso').length,
+  }};
+}
 
 const DB_NAME = "paessed-local";
 const DB_VERSION = 1;
@@ -41,7 +58,7 @@ export async function saveImportedExam(record: ImportedExamRecord): Promise<void
   const database = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORE, "readwrite");
-    transaction.objectStore(STORE).put(record);
+    transaction.objectStore(STORE).put(refreshed(record));
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo guardar el ensayo."));
   });
@@ -57,7 +74,7 @@ export async function listImportedExams(): Promise<ImportedExamSummary[]> {
     request.onerror = () => reject(request.error ?? new Error("No se pudieron leer los ensayos importados."));
   });
   database.close();
-  return records.map((record) => record.summary).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
+  return records.map((record) => refreshed(record).summary).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
 }
 
 export async function getImportedExam(id: string): Promise<ImportedExamRecord | null> {
@@ -69,5 +86,5 @@ export async function getImportedExam(id: string): Promise<ImportedExamRecord | 
     request.onerror = () => reject(request.error ?? new Error("No se pudo leer el ensayo importado."));
   });
   database.close();
-  return record ?? null;
+  return record ? refreshed(record) : null;
 }
