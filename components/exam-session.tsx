@@ -6,7 +6,8 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Clock3,
   Eraser, Flag, Grid3X3, Pencil, RotateCcw, Settings, Trash2, Trophy, X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition, type CSSProperties } from "react";
+import { usePersistentAppShell } from "@/components/persistent-app-shell";
 import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress, writeDemoExamProgress } from "@/lib/demo-exam-progress";
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
@@ -44,8 +45,17 @@ function formatTime(total: number) {
  * unanswered questions, markings, 65-question navigation and result remain
  * independent from Playground's immediate-answer checking.
  */
-export function ExamSession() {
+export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }: { sourceId?: string; sourceTitle?: string }) {
   const router = useRouter();
+  const { setImmersiveView, registerImmersiveToggle } = usePersistentAppShell();
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+
+  // Matches the same persistent sidebar/toggle used by Playground practice.
+  useLayoutEffect(() => registerImmersiveToggle(() => setSidebarVisible((open) => !open)), [registerImmersiveToggle]);
+  useLayoutEffect(() => {
+    setImmersiveView(true, sidebarVisible);
+    return () => setImmersiveView(false, false);
+  }, [setImmersiveView, sidebarVisible]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<number | null>>(() => Array(QUESTIONS.length).fill(null));
   const [flagged, setFlagged] = useState<boolean[]>(() => Array(QUESTIONS.length).fill(false));
@@ -67,9 +77,9 @@ export function ExamSession() {
   const pendingCount = QUESTIONS.length - answered;
   const inkStrokes = strokesByQuestion[index] ?? [];
 
-  // Restore before the timer or autosave starts: otherwise the initial
-  // 65 blank answers could overwrite a previously saved attempt.
-  useEffect(() => {
+  // Restore before paint and before autosave. Keep the shared title in the
+  // initial route tree so React can pair it with the clicked essay card.
+  useLayoutEffect(() => {
     const saved = readDemoExamProgress();
     if (saved) {
       setIndex(saved.questionIndex);
@@ -168,12 +178,12 @@ export function ExamSession() {
     setSettingsOpen(false);
   };
 
-  if (!restored) {
-    return <div className="flex h-dvh items-center justify-center bg-[var(--canvas)] text-sm font-semibold text-[var(--muted)]" role="status">Preparando tu ensayo…</div>;
-  }
-
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]" aria-label="Ensayo M1 · 65 preguntas">
+    <div
+      className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)] transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]"
+      aria-label="Ensayo M1 · 65 preguntas"
+      aria-busy={!restored}
+    >
       <header className="relative z-30 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
         <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
           <Link
@@ -190,10 +200,15 @@ export function ExamSession() {
           <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
             <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
               <span><span className="hidden sm:inline">Matemática </span>M1</span>
-              <span className="text-[var(--secondary)]">Ensayos</span>
+              <span className="text-amber-700 dark:text-amber-400">Ensayos</span>
             </p>
             <p className="truncate text-[10px] font-medium text-[var(--muted)]">
-              Simulación de práctica · {answered}/{QUESTIONS.length} respondidas
+              {sourceId ? (
+                <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
+                  <span className="inline-block font-semibold">{sourceTitle}</span>
+                </ViewTransition>
+              ) : <span>Ensayo de práctica</span>}
+              {" · "}{answered}/{QUESTIONS.length} respondidas
             </p>
           </div>
 
@@ -344,7 +359,7 @@ export function ExamSession() {
       </header>
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta del ensayo">
-        <article style={paperStyle} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {q.number}</span>
