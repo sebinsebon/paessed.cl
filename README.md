@@ -69,7 +69,7 @@ El catálogo compartido vive en `lib/m1-curriculum.ts` y corresponde al temario 
 
 Total: **4 ejes y 16 subejes**. [PDF oficial DEMRE/Mineduc](https://acceso.mineduc.cl/wp-content/uploads/2026/03/Temario-PAESRegular-2026-M1-v1.pdf).
 
-Inicio utiliza este catálogo para los detalles de dominio y deja sin evidencia los subejes que no tienen resultados. Aprender enumera el temario completo. Playground filtra por eje y subeje (antes y durante la práctica). Las preguntas de ejemplo tienen IDs de subeje explícitos, pero **no existe aún un banco de preguntas para los 16 subejes** ni un clasificador automático para los archivos `.paessed` importados.
+Inicio utiliza este catálogo para los detalles de dominio y deja sin evidencia los subejes que no tienen resultados. Aprender enumera el temario completo. Playground permite elegir varios subejes simultáneamente, incluso de ejes distintos, o marcar un eje completo. La selección es visual, indica cuántas preguntas de demostración hay por subeje y se combina con el filtro de año y preguntas guardadas. En una sesión se pueden aplicar cambios ahora o dejarlos pendientes para la próxima pregunta. Las preguntas de ejemplo tienen IDs de subeje explícitos, pero **no existe aún un banco de preguntas para los 16 subejes** ni un clasificador automático para los archivos `.paessed` importados.
 
 Comprobación de la integridad de los IDs y la cobertura:
 
