@@ -300,43 +300,35 @@ html.dark [data-sileo-toast] {
   transform: scale(1);
 }
 
-/* Keep navigation outside browser view-transition snapshots. The sidebar is
-   remounted by each route, so animating its active pill in the top-level overlay
-   could cover labels and appear offset between the old and new routes.
-   Shared transitions still run for page headings and content. */
+/* Across main sections, only the title animates (same simple animation
+   everywhere). No shared-position morph and no content-wide snapshot.
+   Motion layoutId transitions remain active inside individual modes. */
 @supports (view-transition-name: paessed-page-heading) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
   }
 
+  /* Prevent the title's old and new boxes from sliding across the screen. */
   ::view-transition-group(paessed-page-heading) {
-    animation-duration: 230ms;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+    animation: none;
   }
-  ::view-transition-old(paessed-page-heading),
+
+  ::view-transition-old(paessed-page-heading) {
+    animation: paessed-section-title-out 110ms ease-in both;
+    mix-blend-mode: normal;
+  }
   ::view-transition-new(paessed-page-heading) {
+    animation: paessed-section-title-in 195ms cubic-bezier(.22, 1, .36, 1) both;
     mix-blend-mode: normal;
   }
 
-  ::view-transition-group(paessed-page-content) {
-    animation-duration: 215ms;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
-  }
-
-  ::view-transition-old(paessed-page-content) {
-    animation: paessed-route-content-out 125ms ease-in both;
-  }
-  ::view-transition-new(paessed-page-content) {
-    animation: paessed-route-content-in 210ms cubic-bezier(.22, 1, .36, 1) both;
-  }
-
-  @keyframes paessed-route-content-out {
+  @keyframes paessed-section-title-out {
     from { opacity: 1; }
     to { opacity: 0; }
   }
-  @keyframes paessed-route-content-in {
-    from { opacity: 0; transform: translateY(4px); }
+  @keyframes paessed-section-title-in {
+    from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
   }
 }
@@ -345,14 +337,11 @@ html.dark [data-sileo-toast] {
   ::view-transition-old(root),
   ::view-transition-new(root),
   ::view-transition-old(paessed-page-heading),
-  ::view-transition-new(paessed-page-heading),
-  ::view-transition-old(paessed-page-content),
-  ::view-transition-new(paessed-page-content) {
+  ::view-transition-new(paessed-page-heading) {
     animation-duration: .001ms !important;
     animation-name: none !important;
   }
-  ::view-transition-group(paessed-page-heading),
-  ::view-transition-group(paessed-page-content) {
+  ::view-transition-group(paessed-page-heading) {
     animation-duration: .001ms !important;
   }
 
