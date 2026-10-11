@@ -43,6 +43,7 @@ Rutas principales:
 - `/app/aprender` — ruta adaptativa tipo micro-learning.
 - `/app/ensayos` — historial y progreso por ensayos.
 - `/app/ensayos/nuevo` — experiencia de ensayo de 65 preguntas.
+  - Guarda automáticamente respuestas, pregunta actual, marcas, tiempo restante y anotaciones de la sesión de demostración en este navegador. Si sales, aparece una tarjeta **Ensayo en curso** encima de Meta del mes en el sidebar para continuar. Se borra al entregar el ensayo. No sincroniza entre dispositivos ni aplica aún a ensayos importados.
 - `/app/ensayos/resultado` — resultado y siguiente acción.
 - `/app/playground` — exploración y práctica de preguntas.
 - `/app/perfil` — metas, preferencias y resumen.
@@ -75,6 +76,7 @@ Comprobación de la integridad de los IDs y la cobertura:
 
 ```bash
 npm run test:curriculum
+npm run test:exam-progress
 ```
 
 ## Estado de datos
