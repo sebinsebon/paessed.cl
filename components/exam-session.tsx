@@ -6,7 +6,8 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Clock3,
   Eraser, Flag, Grid3X3, Pencil, RotateCcw, Settings, Trash2, Trophy, X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress, writeDemoExamProgress } from "@/lib/demo-exam-progress";
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 
@@ -48,7 +49,9 @@ export function ExamSession() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<number | null>>(() => Array(QUESTIONS.length).fill(null));
   const [flagged, setFlagged] = useState<boolean[]>(() => Array(QUESTIONS.length).fill(false));
-  const [seconds, setSeconds] = useState(2 * 60 * 60 + 20 * 60);
+  const [seconds, setSeconds] = useState(DEMO_EXAM_DURATION_SECONDS);
+  const [restored, setRestored] = useState(false);
+  const finishedRef = useRef(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
@@ -64,10 +67,40 @@ export function ExamSession() {
   const pendingCount = QUESTIONS.length - answered;
   const inkStrokes = strokesByQuestion[index] ?? [];
 
+  // Restore before the timer or autosave starts: otherwise the initial
+  // 65 blank answers could overwrite a previously saved attempt.
   useEffect(() => {
+    const saved = readDemoExamProgress();
+    if (saved) {
+      setIndex(saved.questionIndex);
+      setAnswers(saved.answers);
+      setFlagged(saved.flagged);
+      setSeconds(saved.secondsLeft);
+      setStrokesByQuestion(saved.strokesByQuestion);
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
     const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [restored]);
+
+  const saveProgress = useCallback(() => {
+    if (!restored || finishedRef.current) return;
+    writeDemoExamProgress({
+      version: 1,
+      questionIndex: index,
+      answers,
+      flagged,
+      secondsLeft: seconds,
+      strokesByQuestion,
+      savedAt: Date.now(),
+    });
+  }, [restored, index, answers, flagged, seconds, strokesByQuestion]);
+
+  useEffect(() => { saveProgress(); }, [saveProgress]);
 
   useEffect(() => {
     const stored = localStorage.getItem("paessed-essay-paper-theme");
@@ -115,6 +148,8 @@ export function ExamSession() {
     localStorage.setItem("paessed-last-exam", JSON.stringify({
       correct, wrong, omitted, score, secondsLeft: seconds, completedAt: new Date().toISOString(),
     }));
+    finishedRef.current = true;
+    clearDemoExamProgress();
     router.push("/app/ensayos/resultado");
   };
 
@@ -133,12 +168,17 @@ export function ExamSession() {
     setSettingsOpen(false);
   };
 
+  if (!restored) {
+    return <div className="flex h-dvh items-center justify-center bg-[var(--canvas)] text-sm font-semibold text-[var(--muted)]" role="status">Preparando tu ensayo…</div>;
+  }
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]" aria-label="Ensayo M1 · 65 preguntas">
       <header className="relative z-30 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
         <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
           <Link
             href="/app/ensayos"
+            onClick={saveProgress}
             className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
             aria-label="Volver a Ensayos"
           >
