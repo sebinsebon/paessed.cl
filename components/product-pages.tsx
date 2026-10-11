@@ -1172,7 +1172,7 @@ export function PlaygroundExperience() {
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
                 className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
               >
-                <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
+                <p className="flex items-center justify-center gap-2 truncate text-center text-[12px] font-extrabold"><span>Matemática M1</span><span className="text-[var(--secondary)]">Playground</span></p>
                 <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
                   {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
