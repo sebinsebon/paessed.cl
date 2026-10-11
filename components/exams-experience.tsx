@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ImportExamPanel } from "@/components/import-exam";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, ViewTransition, type DragEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
@@ -261,9 +261,17 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
               </span>
             )}
           </div>
-          <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
-            {exam.title}
-          </h2>
+          {isImported ? (
+            <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
+              {exam.title}
+            </h2>
+          ) : (
+            <ViewTransition name={`paessed-essay-${exam.id}`} share="paessed-essay-open" default="none">
+              <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
+                {exam.title}
+              </h2>
+            </ViewTransition>
+          )}
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {exam.score === null ? (
               <span className="text-[14px] font-bold text-[var(--muted)]">
@@ -286,7 +294,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
 
         <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:flex-col xl:items-stretch">
           <Link
-            href={exam.href}
+            href={isImported ? exam.href : exam.href + "?source=" + encodeURIComponent(exam.id)}
             aria-label={actionLabel + ": " + exam.title}
             className="inline-flex min-h-10 items-center justify-center gap-2.5 rounded-xl bg-[var(--primary)] px-4 text-[12px] font-extrabold text-white shadow-[0_3px_0_var(--primary-pressed)] transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)] active:translate-y-0.5 active:shadow-[0_1px_0_var(--primary-pressed)]"
           >
