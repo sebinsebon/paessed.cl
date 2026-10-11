@@ -981,7 +981,7 @@ export function PlaygroundExperience() {
               >
                 <option value="random">Aleatoria</option>
                 {questions.map((question) => (
-                  <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                  <option key={question.id} value={question.id}>N.º {question.number} · {question.year ?? "Sin año"} · {question.collection}</option>
                 ))}
               </select>
             </div>
@@ -1059,7 +1059,7 @@ export function PlaygroundExperience() {
                     <div key={id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                          <span className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[var(--text)]">N.º {question.number} · {question.year}</span>
+                          <span className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[var(--text)]">N.º {question.number} · {question.year ?? "Sin año"}</span>
                           <span className="text-[var(--muted)]">{question.axis} · {question.topic}</span>
                         </div>
                         <p className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-5 text-[var(--text)]">{question.stem}</p>
@@ -1252,7 +1252,7 @@ export function PlaygroundExperience() {
                             >
                               <option value="random">Aleatoria</option>
                               {draftQuestions.map((question) => (
-                                <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                                <option key={question.id} value={question.id}>N.º {question.number} · {question.year ?? "Sin año"} · {question.collection}</option>
                               ))}
                             </select>
                           </div>
@@ -1366,7 +1366,7 @@ export function PlaygroundExperience() {
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {current.number}</span>
-                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year}</span>
+                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year ?? "Sin año"}</span>
                     <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">{current.collection}</span>
                   </div>
                   <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
@@ -1378,12 +1378,26 @@ export function PlaygroundExperience() {
                     {current.stem}
                   </h2>
 
+                  {questionAssets.length > 0 && (
+                    <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-3">
+                      {questionAssets.map((asset) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={asset.path} src={asset.url} alt={"Ilustración de la pregunta " + current.number}
+                          className="max-h-[350px] max-w-full rounded-lg object-contain" />
+                      ))}
+                    </div>
+                  )}
+                  {current.options.length === 0 && (
+                    <p className="mt-auto text-[12px] text-[var(--pg-muted)]">
+                      No se reconocieron alternativas en el archivo importado. Puedes saltar la pregunta.
+                    </p>
+                  )}
                   <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
                     {current.options.map((option, index) => {
                       const letter = playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
-                      const correct = isRevealed && current.correct === letter;
-                      const wrong = isRevealed && selected && !correct;
+                      const correct = isRevealed && current.correct !== null && current.correct === letter;
+                      const wrong = isRevealed && current.correct !== null && selected && !correct;
                       const tone = correct
                         ? "border-emerald-500 bg-[var(--pg-good)]"
                         : wrong
@@ -1408,13 +1422,18 @@ export function PlaygroundExperience() {
                     })}
                   </div>
 
-                  {isRevealed && (
+                  {isRevealed && current.correct !== null && (
                     <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[var(--pg-fg)] sm:text-[13px] " + (isCorrect
                       ? "border-emerald-500/50 bg-[var(--pg-good)]"
                       : "border-rose-500/50 bg-[var(--pg-bad)]")}>
                       <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
                       <p className="mt-1">{current.explanation}</p>
                     </div>
+                  )}
+                  {isRevealed && current.correct === null && (
+                    <p role="status" className="mt-4 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] px-4 py-3 text-[12px] text-[var(--pg-fg)]">
+                      Respuesta registrada. Este archivo no contiene un solucionario verificable para esta pregunta.
+                    </p>
                   )}
                   <PlaygroundScratchpad
                     enabled={drawingEnabled}
@@ -1437,7 +1456,12 @@ export function PlaygroundExperience() {
                       <ChevronLeft size={16} /> Anterior
                     </button>
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      {!isRevealed ? (
+                      {current.options.length === 0 && !isRevealed ? (
+                        <button type="button" onClick={() => setRevealed((old)=>({...old,[current.id]:true}))}
+                          className="min-h-10 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)]">
+                          Saltar pregunta
+                        </button>
+                      ) : !isRevealed ? (
                         <button
                           type="button"
                           onClick={confirmAnswer}
@@ -1445,7 +1469,7 @@ export function PlaygroundExperience() {
                           aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
                           className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
                         >
-                          {pendingAction === "check" ? "Confirmar" : "Comprobar"}
+                          {pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}
                         </button>
                       ) : (
                         <button
