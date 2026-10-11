@@ -313,15 +313,40 @@ html.dark [data-sileo-toast] {
 }
 
 @supports (view-transition-name: none) {
+  /* The only cross-route morph is the selected essay title → session title.
+     All other mode content remains static (no root snapshot crossfade). */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
   }
+  ::view-transition-group(.paessed-essay-open) {
+    animation-duration: 310ms;
+    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+  }
+  ::view-transition-old(.paessed-essay-open),
+  ::view-transition-new(.paessed-essay-open) {
+    mix-blend-mode: normal;
+  }
+}
+
+.paessed-essay-paper-entry {
+  animation: paessed-essay-paper-in 240ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes paessed-essay-paper-in {
+  from { opacity: .92; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .paessed-section-title-entry {
+  .paessed-section-title-entry,
+  .paessed-essay-paper-entry {
     animation: none !important;
+  }
+  ::view-transition-group(.paessed-essay-open),
+  ::view-transition-old(.paessed-essay-open),
+  ::view-transition-new(.paessed-essay-open) {
+    animation-duration: .001ms !important;
   }
 
   ::view-transition-old(root),
