@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
-import { Sidebar, SidebarToggle, DashboardTopNav, FloatingHomeActions, MobileNav, useSidebarCollapsed, announce } from "@/components/app-navigation";
+import { FloatingHomeActions, announce } from "@/components/app-navigation";
+import { usePersistentAppShell } from "@/components/persistent-app-shell";
 
 import {
   AnimatePresence,
@@ -12,7 +13,6 @@ import {
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
-import { sileo, Toaster } from "sileo";
 import {
   Bell,
   BookOpen,
@@ -1027,12 +1027,10 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
 }
 
 export function Dashboard() {
-  const [dark, setDarkState] = useState(false);
-  const [monthlyGoal, setMonthlyGoal] = useState(780);
+  const { dark, setDark, monthlyGoal, registerTour } = usePersistentAppShell();
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
-  const [sidebarCollapsed, toggleSidebar] = useSidebarCollapsed();
   // Only remember scrollY during the tour; no extra listeners or storage.
   const tourOrigin = useRef<number | null>(null);
   // Preserve the exact scroll destination between the two cards in the desktop row.
@@ -1043,27 +1041,15 @@ export function Dashboard() {
     setTourOpen(true);
   };
 
+  // The persistent top bar calls the currently-mounted dashboard tour.
+  useEffect(() => registerTour(startTour), [registerTour, startTour]);
+
   useEffect(() => {
-    const saved = localStorage.getItem("paessed-theme");
-    const shouldDark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDarkState(shouldDark);
-    document.documentElement.classList.toggle("dark", shouldDark);
-
-    const goal = Number(localStorage.getItem("paessed-monthly-goal"));
-    if (goal) setMonthlyGoal(goal);
-
     if (!localStorage.getItem("paessed-dashboard-tour-seen")) {
       const timer = window.setTimeout(() => { if (tourOrigin.current === null) startTour(); }, 650);
       return () => window.clearTimeout(timer);
     }
   }, []);
-
-  const setDark = (value: boolean) => {
-    sileo.clear();
-    setDarkState(value);
-    document.documentElement.classList.toggle("dark", value);
-    localStorage.setItem("paessed-theme", value ? "dark" : "light");
-  };
 
   const closeTour = () => {
     const returnTo = tourOrigin.current;
@@ -1158,26 +1144,7 @@ export function Dashboard() {
   }, [tourOpen, tourStep]);
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)]" style={{ "--sidebar-width": sidebarCollapsed ? "0px" : "264px" } as CSSProperties}>
-      <Toaster
-        position="top-right"
-        options={{
-          fill: dark ? "#111827" : "#e5eeff",
-          roundness: 16,
-          autopilot: { expand: 0, collapse: 2400 },
-          styles: {
-            title: dark ? "text-slate-50! font-bold!" : "text-slate-900! font-bold!",
-            description: dark ? "text-slate-300!" : "text-slate-500!",
-            badge: "paessed-toast-badge",
-            button: dark
-              ? "bg-slate-800! text-slate-100! hover:bg-slate-700!"
-              : "bg-slate-100! text-slate-900! hover:bg-slate-200!",
-          },
-        }}
-      />
-      <Sidebar tourFocus={false} dark={dark} collapsed={sidebarCollapsed} goal={monthlyGoal} />
-      <SidebarToggle collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
-      <DashboardTopNav dark={dark} setDark={setDark} onTour={startTour} sidebarCollapsed={sidebarCollapsed} />
+    <div className="min-h-screen bg-[var(--canvas)]">
       <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
       <main className="min-h-screen transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]">
         <div
@@ -1203,7 +1170,6 @@ export function Dashboard() {
         </div>
       </main>
 
-      <MobileNav />
       <AxisModal axis={selectedAxis} onClose={() => setSelectedAxis(null)} />
       <Tour open={tourOpen} step={tourStep} setStep={setTourStep} close={closeTour} />
     </div>
