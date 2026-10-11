@@ -90,7 +90,7 @@ html.dark {
 }
 
 * { box-sizing: border-box; }
-html { background: var(--canvas); }
+html { background: var(--canvas); scrollbar-gutter: stable; }
 body {
   margin: 0;
   background: var(--canvas);
@@ -286,27 +286,32 @@ html.dark [data-sileo-toast] {
   .domain-rail-mask { mask-image: none; -webkit-mask-image: none; }
 }
 
-/* Shared-element page navigation: sidebar selection, heading morph, content settle.
-   Native View Transitions run only during client navigations, with graceful fallback. */
-@supports (view-transition-name: paessed-page-heading) {
-  @media (min-width: 1024px) {
-    .paessed-sidebar-nav-link[data-active="true"] {
-      view-transition-name: paessed-active-nav;
-    }
-  }
-  @media (max-width: 1023px) {
-    .paessed-mobile-nav-link[data-active="true"] {
-      view-transition-name: paessed-active-nav;
-    }
-  }
+/* Keep both indicator nodes mounted. Only an actual selection change animates;
+   remounting a page cannot replay the pill's entrance animation. */
+.paessed-sidebar-active-indicator,
+.paessed-mobile-active-indicator {
+  opacity: 0;
+  transform: scale(.985);
+  transition: opacity 145ms ease-out, transform 145ms cubic-bezier(.22, 1, .36, 1);
+}
+.paessed-sidebar-nav-link[data-active="true"] .paessed-sidebar-active-indicator,
+.paessed-mobile-nav-link[data-active="true"] .paessed-mobile-active-indicator {
+  opacity: 1;
+  transform: scale(1);
+}
 
+/* Keep navigation outside browser view-transition snapshots. The sidebar is
+   remounted by each route, so animating its active pill in the top-level overlay
+   could cover labels and appear offset between the old and new routes.
+   Shared transitions still run for page headings and content. */
+@supports (view-transition-name: paessed-page-heading) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
   }
 
   ::view-transition-group(paessed-page-heading) {
-    animation-duration: 370ms;
+    animation-duration: 230ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
   }
   ::view-transition-old(paessed-page-heading),
@@ -314,27 +319,16 @@ html.dark [data-sileo-toast] {
     mix-blend-mode: normal;
   }
 
-  ::view-transition-group(paessed-active-nav) {
-    animation-duration: 310ms;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
-    z-index: 10;
-  }
-  ::view-transition-old(paessed-active-nav),
-  ::view-transition-new(paessed-active-nav) {
-    animation-duration: 210ms;
-    mix-blend-mode: normal;
-  }
-
   ::view-transition-group(paessed-page-content) {
-    animation-duration: 270ms;
+    animation-duration: 215ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
   }
 
   ::view-transition-old(paessed-page-content) {
-    animation: paessed-route-content-out 190ms ease-in both;
+    animation: paessed-route-content-out 125ms ease-in both;
   }
   ::view-transition-new(paessed-page-content) {
-    animation: paessed-route-content-in 290ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: paessed-route-content-in 210ms cubic-bezier(.22, 1, .36, 1) both;
   }
 
   @keyframes paessed-route-content-out {
@@ -342,7 +336,7 @@ html.dark [data-sileo-toast] {
     to { opacity: 0; }
   }
   @keyframes paessed-route-content-in {
-    from { opacity: 0; transform: translateY(9px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 }
@@ -353,15 +347,12 @@ html.dark [data-sileo-toast] {
   ::view-transition-old(paessed-page-heading),
   ::view-transition-new(paessed-page-heading),
   ::view-transition-old(paessed-page-content),
-  ::view-transition-new(paessed-page-content),
-  ::view-transition-old(paessed-active-nav),
-  ::view-transition-new(paessed-active-nav) {
+  ::view-transition-new(paessed-page-content) {
     animation-duration: .001ms !important;
     animation-name: none !important;
   }
   ::view-transition-group(paessed-page-heading),
-  ::view-transition-group(paessed-page-content),
-  ::view-transition-group(paessed-active-nav) {
+  ::view-transition-group(paessed-page-content) {
     animation-duration: .001ms !important;
   }
 
