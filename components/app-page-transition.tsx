@@ -3,14 +3,14 @@
 import { ViewTransition, type ReactNode } from "react";
 
 /**
- * One consistent transition when switching between PAESSED's main sections.
- * Only wrap the visible h1: page content, descriptions and navigation stay out
- * of the shared browser snapshot. In-mode Motion layoutId transitions (such as
- * Playground setup → practice) are intentionally independent.
+ * One consistent title-only entrance when switching between the main sections.
+ * Only the visible h1 participates: cards, descriptions and navigation switch
+ * immediately. In-mode Motion layoutId transitions (such as Playground
+ * setup → practice) remain independent.
  */
 export function PageHeadingTransition({ children }: { children: ReactNode }) {
   return (
-    <ViewTransition name="paessed-page-heading" share="paessed-shared-heading" default="none">
+    <ViewTransition name="paessed-page-heading" default="none">
       {children}
     </ViewTransition>
   );
