@@ -300,60 +300,58 @@ html.dark [data-sileo-toast] {
   transform: scale(1);
 }
 
-/* Keep navigation outside browser view-transition snapshots. The sidebar is
-   remounted by each route, so animating its active pill in the top-level overlay
-   could cover labels and appear offset between the old and new routes.
-   Shared transitions still run for page headings and content. */
-@supports (view-transition-name: paessed-page-heading) {
+/* Section navigation is instant except for the heading itself. No root or
+   content snapshots animate; the existing Motion layoutId transitions inside
+   Playground / Ensayos are unaffected. */
+.paessed-section-title-entry {
+  animation: paessed-section-title-in 190ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes paessed-section-title-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@supports (view-transition-name: none) {
+  /* The only cross-route morph is the selected essay title → session title.
+     All other mode content remains static (no root snapshot crossfade). */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
   }
-
-  ::view-transition-group(paessed-page-heading) {
-    animation-duration: 230ms;
+  ::view-transition-group(.paessed-essay-open) {
+    animation-duration: 310ms;
     animation-timing-function: cubic-bezier(.22, 1, .36, 1);
   }
-  ::view-transition-old(paessed-page-heading),
-  ::view-transition-new(paessed-page-heading) {
+  ::view-transition-old(.paessed-essay-open),
+  ::view-transition-new(.paessed-essay-open) {
     mix-blend-mode: normal;
-  }
-
-  ::view-transition-group(paessed-page-content) {
-    animation-duration: 215ms;
-    animation-timing-function: cubic-bezier(.22, 1, .36, 1);
-  }
-
-  ::view-transition-old(paessed-page-content) {
-    animation: paessed-route-content-out 125ms ease-in both;
-  }
-  ::view-transition-new(paessed-page-content) {
-    animation: paessed-route-content-in 210ms cubic-bezier(.22, 1, .36, 1) both;
-  }
-
-  @keyframes paessed-route-content-out {
-    from { opacity: 1; }
-    to { opacity: 0; }
-  }
-  @keyframes paessed-route-content-in {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 }
 
+.paessed-essay-paper-entry {
+  animation: paessed-essay-paper-in 240ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes paessed-essay-paper-in {
+  from { opacity: .92; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root),
-  ::view-transition-old(paessed-page-heading),
-  ::view-transition-new(paessed-page-heading),
-  ::view-transition-old(paessed-page-content),
-  ::view-transition-new(paessed-page-content) {
-    animation-duration: .001ms !important;
-    animation-name: none !important;
+  .paessed-section-title-entry,
+  .paessed-essay-paper-entry {
+    animation: none !important;
   }
-  ::view-transition-group(paessed-page-heading),
-  ::view-transition-group(paessed-page-content) {
+  ::view-transition-group(.paessed-essay-open),
+  ::view-transition-old(.paessed-essay-open),
+  ::view-transition-new(.paessed-essay-open) {
     animation-duration: .001ms !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
   }
 
   *, *::before, *::after {

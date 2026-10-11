@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import JSZip from "jszip";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
@@ -34,33 +35,38 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
+import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
+import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
+import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
+import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
+import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
 
 const learningNodes = [
-  { title: "Números racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
-  { title: "Porcentajes y variación", subtitle: "Dominio alto", state: "done", xp: "+20 XP" },
-  { title: "Potencias y raíces", subtitle: "Reforzar", state: "active", xp: "+30 XP" },
+  { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
+  { title: "Porcentaje", subtitle: "Dominio alto", state: "done", xp: "+20 XP" },
+  { title: "Potencias y raíces enésimas", subtitle: "Reforzar", state: "active", xp: "+30 XP" },
   { title: "Expresiones algebraicas", subtitle: "Siguiente unidad", state: "next", xp: "+30 XP" },
-  { title: "Ecuaciones lineales", subtitle: "Bloqueado", state: "locked", xp: "+40 XP" },
+  { title: "Ecuaciones e inecuaciones de primer grado", subtitle: "Bloqueado", state: "locked", xp: "+40 XP" },
 ];
 
 export function LearnExperience() {
   return (
     <AppShell title="Aprender" eyebrow="Ruta adaptativa">
-      <PageHeadingTransition>
       <section className="mb-6">
         <div className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--primary)]">
           <Sparkles size={14} />RUTA PERSONALIZADA
         </div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-[-.03em]">Tu camino para subir M1</h1>
+        <PageHeadingTransition>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-[-.03em]">Tu camino para subir M1</h1>
+        </PageHeadingTransition>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
           Avanza por unidades cortas. PAESSED mueve el orden cuando tus respuestas muestran una nueva debilidad o una mejora real.
         </p>
       </section>
-      </PageHeadingTransition>
 
-      <PageContentTransition>
+      
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_360px]">
         <section className="surface-raised rounded-[24px] p-5 sm:p-7">
           <div className="flex items-center justify-between">
@@ -68,7 +74,7 @@ export function LearnExperience() {
               <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">Ruta actual</div>
               <div className="mt-1 text-lg font-extrabold">Fundamentos prioritarios</div>
             </div>
-            <div className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--muted)]">3/12 nodos</div>
+            <div className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--muted)]">2/5 nodos de ejemplo</div>
           </div>
 
           <div className="relative mt-8 space-y-7">
@@ -114,7 +120,7 @@ export function LearnExperience() {
             <div className="flex items-center gap-2 text-sm font-extrabold"><Target size={18} className="text-red-500" />Talón de Aquiles</div>
             <div className="mt-4 rounded-2xl bg-red-50 p-4 dark:bg-red-950/20">
               <div className="text-[10px] font-extrabold uppercase tracking-[.1em] text-red-500">Geometría</div>
-              <div className="mt-1 text-lg font-extrabold">Teorema de Tales</div>
+              <div className="mt-1 text-lg font-extrabold">Semejanza y proporcionalidad de figuras</div>
               <div className="mt-1 text-xs leading-5 text-[var(--muted)]">34% de dominio · evidencia media</div>
             </div>
             <button className="soft-button mt-4 w-full rounded-xl px-4 py-3 text-xs font-extrabold">Hacer flash quiz</button>
@@ -132,7 +138,37 @@ export function LearnExperience() {
           </div>
         </aside>
       </div>
-      </PageContentTransition>
+      <section className="surface mt-5 rounded-[22px] p-5 sm:p-7" aria-label="Temario oficial M1 Admisión 2027">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--primary)]">DEMRE · Admisión 2027</p>
+            <h2 className="mt-1 text-xl font-extrabold">Temario completo · {M1_UNITS.length} subejes</h2>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--muted)]">Las 16 unidades temáticas oficiales, organizadas en 4 ejes. La ruta superior sigue siendo una demostración; esta lista no inventa lecciones ni niveles de dominio.</p>
+          </div>
+          <a href={M1_CURRICULUM_SOURCE} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold text-[var(--text)] hover:bg-[var(--surface-2)]">
+            Ver temario DEMRE <ArrowRight size={13} className="ml-1 inline" />
+          </a>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {M1_AXES.map((axis) => (
+            <div key={axis.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-extrabold">{axis.name}</h3>
+                <span className="text-[10px] font-semibold text-[var(--muted)]">{axis.units.length} subejes</span>
+              </div>
+              <ol className="mt-3 space-y-2">
+                {axis.units.map((unit, index) => (
+                  <li key={unit.id} className="flex items-start gap-2.5 text-xs leading-5">
+                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[var(--surface)] text-[10px] font-extrabold text-[var(--muted)]">{index + 1}</span>
+                    <span className="font-semibold text-[var(--text)]">{unit.name}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
+      
     </AppShell>
   );
 }
@@ -420,24 +456,13 @@ export function ExamsExperience() {
   );
 }
 
-type PlaygroundQuestion = {
-  id: string;
-  number: number;
-  year: number;
-  collection: string;
-  axis: string;
-  topic: string;
-  stem: string;
-  options: [string, string, string, string, string];
-  correct: string;
-  explanation: string;
-};
+type PlaygroundQuestion = BankQuestion;
 
 /** Original examples for the UI prototype: not official DEMRE questions. */
 const playgroundQuestions: PlaygroundQuestion[] = [
   {
     id: "m1-2026-01", number: 1, year: 2026,
-    collection: "Ensayo de práctica", axis: "Números", topic: "Decimales",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Números", topic: "Conjunto de los números enteros y racionales", unitId: "numeros-enteros-racionales",
     stem: "¿Cuál es el valor de 2,32 + 17,4?",
     options: ["19,72", "19,44", "19,36", "18,72", "19,06"],
     correct: "A",
@@ -445,7 +470,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2026-02", number: 2, year: 2026,
-    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Álgebra y funciones", topic: "Proporcionalidad", unitId: "proporcionalidad",
     stem: "La distancia de reacción de un vehículo es directamente proporcional a su velocidad. Si a 110 km/h recorre 33 m, ¿cuántos metros recorre a 30 km/h?",
     options: ["3 m", "6 m", "9 m", "10 m", "11 m"],
     correct: "C",
@@ -453,7 +478,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-03", number: 3, year: 2025,
-    collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Geometría", topic: "Semejanza y proporcionalidad de figuras", unitId: "semejanza-proporcionalidad-figuras",
     stem: "Dos triángulos son semejantes. El lado de 4 cm del primero corresponde a uno de 10 cm del segundo. ¿Cuánto mide en el segundo triángulo el lado que corresponde a uno de 6 cm del primero?",
     options: ["10 cm", "12 cm", "14 cm", "15 cm", "18 cm"],
     correct: "D",
@@ -461,7 +486,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-04", number: 4, year: 2025,
-    collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Porcentajes",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Números", topic: "Porcentaje", unitId: "porcentaje",
     stem: "De un grupo de 50 estudiantes, 18 prefieren estudiar por la mañana. ¿Qué porcentaje del grupo representan esos estudiantes?",
     options: ["18 %", "25 %", "32 %", "36 %", "50 %"],
     correct: "D",
@@ -469,6 +494,33 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
 
 ];
+
+type TopicFilters = { year: string; unitIds: M1UnitId[]; questionIds: string[]; savedOnly: boolean };
+type QueuedTopicFilters = TopicFilters & { question: string };
+
+function filterPlaygroundQuestions(filters: TopicFilters, savedIds: readonly string[], bank: readonly PlaygroundQuestion[]) {
+  const selectedUnits = new Set(filters.unitIds);
+  const chosenQuestions = new Set(filters.questionIds);
+  return bank.filter((question) =>
+    chosenQuestions.has(question.id) &&
+    (filters.year === "all" || String(question.year) === filters.year) &&
+    (question.unitId ? selectedUnits.has(question.unitId) : selectedUnits.size === ALL_M1_UNIT_IDS.length) &&
+    (!filters.savedOnly || savedIds.includes(question.id))
+  );
+}
+
+function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readonly string[], bank: readonly PlaygroundQuestion[], chosenIds: readonly string[]) {
+  const counts: Partial<Record<M1UnitId, number>> = {};
+  const chosen = new Set(chosenIds);
+  for (const question of bank) {
+    if (!chosen.has(question.id)) continue;
+    if (year !== "all" && String(question.year) !== year) continue;
+    if (savedOnly && !savedIds.includes(question.id)) continue;
+    if (!question.unitId) continue;
+    counts[question.unitId] = (counts[question.unitId] ?? 0) + 1;
+  }
+  return counts;
+}
 
 const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
 const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
@@ -482,146 +534,23 @@ function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
   return ids;
 }
 
-type PlaygroundInkPoint = { x: number; y: number };
-type PlaygroundInkStroke = { color: string; points: PlaygroundInkPoint[] };
-
-/** Pointer-based scratchpad: strokes use normalized coordinates so resize keeps annotations aligned. */
-function PlaygroundScratchpad({
-  enabled,
-  mode,
-  color,
-  strokes,
-  onChange,
-}: {
-  enabled: boolean;
-  mode: "pen" | "eraser";
-  color: string;
-  strokes: PlaygroundInkStroke[];
-  onChange: (next: PlaygroundInkStroke[]) => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const liveStrokeRef = useRef<PlaygroundInkStroke | null>(null);
-
-  const draw = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-    const width = Math.round(rect.width * pixelRatio);
-    const height = Math.round(rect.height * pixelRatio);
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (const stroke of [...strokes, ...(liveStrokeRef.current ? [liveStrokeRef.current] : [])]) {
-      if (!stroke.points.length) continue;
-      ctx.beginPath();
-      ctx.strokeStyle = stroke.color;
-      ctx.fillStyle = stroke.color;
-      ctx.lineWidth = 2.6;
-      const first = stroke.points[0];
-      ctx.moveTo(first.x * rect.width, first.y * rect.height);
-      if (stroke.points.length === 1) {
-        ctx.arc(first.x * rect.width, first.y * rect.height, 1.4, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        stroke.points.slice(1).forEach((point) => ctx.lineTo(point.x * rect.width, point.y * rect.height));
-        ctx.stroke();
-      }
-    }
-  };
-
-  useEffect(() => {
-    draw();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const observer = new ResizeObserver(draw);
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, [strokes, enabled]);
-
-  const pointOf = (event: ReactPointerEvent<HTMLCanvasElement>): PlaygroundInkPoint => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return {
-      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))),
-      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height))),
-    };
-  };
-
-  const eraseAt = (point: PlaygroundInkPoint) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const px = point.x * rect.width;
-    const py = point.y * rect.height;
-    const segmentDistance = (a: PlaygroundInkPoint, b: PlaygroundInkPoint) => {
-      const x1 = a.x * rect.width, y1 = a.y * rect.height;
-      const vx = b.x * rect.width - x1, vy = b.y * rect.height - y1;
-      const denominator = vx * vx + vy * vy;
-      const t = denominator === 0 ? 0 : Math.max(0, Math.min(1, ((px - x1) * vx + (py - y1) * vy) / denominator));
-      return Math.hypot(px - x1 - t * vx, py - y1 - t * vy);
-    };
-    const updated = strokes.filter((stroke) => !stroke.points.some((vertex, index) =>
-      segmentDistance(vertex, stroke.points[Math.min(index + 1, stroke.points.length - 1)]) < 14
-    ));
-    if (updated.length !== strokes.length) onChange(updated);
-  };
-
-  const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!enabled) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const point = pointOf(event);
-    if (mode === "eraser") {
-      eraseAt(point);
-      return;
-    }
-    liveStrokeRef.current = { color, points: [point] };
-    draw();
-  };
-  const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!enabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    if (mode === "eraser") {
-      eraseAt(pointOf(event));
-    } else if (liveStrokeRef.current) {
-      liveStrokeRef.current.points.push(pointOf(event));
-      draw();
-    }
-  };
-  const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    const stroke = liveStrokeRef.current;
-    liveStrokeRef.current = null;
-    if (stroke) onChange([...strokes, stroke]);
-  };
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-label={mode === "eraser" ? "Borrar trazos de la hoja" : "Escribir cálculos sobre la hoja"}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={finishStroke}
-      onPointerCancel={finishStroke}
-      className={"absolute inset-0 z-10 h-full w-full " +
-        (enabled ? (mode === "eraser" ? "pointer-events-auto cursor-cell touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
-    />
-  );
-}
 
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
-  const [axis, setAxis] = useState("all");
+  const [selectedUnitIds, setSelectedUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
+  const [importedQuestions, setImportedQuestions] = useState<PlaygroundQuestion[]>([]);
+  const [importedSources, setImportedSources] = useState<BankSource[]>([]);
+  const [sourceLoading, setSourceLoading] = useState(true);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const importedArchives = useRef<Record<string, Blob>>({});
+  const [questionAssets, setQuestionAssets] = useState<Array<{ path: string; url: string }>>([]);
+  const [chosenQuestionIds, setChosenQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question) => question.id));
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [draftAdvancedOpen, setDraftAdvancedOpen] = useState(false);
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
-  const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", savedOnly: false });
-  const [queuedFilters, setQueuedFilters] = useState<{ year: string; axis: string; savedOnly: boolean; question: string } | null>(null);
+  const [sessionFilters, setSessionFilters] = useState<TopicFilters>({ year: "all", unitIds: [...ALL_M1_UNIT_IDS], questionIds: playgroundQuestions.map((question)=>question.id), savedOnly: false });
+  const [queuedFilters, setQueuedFilters] = useState<QueuedTopicFilters | null>(null);
   const [filterDecisionOpen, setFilterDecisionOpen] = useState(false);
   const [filterNotice, setFilterNotice] = useState<string | null>(null);
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
@@ -635,7 +564,8 @@ export function PlaygroundExperience() {
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
-  const [draftAxis, setDraftAxis] = useState("all");
+  const [draftUnitIds, setDraftUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
+  const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id));
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
@@ -646,15 +576,16 @@ export function PlaygroundExperience() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [pendingAction, setPendingAction] = useState<"check" | null>(null);
 
-  const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
-  const questions = playgroundQuestions.filter((question) =>
-    (year === "all" || String(question.year) === year) &&
-    (axis === "all" || question.axis === axis) &&
-    (!savedOnly || savedQuestionIds.includes(question.id))
-  );
-  // Keep the session's question pool stable even if a bookmark is removed mid-practice.
+  const questionBank = [...playgroundQuestions, ...importedQuestions];
+  const sources: BankSource[] = [
+    { id: "demo", name: "Preguntas de demostración", count: playgroundQuestions.length, imported: false },
+    ...importedSources,
+  ];
+  const questions = filterPlaygroundQuestions({ year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }, savedQuestionIds, questionBank);
+  const topicCounts = playgroundUnitCounts(year, savedOnly, savedQuestionIds, questionBank, chosenQuestionIds);
+  // Keep active practice questions stable if a filter or bookmark changes.
   const sessionQuestions = isPracticing
-    ? playgroundQuestions.filter((question) => order.includes(question.id))
+    ? questionBank.filter((question) => order.includes(question.id))
     : questions;
   const visibleOrder = order.filter((id) => sessionQuestions.some((question) => question.id === id));
   const current = sessionQuestions.find((question) => question.id === visibleOrder[position]);
@@ -663,11 +594,45 @@ export function PlaygroundExperience() {
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
   const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
   const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
-  const draftQuestions = playgroundQuestions.filter((question) =>
-    (draftYear === "all" || String(question.year) === draftYear) &&
-    (draftAxis === "all" || question.axis === draftAxis) &&
-    (!draftSavedOnly || savedQuestionIds.includes(question.id))
-  );
+  const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, questionIds: draftQuestionIds, savedOnly: draftSavedOnly }, savedQuestionIds, questionBank);
+  const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds, questionBank, draftQuestionIds);
+  // Imported packages are only read locally, without fabricating topic labels.
+  useEffect(() => {
+    let mounted = true;
+    void loadPlaygroundImports().then((result) => {
+      if (!mounted) return;
+      importedArchives.current = result.archives;
+      setImportedSources(result.sources);
+      setImportedQuestions(result.questions);
+      setChosenQuestionIds((old) => [...new Set([...old, ...result.questions.map((q) => q.id)])]);
+      setSourceError(null);
+    }).catch(() => {
+      if (mounted) setSourceError("No fue posible cargar la biblioteca de ensayos de este navegador.");
+    }).finally(() => { if (mounted) setSourceLoading(false); });
+    return () => { mounted = false; };
+  }, []);
+
+  // Lazily load assets for the current imported question and revoke on change.
+  useEffect(() => {
+    let disposed = false;
+    const urls: string[] = [];
+    setQuestionAssets([]);
+    const blob = current && importedArchives.current[current.sourceId];
+    if (!blob || !current?.assetPaths?.length) return;
+    void blob.arrayBuffer().then((buffer)=>JSZip.loadAsync(buffer)).then(async(zip)=>{
+      const files=Object.keys(zip.files).filter((name)=>!zip.files[name].dir);
+      const found=await Promise.all((current.assetPaths??[]).map(async(path)=>{
+        const name=files.find((x)=>x===path)??files.find((x)=>x.endsWith("/"+path));
+        const file=name&&zip.file(name);
+        if (!file) return null;
+        const url=URL.createObjectURL(await file.async("blob"));urls.push(url);
+        return {path,url};
+      }));
+      if (!disposed) setQuestionAssets(found.filter((x):x is {path:string;url:string}=>!!x));
+    }).catch(()=>{});
+    return ()=>{disposed=true;urls.forEach((url)=>URL.revokeObjectURL(url));};
+  }, [current?.id, importedQuestions]);
+
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
     setStrokesByQuestion((previous) => ({ ...previous, [current.id]: next }));
@@ -678,7 +643,9 @@ export function PlaygroundExperience() {
       return;
     }
     setDraftYear(queuedFilters?.year ?? sessionFilters.year);
-    setDraftAxis(queuedFilters?.axis ?? sessionFilters.axis);
+    setDraftUnitIds([...(queuedFilters?.unitIds ?? sessionFilters.unitIds)]);
+    setDraftQuestionIds([...(queuedFilters?.questionIds ?? sessionFilters.questionIds)]);
+    setDraftAdvancedOpen(false);
     setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
     setDraftQuestion(queuedFilters?.question ?? "random");
     setFilterDecisionOpen(false);
@@ -686,7 +653,7 @@ export function PlaygroundExperience() {
     setSettingsOpen(true);
   };
   const commitPracticeFilters = (
-    filters: { year: string; axis: string; savedOnly: boolean; question: string },
+    filters: QueuedTopicFilters,
     matching: PlaygroundQuestion[],
     avoidId?: string
   ) => {
@@ -700,9 +667,10 @@ export function PlaygroundExperience() {
       [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
     }
     setYear(filters.year);
-    setAxis(filters.axis);
+    setSelectedUnitIds([...filters.unitIds]);
+    setChosenQuestionIds([...filters.questionIds]);
     setSavedOnly(filters.savedOnly);
-    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], questionIds: [...filters.questionIds], savedOnly: filters.savedOnly });
     setSelectedStartQuestion(filters.question);
     setOrder(shuffled);
     setPosition(0);
@@ -717,7 +685,7 @@ export function PlaygroundExperience() {
 
   const applyPracticeFilters = (timing: "now" | "next") => {
     if (!draftQuestions.length) return;
-    const filters = { year: draftYear, axis: draftAxis, savedOnly: draftSavedOnly, question: draftQuestion };
+    const filters: QueuedTopicFilters = { year: draftYear, unitIds: [...draftUnitIds], questionIds: [...draftQuestionIds], savedOnly: draftSavedOnly, question: draftQuestion };
     if (timing === "now") {
       commitPracticeFilters(filters, draftQuestions, current?.id);
     } else {
@@ -732,13 +700,13 @@ export function PlaygroundExperience() {
     try {
       const stored = JSON.parse(localStorage.getItem("paessed-playground-recent-questions") ?? "[]");
       if (!Array.isArray(stored)) return;
-      const validIds = new Set(playgroundQuestions.map((question) => question.id));
+      const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
       const unique = Array.from(new Set(stored.filter((id): id is string => typeof id === "string" && validIds.has(id))));
       setRecentQuestionIds(unique.slice(0, 5));
     } catch {
       // Browser storage can be disabled; the practice itself still works.
     }
-  }, []);
+  }, [importedQuestions]);
 
   // Record actual opened questions, not just the first question of each session.
   useEffect(() => {
@@ -761,13 +729,13 @@ export function PlaygroundExperience() {
     try {
       const stored = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
       if (Array.isArray(stored)) {
-        const validIds = new Set(playgroundQuestions.map((question) => question.id));
+        const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
         setSavedQuestionIds(stored.filter((id): id is string => typeof id === "string" && validIds.has(id)));
       }
     } catch {
       setSaveError("No se pudieron cargar las preguntas guardadas de este navegador.");
     }
-  }, []);
+  }, [importedQuestions]);
 
   const toggleSavedQuestion = () => {
     if (!current) return;
@@ -862,8 +830,8 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters = { year, axis, savedOnly }) => {
-    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }) => {
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], questionIds: [...filters.questionIds], savedOnly: filters.savedOnly });
     if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
@@ -891,10 +859,11 @@ export function PlaygroundExperience() {
   const revisitQuestion = (questionId: string) => {
     // A history entry must always be reachable, even if the current filters exclude it.
     setYear("all");
-    setAxis("all");
+    setSelectedUnitIds([...ALL_M1_UNIT_IDS]);
+    setChosenQuestionIds(questionBank.map((question)=>question.id));
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
-    beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", savedOnly: false });
+    beginSession(questionBank, questionId, { year: "all", unitIds: [...ALL_M1_UNIT_IDS], questionIds: questionBank.map((question)=>question.id), savedOnly: false });
   };
 
   // Advance deliberately only after checking an answer. Deferred filters take
@@ -902,11 +871,7 @@ export function PlaygroundExperience() {
   const advanceQuestion = () => {
     if (!isRevealed) return;
     if (queuedFilters) {
-      const matching = playgroundQuestions.filter((question) =>
-        (queuedFilters.year === "all" || String(question.year) === queuedFilters.year) &&
-        (queuedFilters.axis === "all" || question.axis === queuedFilters.axis) &&
-        (!queuedFilters.savedOnly || savedQuestionIds.includes(question.id))
-      );
+      const matching = filterPlaygroundQuestions(queuedFilters, savedQuestionIds, questionBank);
       if (matching.length > 0) {
         commitPracticeFilters(queuedFilters, matching, current?.id);
         return;
@@ -951,25 +916,25 @@ export function PlaygroundExperience() {
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="mx-auto w-full max-w-[1460px] pb-5"
       >
-        <PageHeadingTransition>
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">Banco de preguntas</p>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
+            <PageHeadingTransition>
+              <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
+            </PageHeadingTransition>
             <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
               Prepara tu práctica de Matemática M1. Elige qué quieres reforzar y comienza.
             </p>
           </div>
         </header>
-        </PageHeadingTransition>
 
-        <PageContentTransition>
+        
         <div>
         <section aria-label="Banco de preguntas disponible" className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-4">
           <span className="text-[14px] font-bold text-[var(--text)]">
             <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
           </span>
-          <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Banco de demostración</span>
+          <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Demostración y ensayos importados</span>
           <button
             type="button"
             aria-pressed={savedOnly}
@@ -991,7 +956,7 @@ export function PlaygroundExperience() {
             </p>
           </div>
 
-          <motion.div layoutId="playground-config" transition={{ type: "spring", stiffness: 280, damping: 35 }} className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:grid-cols-3 lg:py-7">
+          <motion.div layoutId="playground-config" transition={{ type: "spring", stiffness: 280, damping: 35 }} className="grid gap-4 px-5 py-5 sm:grid-cols-2 sm:px-7 lg:py-7">
             <div className="min-w-0">
               <label htmlFor="playground-start-year" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Año</label>
               <select
@@ -1001,20 +966,7 @@ export function PlaygroundExperience() {
                 className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
               >
                 <option value="all">Todos los años</option>
-                {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
-              </select>
-            </div>
-
-            <div className="min-w-0">
-              <label htmlFor="playground-start-axis" className="mb-2 block text-[12px] font-bold text-[var(--text)]">Eje temático</label>
-              <select
-                id="playground-start-axis"
-                value={axis}
-                onChange={(event) => { setAxis(event.target.value); setSelectedStartQuestion("random"); }}
-                className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
-              >
-                <option value="all">Todos los ejes</option>
-                {axes.map((value) => <option key={value} value={value}>{value}</option>)}
+                {[...new Set(questionBank.map((question) => question.year).filter((value): value is number => value !== null))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -1029,16 +981,45 @@ export function PlaygroundExperience() {
               >
                 <option value="random">Aleatoria</option>
                 {questions.map((question) => (
-                  <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                  <option key={question.id} value={question.id}>N.º {question.number} · {question.year ?? "Sin año"} · {question.collection}</option>
                 ))}
               </select>
             </div>
           </motion.div>
 
+          <div className="border-t border-[var(--border)] px-5 py-5 sm:px-7">
+            <PlaygroundTopicPicker
+              selected={selectedUnitIds}
+              onChange={(next) => { setSelectedUnitIds(next); setSelectedStartQuestion("random"); }}
+              questionCounts={topicCounts}
+            />
+          </div>
+          <div className="border-t border-[var(--border)] px-5 py-4 sm:px-7">
+            <button type="button" aria-expanded={advancedOpen} aria-controls="playground-advanced-setup"
+              onClick={() => setAdvancedOpen((value)=>!value)}
+              className="flex w-full items-center justify-between gap-2 rounded-xl py-2 text-left text-[12px] font-extrabold text-[var(--text)]">
+              <span className="inline-flex items-center gap-2"><SlidersHorizontal size={17} className="text-[var(--primary)]"/> Ajustes avanzados <span className="text-[10px] font-semibold text-[var(--muted)]">· Ensayos y preguntas exactas</span></span>
+              <motion.span animate={{rotate:advancedOpen?180:0}} transition={{duration:.18}}><ChevronRight size={16}/></motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {advancedOpen && (
+                <motion.div id="playground-advanced-setup" initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
+                  exit={{opacity:0,height:0}} transition={{duration:.22}} className="overflow-hidden">
+                  <div className="mt-3 border-t border-[var(--border)] pt-4">
+                    {sourceLoading && <p role="status" className="text-xs text-[var(--muted)]">Cargando ensayos locales…</p>}
+                    {sourceError && <p role="alert" className="text-xs text-amber-600">{sourceError}</p>}
+                    <PlaygroundAdvancedPicker questions={questionBank} sources={sources}
+                      selected={chosenQuestionIds} onChange={(next)=>{setChosenQuestionIds(next);setSelectedStartQuestion("random");}} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-4 sm:px-7">
             <p className="text-[12px] leading-5 text-[var(--muted)]">
               {questions.length === 0
-                ? "No hay preguntas con estos filtros."
+                ? "No hay preguntas disponibles con esta combinación de ensayos, preguntas, año y subejes."
                 : questions.length + (questions.length === 1 ? " pregunta disponible" : " preguntas disponibles") + " · Una pregunta por pantalla"}
             </p>
             <button
@@ -1072,13 +1053,13 @@ export function PlaygroundExperience() {
             ) : (
               <div className="divide-y divide-[var(--border)]">
                 {recentQuestionIds.map((id) => {
-                  const question = playgroundQuestions.find((item) => item.id === id);
+                  const question = questionBank.find((item) => item.id === id);
                   if (!question) return null;
                   return (
                     <div key={id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                          <span className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[var(--text)]">N.º {question.number} · {question.year}</span>
+                          <span className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[var(--text)]">N.º {question.number} · {question.year ?? "Sin año"}</span>
                           <span className="text-[var(--muted)]">{question.axis} · {question.topic}</span>
                         </div>
                         <p className="mt-1.5 line-clamp-2 text-[13px] font-semibold leading-5 text-[var(--text)]">{question.stem}</p>
@@ -1100,10 +1081,10 @@ export function PlaygroundExperience() {
         </section>
 
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-          Las preguntas guardadas quedan en este navegador. Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
+          El banco combina cuatro preguntas de ejemplo con tus ensayos importados de este navegador. Los ejemplos no son pruebas oficiales DEMRE; los años de demostración son referenciales. Los ensayos importados sin clasificación solo coinciden con «Todos los subejes».
         </p>
         </div>
-        </PageContentTransition>
+        
       </motion.div>
       ) : (
         <motion.div
@@ -1133,9 +1114,9 @@ export function PlaygroundExperience() {
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
                 className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
               >
-                <p className="truncate text-center text-[12px] font-extrabold">Matemática M1</p>
-                <p key={sessionFilters.year + ":" + sessionFilters.axis + ":" + sessionFilters.savedOnly} className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
-                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.axis === "all" ? "Todos los ejes" : sessionFilters.axis}{sessionFilters.savedOnly ? " · Guardadas" : ""}
+                <p className="flex items-center justify-center gap-2 truncate text-center text-[12px] font-extrabold"><span>Matemática M1</span><span className="text-[var(--secondary)]">Playground</span></p>
+                <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
+                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
                 {queuedFilters && <p className="truncate text-center text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
               </motion.div>
@@ -1187,7 +1168,7 @@ export function PlaygroundExperience() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(75dvh,640px)] w-[min(360px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
+                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(80dvh,680px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
                     >
                       <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
                       <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
@@ -1229,20 +1210,33 @@ export function PlaygroundExperience() {
                               className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
                             >
                               <option value="all">Todos los años</option>
-                              {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+                              {[...new Set(questionBank.map((question) => question.year).filter((value): value is number => value !== null))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
                             </select>
                           </div>
-                          <div>
-                            <label htmlFor="playground-practice-axis" className="mb-1 block text-[11px] font-bold">Eje temático</label>
-                            <select
-                              id="playground-practice-axis"
-                              value={draftAxis}
-                              onChange={(event) => { setDraftAxis(event.target.value); setDraftQuestion("random"); }}
-                              className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
-                            >
-                              <option value="all">Todos los ejes</option>
-                              {axes.map((value) => <option key={value} value={value}>{value}</option>)}
-                            </select>
+                          <PlaygroundTopicPicker
+                            selected={draftUnitIds}
+                            onChange={(next) => { setDraftUnitIds(next); setDraftQuestion("random"); setFilterDecisionOpen(false); }}
+                            questionCounts={draftTopicCounts}
+                            compact
+                          />
+                          <div className="border-t border-[var(--border)] pt-3">
+                            <button type="button" aria-expanded={draftAdvancedOpen} aria-controls="playground-advanced-practice"
+                              onClick={()=>setDraftAdvancedOpen((value)=>!value)}
+                              className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-extrabold text-[var(--text)]">
+                              <span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} className="text-[var(--primary)]"/> Ensayos y preguntas exactas</span>
+                              <motion.span animate={{rotate:draftAdvancedOpen?180:0}} transition={{duration:.18}}><ChevronRight size={15}/></motion.span>
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {draftAdvancedOpen && (
+                                <motion.div id="playground-advanced-practice" initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
+                                  exit={{opacity:0,height:0}} transition={{duration:.2}} className="overflow-hidden">
+                                  <div className="mt-3 border-t border-[var(--border)] pt-3">
+                                    <PlaygroundAdvancedPicker questions={questionBank} sources={sources} compact
+                                      selected={draftQuestionIds} onChange={(next)=>{setDraftQuestionIds(next);setDraftQuestion("random");setFilterDecisionOpen(false);}}/>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                           <label className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold">
                             <input type="checkbox" checked={draftSavedOnly} onChange={(event) => { setDraftSavedOnly(event.target.checked); setDraftQuestion("random"); }} />
@@ -1258,7 +1252,7 @@ export function PlaygroundExperience() {
                             >
                               <option value="random">Aleatoria</option>
                               {draftQuestions.map((question) => (
-                                <option key={question.id} value={question.id}>N.º {question.number} · {question.year} · {question.topic}</option>
+                                <option key={question.id} value={question.id}>N.º {question.number} · {question.year ?? "Sin año"} · {question.collection}</option>
                               ))}
                             </select>
                           </div>
@@ -1372,7 +1366,7 @@ export function PlaygroundExperience() {
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {current.number}</span>
-                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year}</span>
+                    <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year ?? "Sin año"}</span>
                     <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">{current.collection}</span>
                   </div>
                   <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
@@ -1384,12 +1378,26 @@ export function PlaygroundExperience() {
                     {current.stem}
                   </h2>
 
+                  {questionAssets.length > 0 && (
+                    <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-3">
+                      {questionAssets.map((asset) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={asset.path} src={asset.url} alt={"Ilustración de la pregunta " + current.number}
+                          className="max-h-[350px] max-w-full rounded-lg object-contain" />
+                      ))}
+                    </div>
+                  )}
+                  {current.options.length === 0 && (
+                    <p className="mt-auto text-[12px] text-[var(--pg-muted)]">
+                      No se reconocieron alternativas en el archivo importado. Puedes saltar la pregunta.
+                    </p>
+                  )}
                   <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
                     {current.options.map((option, index) => {
                       const letter = playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
-                      const correct = isRevealed && current.correct === letter;
-                      const wrong = isRevealed && selected && !correct;
+                      const correct = isRevealed && current.correct !== null && current.correct === letter;
+                      const wrong = isRevealed && current.correct !== null && selected && !correct;
                       const tone = correct
                         ? "border-emerald-500 bg-[var(--pg-good)]"
                         : wrong
@@ -1414,13 +1422,18 @@ export function PlaygroundExperience() {
                     })}
                   </div>
 
-                  {isRevealed && (
+                  {isRevealed && current.correct !== null && (
                     <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[var(--pg-fg)] sm:text-[13px] " + (isCorrect
                       ? "border-emerald-500/50 bg-[var(--pg-good)]"
                       : "border-rose-500/50 bg-[var(--pg-bad)]")}>
                       <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
                       <p className="mt-1">{current.explanation}</p>
                     </div>
+                  )}
+                  {isRevealed && current.correct === null && (
+                    <p role="status" className="mt-4 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] px-4 py-3 text-[12px] text-[var(--pg-fg)]">
+                      Respuesta registrada. Este archivo no contiene un solucionario verificable para esta pregunta.
+                    </p>
                   )}
                   <PlaygroundScratchpad
                     enabled={drawingEnabled}
@@ -1443,7 +1456,12 @@ export function PlaygroundExperience() {
                       <ChevronLeft size={16} /> Anterior
                     </button>
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      {!isRevealed ? (
+                      {current.options.length === 0 && !isRevealed ? (
+                        <button type="button" onClick={() => setRevealed((old)=>({...old,[current.id]:true}))}
+                          className="min-h-10 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)]">
+                          Saltar pregunta
+                        </button>
+                      ) : !isRevealed ? (
                         <button
                           type="button"
                           onClick={confirmAnswer}
@@ -1451,7 +1469,7 @@ export function PlaygroundExperience() {
                           aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
                           className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
                         >
-                          {pendingAction === "check" ? "Confirmar" : "Comprobar"}
+                          {pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}
                         </button>
                       ) : (
                         <button
@@ -1496,19 +1514,19 @@ export function PlaygroundExperience() {
 export function ProfileExperience() {
   return (
     <AppShell title="Perfil" eyebrow="Tu cuenta">
-      <PageHeadingTransition>
       <section className="mb-6">
         <div className="flex items-center gap-4">
           <div className="grid h-16 w-16 place-items-center rounded-[22px] bg-[var(--secondary)] text-xl font-extrabold text-white">S</div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-[-.03em]">Seba</h1>
+            <PageHeadingTransition>
+              <h1 className="text-3xl font-extrabold tracking-[-.03em]">Seba</h1>
+            </PageHeadingTransition>
             <div className="mt-1 text-sm text-[var(--muted)]">Preparando PAES M1 · Meta 780 pts</div>
           </div>
         </div>
       </section>
-      </PageHeadingTransition>
 
-      <PageContentTransition>
+      
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
           <div className="surface rounded-2xl p-5 sm:p-6">
@@ -1559,7 +1577,7 @@ export function ProfileExperience() {
           </div>
         </aside>
       </div>
-      </PageContentTransition>
+      
     </AppShell>
   );
 }

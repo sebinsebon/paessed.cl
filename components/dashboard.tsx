@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
+import { PageHeadingTransition } from "@/components/app-page-transition";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 import { FloatingHomeActions, announce } from "@/components/app-navigation";
 import { usePersistentAppShell } from "@/components/persistent-app-shell";
+import { getM1UnitsForAxis, type M1AxisId, type M1UnitId } from "@/lib/m1-curriculum";
 
 import {
   AnimatePresence,
@@ -66,7 +67,7 @@ const MASTERY = {
 
 type MasteryState = keyof typeof MASTERY;
 type Axis = {
-  id: string;
+  id: M1AxisId;
   name: string;
   shortName: string;
   state: MasteryState;
@@ -76,82 +77,30 @@ type Axis = {
   weakest: string;
   icon: ComponentType<{ className?: string; size?: number }>;
   evidence: string;
-  units: Array<{ name: string; state: MasteryState; pct: number }>;
 };
 
 type MasteryCSS = CSSProperties & { "--mastery": string };
 
-const axes: Axis[] = [
-  {
-    id: "numeros",
-    name: "Números",
-    shortName: "Números",
-    state: "Dominado",
-    percentage: 88,
-    correct: 15,
-    total: 17,
-    weakest: "Potencias y raíces",
-    icon: Calculator,
-    evidence: "Evidencia alta · 47 respuestas recientes",
-    units: [
-      { name: "Números enteros y racionales", state: "Dominado", pct: 94 },
-      { name: "Porcentajes", state: "Fuerte", pct: 84 },
-      { name: "Potencias y raíces", state: "Regular", pct: 72 },
-    ],
-  },
-  {
-    id: "algebra",
-    name: "Álgebra y Funciones",
-    shortName: "Álgebra y Funciones",
-    state: "Fuerte",
-    percentage: 82,
-    correct: 21,
-    total: 25,
-    weakest: "Ecuaciones lineales",
-    icon: Sigma,
-    evidence: "Evidencia alta · 51 respuestas recientes",
-    units: [
-      { name: "Expresiones algebraicas", state: "Dominado", pct: 90 },
-      { name: "Ecuaciones e inecuaciones", state: "Fuerte", pct: 83 },
-      { name: "Funciones", state: "Regular", pct: 69 },
-    ],
-  },
-  {
-    id: "geometria",
-    name: "Geometría",
-    shortName: "Geometría",
-    state: "Crítico",
-    percentage: 38,
-    correct: 6,
-    total: 16,
-    weakest: "Teorema de Tales",
-    icon: Triangle,
-    evidence: "Evidencia media · 29 respuestas recientes",
-    units: [
-      { name: "Figuras geométricas", state: "Regular", pct: 66 },
-      { name: "Semejanza y Teorema de Tales", state: "Crítico", pct: 34 },
-      { name: "Transformaciones isométricas", state: "Débil", pct: 54 },
-    ],
-  },
-  {
-    id: "datos",
-    name: "Probabilidad y Estadística",
-    shortName: "Probabilidad y Datos",
-    state: "Regular",
-    percentage: 64,
-    correct: 11,
-    total: 17,
-    weakest: "Regla de Laplace",
-    icon: BarChart3,
-    evidence: "Evidencia media · 33 respuestas recientes",
-    units: [
-      { name: "Representación de datos", state: "Fuerte", pct: 80 },
-      { name: "Medidas de tendencia", state: "Regular", pct: 68 },
-      { name: "Probabilidad", state: "Débil", pct: 56 },
-    ],
-  },
-];
+// Demonstration-only mastery; no fake scores for uncovered subejes.
+const demoSubejeProgress: Partial<Record<M1UnitId, { state: MasteryState; pct: number }>> = {
+  "numeros-enteros-racionales": { state: "Dominado", pct: 94 },
+  "porcentaje": { state: "Fuerte", pct: 84 },
+  "potencias-raices-enesimas": { state: "Regular", pct: 72 },
+  "expresiones-algebraicas": { state: "Dominado", pct: 90 },
+  "ecuaciones-inecuaciones-primer-grado": { state: "Fuerte", pct: 83 },
+  "figuras-geometricas": { state: "Regular", pct: 66 },
+  "transformaciones-isometricas": { state: "Débil", pct: 54 },
+  "semejanza-proporcionalidad-figuras": { state: "Crítico", pct: 34 },
+  "representacion-datos-tablas-graficos": { state: "Fuerte", pct: 80 },
+  "reglas-probabilidades": { state: "Débil", pct: 56 },
+};
 
+const axes: Axis[] = [
+  { id: "numeros", name: "Números", shortName: "Números", state: "Dominado", percentage: 88, correct: 15, total: 17, weakest: "Potencias y raíces enésimas", icon: Calculator, evidence: "Datos ilustrativos · 47 respuestas recientes" },
+  { id: "algebra", name: "Álgebra y funciones", shortName: "Álgebra y funciones", state: "Fuerte", percentage: 82, correct: 21, total: 25, weakest: "Ecuaciones e inecuaciones de primer grado", icon: Sigma, evidence: "Datos ilustrativos · 51 respuestas recientes" },
+  { id: "geometria", name: "Geometría", shortName: "Geometría", state: "Crítico", percentage: 38, correct: 6, total: 16, weakest: "Semejanza y proporcionalidad de figuras", icon: Triangle, evidence: "Datos ilustrativos · 29 respuestas recientes" },
+  { id: "datos", name: "Probabilidad y estadística", shortName: "Probabilidad y estadística", state: "Regular", percentage: 64, correct: 11, total: 17, weakest: "Reglas de las probabilidades", icon: BarChart3, evidence: "Datos ilustrativos · 33 respuestas recientes" },
+];
 const exams = [
   { id: 8, score: 742, date: "21 sep", answers: "ggrgggrogggrgggrggogrgggrgggrggogrgggrgggrggogrgggrgggrgggrgggrgg" },
   { id: 7, score: 728, date: "12 sep", answers: "ggrggrgogrggrggrggorggrggrggrggorggrggrggrggorggrggrggrggoggggggg" },
@@ -432,7 +381,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: .94, y: 14 }}
             transition={{ type: "spring", stiffness: 360, damping: 30 }}
-            className="surface-raised fixed left-1/2 top-1/2 z-[100] w-[calc(100%-28px)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-[22px] p-5 sm:p-6"
+            className="surface-raised fixed left-1/2 top-1/2 z-[100] max-h-[calc(100dvh-32px)] w-[calc(100%-28px)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[22px] p-5 sm:p-6"
             style={masteryStyle(axis.state)}
           >
             <div className="relative">
@@ -455,20 +404,28 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
                   <div className="mt-4 text-xs text-[var(--muted)]">{axis.correct} correctas de {axis.total} recientes</div>
                 </div>
                 <div className="space-y-2.5">
-                  {axis.units.map((unit) => (
-                    <div key={unit.name} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-extrabold">{unit.name}</div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full progress-track">
-                          <div className="h-full rounded-full" style={{ width: `${unit.pct}%`, background: MASTERY[unit.state].color }} />
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{getM1UnitsForAxis(axis.id).length} subejes · Admisión 2027</p>
+                  {getM1UnitsForAxis(axis.id).map((unit) => {
+                    const progress = demoSubejeProgress[unit.id];
+                    return (
+                      <div key={unit.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-extrabold leading-5">{unit.name}</div>
+                          <div className="mt-1 h-1.5 overflow-hidden rounded-full progress-track">
+                            {progress && <div className="h-full rounded-full" style={{ width: `${progress.pct}%`, background: MASTERY[progress.state].color }} />}
+                          </div>
+                        </div>
+                        <div className="min-w-[88px] shrink-0 text-right">
+                          {progress ? (
+                            <>
+                              <div className="text-xs font-extrabold" style={{ color: MASTERY[progress.state].color }}>{progress.pct}%</div>
+                              <div className="text-[9px] text-[var(--muted)]">{progress.state}</div>
+                            </>
+                          ) : <div className="text-[10px] font-bold text-[var(--muted)]">Sin evidencia</div>}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs font-extrabold" style={{ color: MASTERY[unit.state].color }}>{unit.pct}%</div>
-                        <div className="text-[9px] text-[var(--muted)]">{unit.state}</div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -477,7 +434,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
                   <Sparkles size={18} className="mt-0.5 text-[var(--primary)]" />
                   <div>
                     <div className="text-xs font-extrabold">Detalle inteligente — preparado para una fase futura</div>
-                    <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Aquí podrán aparecer preguntas falladas, evolución, habilidades con más errores y recomendaciones basadas en tu historial.</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Aquí podrán aparecer preguntas falladas, evolución y recomendaciones basadas en tu historial. Los datos de dominio son ilustrativos y los subejes sin evidencia quedan sin evaluar.</p>
                   </div>
                 </div>
               </div>
@@ -1151,22 +1108,20 @@ export function Dashboard() {
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <PageHeadingTransition>
-            <section className="mb-6 px-[30px]">
+          <section className="mb-6 px-[30px]">
+            <PageHeadingTransition>
               <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
-              <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
-            </section>
-          </PageHeadingTransition>
+            </PageHeadingTransition>
+            <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
+          </section>
 
-          <PageContentTransition>
-            <div>
+          <div>
               <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
               <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
               <div className="mt-7">
                 <LastExams tourFocus={tourKey === "exams"} />
               </div>
-            </div>
-          </PageContentTransition>
+          </div>
         </div>
       </main>
 

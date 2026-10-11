@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:curriculum": "node --experimental-strip-types --test tests/m1-curriculum.test.mjs",
+    "test:exam-progress": "node --experimental-strip-types --test tests/demo-exam-progress.test.mjs",
     "start": "next start"
   },
   "dependencies": {

@@ -1,24 +1,18 @@
 "use client";
 
-import { ViewTransition, type ReactNode } from "react";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 
 /**
- * Stable identities across the five primary PAESSED routes.
- * Page headings morph between layouts while page content settles into place.
- * This does not change existing in-page Motion layout animations.
+ * Navigation between top-level PAESSED modes animates ONLY the title.
+ *
+ * Cloning the h1 adds no layout wrapper, so its position and the rest of the
+ * page remain stable. This deliberately does not create a browser-wide shared
+ * element transition; those remain within modes via Motion layoutId.
  */
 export function PageHeadingTransition({ children }: { children: ReactNode }) {
-  return (
-    <ViewTransition name="paessed-page-heading" share="paessed-shared-heading" default="none">
-      {children}
-    </ViewTransition>
-  );
-}
-
-export function PageContentTransition({ children }: { children: ReactNode }) {
-  return (
-    <ViewTransition name="paessed-page-content" share="paessed-shared-content" default="none">
-      {children}
-    </ViewTransition>
-  );
+  if (!isValidElement<{ className?: string }>(children)) return <>{children}</>;
+  const previousClass = children.props.className ?? "";
+  return cloneElement(children, {
+    className: [previousClass, "paessed-section-title-entry"].filter(Boolean).join(" "),
+  });
 }

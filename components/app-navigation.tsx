@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { sileo } from "sileo";
-import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Gamepad2, Home, Moon, Route, Sun, Target, Trophy, UserRound, X } from "lucide-react";
+import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Gamepad2, Home, Play, Route, Sun, Moon, Target, Trophy, UserRound, X } from "lucide-react";
+import { DEMO_EXAM_EVENT, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
@@ -63,6 +64,19 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [inProgress, setInProgress] = useState<DemoExamProgress | null>(null);
+  useEffect(() => {
+    const syncProgress = () => setInProgress(readDemoExamProgress());
+    syncProgress();
+    window.addEventListener(DEMO_EXAM_EVENT, syncProgress);
+    window.addEventListener("storage", syncProgress);
+    window.addEventListener("focus", syncProgress);
+    return () => {
+      window.removeEventListener(DEMO_EXAM_EVENT, syncProgress);
+      window.removeEventListener("storage", syncProgress);
+      window.removeEventListener("focus", syncProgress);
+    };
+  }, []);
   // The selected item responds to a click before the next route has rendered.
   // Once navigation completes, the URL becomes the source of truth again.
   useEffect(() => setPendingHref(null), [pathname]);
@@ -89,7 +103,7 @@ export function Sidebar({
       inert={collapsed}
       className={`fixed inset-y-0 left-0 z-50 hidden w-[264px] overflow-hidden border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:block ${collapsed ? "-translate-x-full pointer-events-none" : "translate-x-0"}`}
     >
-      <div className="flex h-full w-[264px] flex-col px-5 py-5">
+      <div className="flex h-full w-[264px] flex-col overflow-y-auto px-5 py-5">
           <Link href="/app/inicio" className="mb-7 flex w-full justify-center">
             <div className="w-[178px]">
               <img
@@ -133,7 +147,41 @@ export function Sidebar({
             </div>
           </nav>
 
-          <div className="mt-auto">
+          <div className="mt-auto space-y-3 pt-5">
+            <AnimatePresence initial={false}>
+              {inProgress && (
+                <motion.section
+                  key="sidebar-essay-in-progress"
+                  aria-label="Ensayo en curso"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="rounded-2xl border border-[var(--secondary)]/25 bg-[var(--surface-2)] p-3.5"
+                >
+                  <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.08em] text-[var(--secondary)]">
+                    <Clock3 size={14} />
+                    Ensayo en curso
+                  </div>
+                  <p className="mt-2 text-[12px] font-extrabold text-[var(--text)]">Matemática M1</p>
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] font-semibold text-[var(--muted)]">
+                    <span>Pregunta {inProgress.questionIndex + 1} de {DEMO_EXAM_QUESTION_COUNT}</span>
+                    <span>{answeredDemoExamCount(inProgress)} respondidas</span>
+                  </div>
+                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[var(--surface-4)]" aria-hidden="true">
+                    <div className="h-full rounded-full bg-[var(--secondary)] transition-[width] duration-200" style={{ width: `${(answeredDemoExamCount(inProgress) / DEMO_EXAM_QUESTION_COUNT) * 100}%` }} />
+                  </div>
+                  <Link
+                    href="/app/ensayos/nuevo"
+                    onClick={(event) => selectLink(event, "/app/ensayos/nuevo")}
+                    className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-xl bg-[var(--secondary)] px-3 py-2 text-[11px] font-extrabold text-white transition-[background-color,transform] duration-150 hover:brightness-110 active:translate-y-px"
+                  >
+                    <Play size={14} fill="currentColor" />
+                    Continuar ensayo
+                  </Link>
+                </motion.section>
+              )}
+            </AnimatePresence>
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
               <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">
                 <Target size={14} className="text-[var(--primary)]" />

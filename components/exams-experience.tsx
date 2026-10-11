@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ImportExamPanel } from "@/components/import-exam";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, ViewTransition, type DragEvent } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
+import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
 import { type ImportedExamSummary, getImportedExam, listImportedExams } from "@/lib/local-imports";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
@@ -246,7 +246,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
 function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void }) {
   const isImported = exam.kind === "imported";
   const isCompleted = exam.status === "completed";
-  const actionLabel = isImported ? "Ver preguntas" : "Practicar";
+  const actionLabel = "Practicar";
   return (
     <article className="group overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-1)]">
       <div className="grid items-center gap-5 p-4 sm:p-5 md:grid-cols-[minmax(235px,.9fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(250px,.82fr)_minmax(320px,1fr)_148px] xl:gap-7">
@@ -261,9 +261,17 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
               </span>
             )}
           </div>
-          <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
-            {exam.title}
-          </h2>
+          {isImported ? (
+            <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
+              {exam.title}
+            </h2>
+          ) : (
+            <ViewTransition name={`paessed-essay-${exam.id}`} share="paessed-essay-open" default="none">
+              <h2 className="text-[18px] font-extrabold leading-snug tracking-[-.025em] text-[var(--text)] sm:text-[20px]" title={exam.title}>
+                {exam.title}
+              </h2>
+            </ViewTransition>
+          )}
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {exam.score === null ? (
               <span className="text-[14px] font-bold text-[var(--muted)]">
@@ -286,7 +294,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
 
         <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:flex-col xl:items-stretch">
           <Link
-            href={exam.href}
+            href={isImported ? exam.href : exam.href + "?source=" + encodeURIComponent(exam.id)}
             aria-label={actionLabel + ": " + exam.title}
             className="inline-flex min-h-10 items-center justify-center gap-2.5 rounded-xl bg-[var(--primary)] px-4 text-[12px] font-extrabold text-white shadow-[0_3px_0_var(--primary-pressed)] transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)] active:translate-y-0.5 active:shadow-[0_1px_0_var(--primary-pressed)]"
           >
@@ -423,7 +431,6 @@ export function ExamsExperience() {
             className="mx-auto w-full max-w-[1460px] pb-5"
           >
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <PageHeadingTransition>
           <motion.div
             layoutId="exams-import-heading"
             transition={{ type: "spring", stiffness: 280, damping: 35 }}
@@ -431,12 +438,13 @@ export function ExamsExperience() {
             <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">
               Historial y práctica
             </p>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Tus ensayos</h1>
+            <PageHeadingTransition>
+              <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Tus ensayos</h1>
+            </PageHeadingTransition>
             <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
               Revisa tus resultados, explora las preguntas y continúa practicando.
             </p>
           </motion.div>
-          </PageHeadingTransition>
           <button
             type="button"
             onClick={() => { window.scrollTo({ top: 0, behavior: "instant" }); setShowImportPanel(true); }}
@@ -447,7 +455,7 @@ export function ExamsExperience() {
           </button>
         </header>
 
-        <PageContentTransition>
+        
         <div>
         <section aria-label="Buscar y ordenar ensayos" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
@@ -565,7 +573,7 @@ export function ExamsExperience() {
           </div>
         </section>
         </div>
-        </PageContentTransition>
+        
           </motion.div>
         ) : (
           <motion.div
