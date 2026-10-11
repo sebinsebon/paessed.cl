@@ -458,6 +458,7 @@ type PlaygroundQuestion = {
   collection: string;
   axis: string;
   topic: string;
+  unitId: M1UnitId;
   stem: string;
   options: [string, string, string, string, string];
   correct: string;
@@ -468,7 +469,7 @@ type PlaygroundQuestion = {
 const playgroundQuestions: PlaygroundQuestion[] = [
   {
     id: "m1-2026-01", number: 1, year: 2026,
-    collection: "Ensayo de práctica", axis: "Números", topic: "Decimales",
+    collection: "Ensayo de práctica", axis: "Números", topic: "Conjunto de los números enteros y racionales", unitId: "numeros-enteros-racionales",
     stem: "¿Cuál es el valor de 2,32 + 17,4?",
     options: ["19,72", "19,44", "19,36", "18,72", "19,06"],
     correct: "A",
@@ -476,7 +477,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2026-02", number: 2, year: 2026,
-    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad",
+    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad", unitId: "proporcionalidad",
     stem: "La distancia de reacción de un vehículo es directamente proporcional a su velocidad. Si a 110 km/h recorre 33 m, ¿cuántos metros recorre a 30 km/h?",
     options: ["3 m", "6 m", "9 m", "10 m", "11 m"],
     correct: "C",
@@ -484,7 +485,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-03", number: 3, year: 2025,
-    collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza",
+    collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza y proporcionalidad de figuras", unitId: "semejanza-proporcionalidad-figuras",
     stem: "Dos triángulos son semejantes. El lado de 4 cm del primero corresponde a uno de 10 cm del segundo. ¿Cuánto mide en el segundo triángulo el lado que corresponde a uno de 6 cm del primero?",
     options: ["10 cm", "12 cm", "14 cm", "15 cm", "18 cm"],
     correct: "D",
@@ -492,7 +493,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-04", number: 4, year: 2025,
-    collection: "Ensayo de práctica", axis: "Probabilidad y estadística", topic: "Porcentajes",
+    collection: "Ensayo de práctica", axis: "Números", topic: "Porcentaje", unitId: "porcentaje",
     stem: "De un grupo de 50 estudiantes, 18 prefieren estudiar por la mañana. ¿Qué porcentaje del grupo representan esos estudiantes?",
     options: ["18 %", "25 %", "32 %", "36 %", "50 %"],
     correct: "D",
@@ -649,10 +650,11 @@ function PlaygroundScratchpad({
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [axis, setAxis] = useState("all");
+  const [subeje, setSubeje] = useState("all");
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
-  const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", savedOnly: false });
-  const [queuedFilters, setQueuedFilters] = useState<{ year: string; axis: string; savedOnly: boolean; question: string } | null>(null);
+  const [sessionFilters, setSessionFilters] = useState({ year: "all", axis: "all", subeje: "all", savedOnly: false });
+  const [queuedFilters, setQueuedFilters] = useState<{ year: string; axis: string; subeje: string; savedOnly: boolean; question: string } | null>(null);
   const [filterDecisionOpen, setFilterDecisionOpen] = useState(false);
   const [filterNotice, setFilterNotice] = useState<string | null>(null);
   const [savedQuestionIds, setSavedQuestionIds] = useState<string[]>([]);
@@ -667,6 +669,7 @@ export function PlaygroundExperience() {
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
   const [draftAxis, setDraftAxis] = useState("all");
+  const [draftSubeje, setDraftSubeje] = useState("all");
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
@@ -677,10 +680,13 @@ export function PlaygroundExperience() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [pendingAction, setPendingAction] = useState<"check" | null>(null);
 
-  const axes = Array.from(new Set(playgroundQuestions.map((question) => question.axis)));
+  const axes = M1_AXES.map((item) => item.name);
+  const subejes = M1_UNITS.filter((item) => axis === "all" || item.axisName === axis);
+  const draftSubejes = M1_UNITS.filter((item) => draftAxis === "all" || item.axisName === draftAxis);
   const questions = playgroundQuestions.filter((question) =>
     (year === "all" || String(question.year) === year) &&
     (axis === "all" || question.axis === axis) &&
+    (subeje === "all" || question.unitId === subeje) &&
     (!savedOnly || savedQuestionIds.includes(question.id))
   );
   // Keep the session's question pool stable even if a bookmark is removed mid-practice.
@@ -697,6 +703,7 @@ export function PlaygroundExperience() {
   const draftQuestions = playgroundQuestions.filter((question) =>
     (draftYear === "all" || String(question.year) === draftYear) &&
     (draftAxis === "all" || question.axis === draftAxis) &&
+    (draftSubeje === "all" || question.unitId === draftSubeje) &&
     (!draftSavedOnly || savedQuestionIds.includes(question.id))
   );
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
@@ -710,6 +717,7 @@ export function PlaygroundExperience() {
     }
     setDraftYear(queuedFilters?.year ?? sessionFilters.year);
     setDraftAxis(queuedFilters?.axis ?? sessionFilters.axis);
+    setDraftSubeje(queuedFilters?.subeje ?? sessionFilters.subeje);
     setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
     setDraftQuestion(queuedFilters?.question ?? "random");
     setFilterDecisionOpen(false);
@@ -717,7 +725,7 @@ export function PlaygroundExperience() {
     setSettingsOpen(true);
   };
   const commitPracticeFilters = (
-    filters: { year: string; axis: string; savedOnly: boolean; question: string },
+    filters: { year: string; axis: string; subeje: string; savedOnly: boolean; question: string },
     matching: PlaygroundQuestion[],
     avoidId?: string
   ) => {
@@ -732,8 +740,9 @@ export function PlaygroundExperience() {
     }
     setYear(filters.year);
     setAxis(filters.axis);
+    setSubeje(filters.subeje);
     setSavedOnly(filters.savedOnly);
-    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
+    setSessionFilters({ year: filters.year, axis: filters.axis, subeje: filters.subeje, savedOnly: filters.savedOnly });
     setSelectedStartQuestion(filters.question);
     setOrder(shuffled);
     setPosition(0);
@@ -748,7 +757,7 @@ export function PlaygroundExperience() {
 
   const applyPracticeFilters = (timing: "now" | "next") => {
     if (!draftQuestions.length) return;
-    const filters = { year: draftYear, axis: draftAxis, savedOnly: draftSavedOnly, question: draftQuestion };
+    const filters = { year: draftYear, axis: draftAxis, subeje: draftSubeje, savedOnly: draftSavedOnly, question: draftQuestion };
     if (timing === "now") {
       commitPracticeFilters(filters, draftQuestions, current?.id);
     } else {
@@ -893,8 +902,8 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters = { year, axis, savedOnly }) => {
-    setSessionFilters({ year: filters.year, axis: filters.axis, savedOnly: filters.savedOnly });
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters = { year, axis, subeje, savedOnly }) => {
+    setSessionFilters({ year: filters.year, axis: filters.axis, subeje: filters.subeje, savedOnly: filters.savedOnly });
     if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
@@ -923,9 +932,10 @@ export function PlaygroundExperience() {
     // A history entry must always be reachable, even if the current filters exclude it.
     setYear("all");
     setAxis("all");
+    setSubeje("all");
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
-    beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", savedOnly: false });
+    beginSession(playgroundQuestions, questionId, { year: "all", axis: "all", subeje: "all", savedOnly: false });
   };
 
   // Advance deliberately only after checking an answer. Deferred filters take
@@ -936,6 +946,7 @@ export function PlaygroundExperience() {
       const matching = playgroundQuestions.filter((question) =>
         (queuedFilters.year === "all" || String(question.year) === queuedFilters.year) &&
         (queuedFilters.axis === "all" || question.axis === queuedFilters.axis) &&
+        (queuedFilters.subeje === "all" || question.unitId === queuedFilters.subeje) &&
         (!queuedFilters.savedOnly || savedQuestionIds.includes(question.id))
       );
       if (matching.length > 0) {
