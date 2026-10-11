@@ -565,7 +565,7 @@ export function PlaygroundExperience() {
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
   const [draftUnitIds, setDraftUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
-  const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id);
+  const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id));
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
