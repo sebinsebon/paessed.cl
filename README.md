@@ -58,6 +58,25 @@ Rutas principales:
 - Desktop usa sidebar persistente; móvil usa navegación inferior.
 - `prefers-reduced-motion` se respeta desde el sistema visual existente.
 
+## Temario M1 — Admisión 2027
+
+El catálogo compartido vive en `lib/m1-curriculum.ts` y corresponde al temario oficial de **PAES Regular 2026, Admisión 2027**. DEMRE los denomina *unidades temáticas*; en la UI se presentan como *subejes*.
+
+- Números: 3 unidades.
+- Álgebra y funciones: 6 unidades.
+- Geometría: 4 unidades.
+- Probabilidad y estadística: 3 unidades.
+
+Total: **4 ejes y 16 subejes**. [PDF oficial DEMRE/Mineduc](https://acceso.mineduc.cl/wp-content/uploads/2026/03/Temario-PAESRegular-2026-M1-v1.pdf).
+
+Inicio utiliza este catálogo para los detalles de dominio y deja sin evidencia los subejes que no tienen resultados. Aprender enumera el temario completo. Playground filtra por eje y subeje (antes y durante la práctica). Las preguntas de ejemplo tienen IDs de subeje explícitos, pero **no existe aún un banco de preguntas para los 16 subejes** ni un clasificador automático para los archivos `.paessed` importados.
+
+Comprobación de la integridad de los IDs y la cobertura:
+
+```bash
+npm run test:curriculum
+```
+
 ## Estado de datos
 
 La v4 es todavía un **prototipo de producto**: usa datos demo/localStorage para demostrar los flujos y las interacciones. No simula que esos datos ya provengan del backend.
