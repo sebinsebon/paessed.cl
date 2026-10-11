@@ -84,20 +84,12 @@ export function Sidebar({
   ] as const;
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 0 : 264, borderRightWidth: collapsed ? 0 : 1 }}
-      transition={{ type: "spring", stiffness: 360, damping: 34 }}
-      className="fixed inset-y-0 left-0 z-50 hidden border-r border-[var(--border)] bg-[var(--surface)] lg:block"
+    <aside
+      aria-hidden={collapsed}
+      inert={collapsed}
+      className={`fixed inset-y-0 left-0 z-50 hidden w-[264px] overflow-hidden border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:block ${collapsed ? "-translate-x-full pointer-events-none" : "translate-x-0"}`}
     >
-      <div className="h-full w-full overflow-hidden">
-        <motion.div
-          initial={false}
-          animate={{ opacity: collapsed ? 0 : 1, x: collapsed ? -18 : 0 }}
-          transition={{ duration: .2 }}
-          className="flex h-full w-[264px] flex-col px-5 py-5"
-          aria-hidden={collapsed}
-        >
+      <div className="flex h-full w-[264px] flex-col px-5 py-5">
           <Link href="/app/inicio" className="mb-7 flex w-full justify-center">
             <div className="w-[178px]">
               <img
@@ -127,9 +119,7 @@ export function Sidebar({
                         : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
                     }`}
                   >
-                    {active && (
-                      <span aria-hidden="true" className="paessed-sidebar-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)] shadow-[0_3px_0_var(--primary-pressed)]" />
-                    )}
+                    <span aria-hidden="true" className="paessed-sidebar-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)] shadow-[0_3px_0_var(--primary-pressed)]" />
                     <Icon size={18} className="relative z-10 shrink-0" />
                     <span className="relative z-10 flex-1">{label}</span>
                     {badge && (
@@ -166,10 +156,8 @@ export function Sidebar({
               </div>
             </div>
           </div>
-        </motion.div>
       </div>
-
-    </motion.aside>
+    </aside>
   );
 }
 
@@ -511,7 +499,7 @@ export function MobileNav() {
         const active = selectedPath === href || selectedPath.startsWith(href + "/");
         return (
           <Link key={label} href={href} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
-            {active && <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />}
+            <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />
             <Icon size={17} className="relative z-10" />
             <span className="relative z-10">{label}</span>
           </Link>
