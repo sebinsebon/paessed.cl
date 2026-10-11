@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { sileo } from "sileo";
 import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Gamepad2, Home, Play, Route, Sun, Moon, Target, Trophy, UserRound, X } from "lucide-react";
-import { DEMO_EXAM_EVENT, DEMO_EXAM_STORAGE_KEY, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
+import { DEMO_EXAM_EVENT, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
