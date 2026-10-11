@@ -90,7 +90,7 @@ html.dark {
 }
 
 * { box-sizing: border-box; }
-html { background: var(--canvas); }
+html { background: var(--canvas); scrollbar-gutter: stable; }
 body {
   margin: 0;
   background: var(--canvas);
@@ -286,16 +286,18 @@ html.dark [data-sileo-toast] {
   .domain-rail-mask { mask-image: none; -webkit-mask-image: none; }
 }
 
-/* The active pill animates only inside its link, never in the browser's
-   view-transition overlay. This keeps icons and labels in place. */
+/* Keep both indicator nodes mounted. Only an actual selection change animates;
+   remounting a page cannot replay the pill's entrance animation. */
 .paessed-sidebar-active-indicator,
 .paessed-mobile-active-indicator {
-  animation: paessed-nav-pill-in 155ms cubic-bezier(.22, 1, .36, 1) both;
+  opacity: 0;
+  transform: scale(.985);
+  transition: opacity 145ms ease-out, transform 145ms cubic-bezier(.22, 1, .36, 1);
 }
-
-@keyframes paessed-nav-pill-in {
-  from { opacity: .78; transform: translateY(2px) scale(.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.paessed-sidebar-nav-link[data-active="true"] .paessed-sidebar-active-indicator,
+.paessed-mobile-nav-link[data-active="true"] .paessed-mobile-active-indicator {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* Keep navigation outside browser view-transition snapshots. The sidebar is
