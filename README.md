@@ -79,6 +79,12 @@ npm run test:curriculum
 npm run test:exam-progress
 ```
 
+## Playground — ajustes avanzados
+
+En la configuración de Playground y en los ajustes durante una sesión se puede abrir **Ajustes avanzados → Ensayos y preguntas exactas**. Cada ensayo tiene un checkbox de selección total/parcial y una cuadrícula para elegir preguntas individuales. El filtro se combina con año, subejes y preguntas guardadas; durante una sesión se puede aplicar ahora o en la siguiente pregunta.
+
+El banco contiene las cuatro preguntas del prototipo y también los ensayos locales `.paessed`, ZIP o JSON guardados en IndexedDB. Los archivos importados sin subeje asignado aparecen al elegir todos los subejes, y los que no tienen respuesta correcta verificable no presentan corrección inventada. Se pueden marcar y continuar. Los recursos gráficos referenciados desde `assets/` se intentan cargar desde el ZIP del navegador. Nada se envía a un servidor.
+
 ## Estado de datos
 
 La v4 es todavía un **prototipo de producto**: usa datos demo/localStorage para demostrar los flujos y las interacciones. No simula que esos datos ya provengan del backend.
