@@ -36,7 +36,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
-import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, getM1UnitsForAxis, type M1UnitId } from "@/lib/m1-curriculum";
+import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
 
 const learningNodes = [
   { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
