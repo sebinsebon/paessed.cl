@@ -246,7 +246,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
 function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void }) {
   const isImported = exam.kind === "imported";
   const isCompleted = exam.status === "completed";
-  const actionLabel = isImported ? "Ver preguntas" : "Practicar";
+  const actionLabel = "Practicar";
   return (
     <article className="group overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-1)]">
       <div className="grid items-center gap-5 p-4 sm:p-5 md:grid-cols-[minmax(235px,.9fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(250px,.82fr)_minmax(320px,1fr)_148px] xl:gap-7">
