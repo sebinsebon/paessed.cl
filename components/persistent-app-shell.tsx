@@ -87,10 +87,12 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
     }
   };
 
-  // Dedicated exam-taking routes have their own fullscreen header and controls.
-  // Keep the persistent shell mounted without adding navigation to those pages.
-  const standaloneExam = pathname === "/app/ensayos/nuevo" || pathname === "/app/ensayos/resultado";
-  const visuallyCollapsed = standaloneExam || (immersiveView.immersive ? !immersiveView.sidebarOpen : collapsed);
+  // Taking an essay uses the same collapsible immersive navigation as Playground.
+  // The result page is fully standalone; no sidebar or mobile bar there.
+  const examSession = pathname === "/app/ensayos/nuevo";
+  const standaloneResult = pathname === "/app/ensayos/resultado";
+  const immersiveNav = examSession || immersiveView.immersive;
+  const visuallyCollapsed = standaloneResult || (immersiveNav ? !immersiveView.sidebarOpen : collapsed);
   const context: AppNavigationContextValue = {
     dark, setDark, monthlyGoal, registerTour, setImmersiveView, registerImmersiveToggle,
   };
@@ -112,20 +114,20 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
             },
           }}
         />
-        {!standaloneExam && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />}
-        {!standaloneExam && (!immersiveView.immersive || immersiveToggle.current) && (
+        {!standaloneResult && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />}
+        {!standaloneResult && (!immersiveNav || immersiveToggle.current) && (
           <SidebarToggle
             collapsed={visuallyCollapsed}
-            onToggle={immersiveView.immersive
+            onToggle={immersiveNav
               ? () => immersiveToggle.current?.()
               : toggleSidebar}
           />
         )}
-        {!standaloneExam && !immersiveView.immersive && (
+        {!standaloneResult && !immersiveNav && (
           <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={collapsed} />
         )}
         {children}
-        {!standaloneExam && !immersiveView.immersive && <MobileNav />}
+        {!standaloneResult && !immersiveNav && <MobileNav />}
       </div>
     </AppNavigationContext.Provider>
   );
