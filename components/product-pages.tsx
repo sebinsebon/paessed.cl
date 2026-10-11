@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import JSZip from "jszip";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -39,6 +40,8 @@ import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
 import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
+import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
 
 const learningNodes = [
   { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
@@ -453,25 +456,13 @@ export function ExamsExperience() {
   );
 }
 
-type PlaygroundQuestion = {
-  id: string;
-  number: number;
-  year: number;
-  collection: string;
-  axis: string;
-  topic: string;
-  unitId: M1UnitId;
-  stem: string;
-  options: [string, string, string, string, string];
-  correct: string;
-  explanation: string;
-};
+type PlaygroundQuestion = BankQuestion;
 
 /** Original examples for the UI prototype: not official DEMRE questions. */
 const playgroundQuestions: PlaygroundQuestion[] = [
   {
     id: "m1-2026-01", number: 1, year: 2026,
-    collection: "Ensayo de práctica", axis: "Números", topic: "Conjunto de los números enteros y racionales", unitId: "numeros-enteros-racionales",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Números", topic: "Conjunto de los números enteros y racionales", unitId: "numeros-enteros-racionales",
     stem: "¿Cuál es el valor de 2,32 + 17,4?",
     options: ["19,72", "19,44", "19,36", "18,72", "19,06"],
     correct: "A",
@@ -479,7 +470,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2026-02", number: 2, year: 2026,
-    collection: "Ensayo de práctica", axis: "Álgebra y funciones", topic: "Proporcionalidad", unitId: "proporcionalidad",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Álgebra y funciones", topic: "Proporcionalidad", unitId: "proporcionalidad",
     stem: "La distancia de reacción de un vehículo es directamente proporcional a su velocidad. Si a 110 km/h recorre 33 m, ¿cuántos metros recorre a 30 km/h?",
     options: ["3 m", "6 m", "9 m", "10 m", "11 m"],
     correct: "C",
@@ -487,7 +478,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-03", number: 3, year: 2025,
-    collection: "Ensayo de práctica", axis: "Geometría", topic: "Semejanza y proporcionalidad de figuras", unitId: "semejanza-proporcionalidad-figuras",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Geometría", topic: "Semejanza y proporcionalidad de figuras", unitId: "semejanza-proporcionalidad-figuras",
     stem: "Dos triángulos son semejantes. El lado de 4 cm del primero corresponde a uno de 10 cm del segundo. ¿Cuánto mide en el segundo triángulo el lado que corresponde a uno de 6 cm del primero?",
     options: ["10 cm", "12 cm", "14 cm", "15 cm", "18 cm"],
     correct: "D",
@@ -495,7 +486,7 @@ const playgroundQuestions: PlaygroundQuestion[] = [
   },
   {
     id: "m1-2025-04", number: 4, year: 2025,
-    collection: "Ensayo de práctica", axis: "Números", topic: "Porcentaje", unitId: "porcentaje",
+    collection: "Ensayo de práctica", sourceId: "demo", axis: "Números", topic: "Porcentaje", unitId: "porcentaje",
     stem: "De un grupo de 50 estudiantes, 18 prefieren estudiar por la mañana. ¿Qué porcentaje del grupo representan esos estudiantes?",
     options: ["18 %", "25 %", "32 %", "36 %", "50 %"],
     correct: "D",
@@ -504,23 +495,28 @@ const playgroundQuestions: PlaygroundQuestion[] = [
 
 ];
 
-type TopicFilters = { year: string; unitIds: M1UnitId[]; savedOnly: boolean };
+type TopicFilters = { year: string; unitIds: M1UnitId[]; questionIds: string[]; savedOnly: boolean };
 type QueuedTopicFilters = TopicFilters & { question: string };
 
-function filterPlaygroundQuestions(filters: TopicFilters, savedIds: readonly string[]) {
-  const selected = new Set(filters.unitIds);
-  return playgroundQuestions.filter((question) =>
+function filterPlaygroundQuestions(filters: TopicFilters, savedIds: readonly string[], bank: readonly PlaygroundQuestion[]) {
+  const selectedUnits = new Set(filters.unitIds);
+  const chosenQuestions = new Set(filters.questionIds);
+  return bank.filter((question) =>
+    chosenQuestions.has(question.id) &&
     (filters.year === "all" || String(question.year) === filters.year) &&
-    selected.has(question.unitId) &&
+    (question.unitId ? selectedUnits.has(question.unitId) : selectedUnits.size === ALL_M1_UNIT_IDS.length) &&
     (!filters.savedOnly || savedIds.includes(question.id))
   );
 }
 
-function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readonly string[]) {
+function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readonly string[], bank: readonly PlaygroundQuestion[], chosenIds: readonly string[]) {
   const counts: Partial<Record<M1UnitId, number>> = {};
-  for (const question of playgroundQuestions) {
+  const chosen = new Set(chosenIds);
+  for (const question of bank) {
+    if (!chosen.has(question.id)) continue;
     if (year !== "all" && String(question.year) !== year) continue;
     if (savedOnly && !savedIds.includes(question.id)) continue;
+    if (!question.unitId) continue;
     counts[question.unitId] = (counts[question.unitId] ?? 0) + 1;
   }
   return counts;
@@ -542,9 +538,18 @@ function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
 export function PlaygroundExperience() {
   const [year, setYear] = useState("all");
   const [selectedUnitIds, setSelectedUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
+  const [importedQuestions, setImportedQuestions] = useState<PlaygroundQuestion[]>([]);
+  const [importedSources, setImportedSources] = useState<BankSource[]>([]);
+  const [sourceLoading, setSourceLoading] = useState(true);
+  const [sourceError, setSourceError] = useState<string | null>(null);
+  const importedArchives = useRef<Record<string, Blob>>({});
+  const [questionAssets, setQuestionAssets] = useState<Array<{ path: string; url: string }>>([]);
+  const [chosenQuestionIds, setChosenQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question) => question.id));
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [draftAdvancedOpen, setDraftAdvancedOpen] = useState(false);
   const [selectedStartQuestion, setSelectedStartQuestion] = useState("random");
   const [savedOnly, setSavedOnly] = useState(false);
-  const [sessionFilters, setSessionFilters] = useState<TopicFilters>({ year: "all", unitIds: [...ALL_M1_UNIT_IDS], savedOnly: false });
+  const [sessionFilters, setSessionFilters] = useState<TopicFilters>({ year: "all", unitIds: [...ALL_M1_UNIT_IDS], questionIds: playgroundQuestions.map((question)=>question.id), savedOnly: false });
   const [queuedFilters, setQueuedFilters] = useState<QueuedTopicFilters | null>(null);
   const [filterDecisionOpen, setFilterDecisionOpen] = useState(false);
   const [filterNotice, setFilterNotice] = useState<string | null>(null);
@@ -560,6 +565,7 @@ export function PlaygroundExperience() {
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
   const [draftUnitIds, setDraftUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
+  const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id);
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
@@ -570,11 +576,16 @@ export function PlaygroundExperience() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [pendingAction, setPendingAction] = useState<"check" | null>(null);
 
-  const questions = filterPlaygroundQuestions({ year, unitIds: selectedUnitIds, savedOnly }, savedQuestionIds);
-  const topicCounts = playgroundUnitCounts(year, savedOnly, savedQuestionIds);
-  // Keep the session's question pool stable even if a bookmark is removed mid-practice.
+  const questionBank = [...playgroundQuestions, ...importedQuestions];
+  const sources: BankSource[] = [
+    { id: "demo", name: "Preguntas de demostración", count: playgroundQuestions.length, imported: false },
+    ...importedSources,
+  ];
+  const questions = filterPlaygroundQuestions({ year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }, savedQuestionIds, questionBank);
+  const topicCounts = playgroundUnitCounts(year, savedOnly, savedQuestionIds, questionBank, chosenQuestionIds);
+  // Keep active practice questions stable if a filter or bookmark changes.
   const sessionQuestions = isPracticing
-    ? playgroundQuestions.filter((question) => order.includes(question.id))
+    ? questionBank.filter((question) => order.includes(question.id))
     : questions;
   const visibleOrder = order.filter((id) => sessionQuestions.some((question) => question.id === id));
   const current = sessionQuestions.find((question) => question.id === visibleOrder[position]);
@@ -583,8 +594,8 @@ export function PlaygroundExperience() {
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
   const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
   const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
-  const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, savedOnly: draftSavedOnly }, savedQuestionIds);
-  const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds);
+  const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, questionIds: draftQuestionIds, savedOnly: draftSavedOnly }, savedQuestionIds, questionBank);
+  const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds, questionBank, draftQuestionIds);
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
     setStrokesByQuestion((previous) => ({ ...previous, [current.id]: next }));
@@ -596,6 +607,8 @@ export function PlaygroundExperience() {
     }
     setDraftYear(queuedFilters?.year ?? sessionFilters.year);
     setDraftUnitIds([...(queuedFilters?.unitIds ?? sessionFilters.unitIds)]);
+    setDraftQuestionIds([...(queuedFilters?.questionIds ?? sessionFilters.questionIds)]);
+    setDraftAdvancedOpen(false);
     setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
     setDraftQuestion(queuedFilters?.question ?? "random");
     setFilterDecisionOpen(false);
@@ -618,8 +631,9 @@ export function PlaygroundExperience() {
     }
     setYear(filters.year);
     setSelectedUnitIds([...filters.unitIds]);
+    setChosenQuestionIds([...filters.questionIds]);
     setSavedOnly(filters.savedOnly);
-    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], savedOnly: filters.savedOnly });
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], questionIds: [...filters.questionIds], savedOnly: filters.savedOnly });
     setSelectedStartQuestion(filters.question);
     setOrder(shuffled);
     setPosition(0);
@@ -634,7 +648,7 @@ export function PlaygroundExperience() {
 
   const applyPracticeFilters = (timing: "now" | "next") => {
     if (!draftQuestions.length) return;
-    const filters: QueuedTopicFilters = { year: draftYear, unitIds: [...draftUnitIds], savedOnly: draftSavedOnly, question: draftQuestion };
+    const filters: QueuedTopicFilters = { year: draftYear, unitIds: [...draftUnitIds], questionIds: [...draftQuestionIds], savedOnly: draftSavedOnly, question: draftQuestion };
     if (timing === "now") {
       commitPracticeFilters(filters, draftQuestions, current?.id);
     } else {
@@ -649,13 +663,13 @@ export function PlaygroundExperience() {
     try {
       const stored = JSON.parse(localStorage.getItem("paessed-playground-recent-questions") ?? "[]");
       if (!Array.isArray(stored)) return;
-      const validIds = new Set(playgroundQuestions.map((question) => question.id));
+      const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
       const unique = Array.from(new Set(stored.filter((id): id is string => typeof id === "string" && validIds.has(id))));
       setRecentQuestionIds(unique.slice(0, 5));
     } catch {
       // Browser storage can be disabled; the practice itself still works.
     }
-  }, []);
+  }, [importedQuestions]);
 
   // Record actual opened questions, not just the first question of each session.
   useEffect(() => {
@@ -678,13 +692,13 @@ export function PlaygroundExperience() {
     try {
       const stored = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
       if (Array.isArray(stored)) {
-        const validIds = new Set(playgroundQuestions.map((question) => question.id));
+        const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
         setSavedQuestionIds(stored.filter((id): id is string => typeof id === "string" && validIds.has(id)));
       }
     } catch {
       setSaveError("No se pudieron cargar las preguntas guardadas de este navegador.");
     }
-  }, []);
+  }, [importedQuestions]);
 
   const toggleSavedQuestion = () => {
     if (!current) return;
@@ -779,8 +793,8 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, savedOnly }) => {
-    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], savedOnly: filters.savedOnly });
+  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }) => {
+    setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], questionIds: [...filters.questionIds], savedOnly: filters.savedOnly });
     if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
@@ -809,9 +823,10 @@ export function PlaygroundExperience() {
     // A history entry must always be reachable, even if the current filters exclude it.
     setYear("all");
     setSelectedUnitIds([...ALL_M1_UNIT_IDS]);
+    setChosenQuestionIds(questionBank.map((question)=>question.id));
     setSavedOnly(false);
     setSelectedStartQuestion(questionId);
-    beginSession(playgroundQuestions, questionId, { year: "all", unitIds: [...ALL_M1_UNIT_IDS], savedOnly: false });
+    beginSession(questionBank, questionId, { year: "all", unitIds: [...ALL_M1_UNIT_IDS], questionIds: questionBank.map((question)=>question.id), savedOnly: false });
   };
 
   // Advance deliberately only after checking an answer. Deferred filters take
@@ -819,7 +834,7 @@ export function PlaygroundExperience() {
   const advanceQuestion = () => {
     if (!isRevealed) return;
     if (queuedFilters) {
-      const matching = filterPlaygroundQuestions(queuedFilters, savedQuestionIds);
+      const matching = filterPlaygroundQuestions(queuedFilters, savedQuestionIds, questionBank);
       if (matching.length > 0) {
         commitPracticeFilters(queuedFilters, matching, current?.id);
         return;
