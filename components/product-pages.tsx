@@ -596,6 +596,43 @@ export function PlaygroundExperience() {
   const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
   const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, questionIds: draftQuestionIds, savedOnly: draftSavedOnly }, savedQuestionIds, questionBank);
   const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds, questionBank, draftQuestionIds);
+  // Imported packages are only read locally, without fabricating topic labels.
+  useEffect(() => {
+    let mounted = true;
+    void loadPlaygroundImports().then((result) => {
+      if (!mounted) return;
+      importedArchives.current = result.archives;
+      setImportedSources(result.sources);
+      setImportedQuestions(result.questions);
+      setChosenQuestionIds((old) => [...new Set([...old, ...result.questions.map((q) => q.id)])]);
+      setSourceError(null);
+    }).catch(() => {
+      if (mounted) setSourceError("No fue posible cargar la biblioteca de ensayos de este navegador.");
+    }).finally(() => { if (mounted) setSourceLoading(false); });
+    return () => { mounted = false; };
+  }, []);
+
+  // Lazily load assets for the current imported question and revoke on change.
+  useEffect(() => {
+    let disposed = false;
+    const urls: string[] = [];
+    setQuestionAssets([]);
+    const blob = current && importedArchives.current[current.sourceId];
+    if (!blob || !current?.assetPaths?.length) return;
+    void blob.arrayBuffer().then((buffer)=>JSZip.loadAsync(buffer)).then(async(zip)=>{
+      const files=Object.keys(zip.files).filter((name)=>!zip.files[name].dir);
+      const found=await Promise.all((current.assetPaths??[]).map(async(path)=>{
+        const name=files.find((x)=>x===path)??files.find((x)=>x.endsWith("/"+path));
+        const file=name&&zip.file(name);
+        if (!file) return null;
+        const url=URL.createObjectURL(await file.async("blob"));urls.push(url);
+        return {path,url};
+      }));
+      if (!disposed) setQuestionAssets(found.filter((x):x is {path:string;url:string}=>!!x));
+    }).catch(()=>{});
+    return ()=>{disposed=true;urls.forEach((url)=>URL.revokeObjectURL(url));};
+  }, [current?.id, importedQuestions]);
+
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
     setStrokesByQuestion((previous) => ({ ...previous, [current.id]: next }));
@@ -897,7 +934,7 @@ export function PlaygroundExperience() {
           <span className="text-[14px] font-bold text-[var(--text)]">
             <strong className="font-extrabold tabular-nums">{questions.length}</strong> {questions.length === 1 ? "pregunta" : "preguntas"} en total
           </span>
-          <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Banco de demostración</span>
+          <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">M1 · Demostración y ensayos importados</span>
           <button
             type="button"
             aria-pressed={savedOnly}
@@ -929,7 +966,7 @@ export function PlaygroundExperience() {
                 className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] font-semibold text-[var(--text)] outline-offset-2 focus:border-[var(--primary)]"
               >
                 <option value="all">Todos los años</option>
-                {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+                {[...new Set(questionBank.map((question) => question.year).filter((value): value is number => value !== null))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -957,11 +994,32 @@ export function PlaygroundExperience() {
               questionCounts={topicCounts}
             />
           </div>
+          <div className="border-t border-[var(--border)] px-5 py-4 sm:px-7">
+            <button type="button" aria-expanded={advancedOpen} aria-controls="playground-advanced-setup"
+              onClick={() => setAdvancedOpen((value)=>!value)}
+              className="flex w-full items-center justify-between gap-2 rounded-xl py-2 text-left text-[12px] font-extrabold text-[var(--text)]">
+              <span className="inline-flex items-center gap-2"><SlidersHorizontal size={17} className="text-[var(--primary)]"/> Ajustes avanzados <span className="text-[10px] font-semibold text-[var(--muted)]">· Ensayos y preguntas exactas</span></span>
+              <motion.span animate={{rotate:advancedOpen?180:0}} transition={{duration:.18}}><ChevronRight size={16}/></motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {advancedOpen && (
+                <motion.div id="playground-advanced-setup" initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
+                  exit={{opacity:0,height:0}} transition={{duration:.22}} className="overflow-hidden">
+                  <div className="mt-3 border-t border-[var(--border)] pt-4">
+                    {sourceLoading && <p role="status" className="text-xs text-[var(--muted)]">Cargando ensayos locales…</p>}
+                    {sourceError && <p role="alert" className="text-xs text-amber-600">{sourceError}</p>}
+                    <PlaygroundAdvancedPicker questions={questionBank} sources={sources}
+                      selected={chosenQuestionIds} onChange={(next)=>{setChosenQuestionIds(next);setSelectedStartQuestion("random");}} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface-2)] px-5 py-4 sm:px-7">
             <p className="text-[12px] leading-5 text-[var(--muted)]">
               {questions.length === 0
-                ? "No hay preguntas de demostración para esta combinación. El temario incluye los 16 subejes, pero el banco de preguntas todavía es limitado."
+                ? "No hay preguntas disponibles con esta combinación de ensayos, preguntas, año y subejes."
                 : questions.length + (questions.length === 1 ? " pregunta disponible" : " preguntas disponibles") + " · Una pregunta por pantalla"}
             </p>
             <button
@@ -995,7 +1053,7 @@ export function PlaygroundExperience() {
             ) : (
               <div className="divide-y divide-[var(--border)]">
                 {recentQuestionIds.map((id) => {
-                  const question = playgroundQuestions.find((item) => item.id === id);
+                  const question = questionBank.find((item) => item.id === id);
                   if (!question) return null;
                   return (
                     <div key={id} className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
@@ -1023,7 +1081,7 @@ export function PlaygroundExperience() {
         </section>
 
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-          Las preguntas guardadas quedan en este navegador. Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
+          El banco combina cuatro preguntas de ejemplo con tus ensayos importados de este navegador. Los ejemplos no son pruebas oficiales DEMRE; los años de demostración son referenciales. Los ensayos importados sin clasificación solo coinciden con «Todos los subejes».
         </p>
         </div>
         
@@ -1152,7 +1210,7 @@ export function PlaygroundExperience() {
                               className="h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)]"
                             >
                               <option value="all">Todos los años</option>
-                              {[...new Set(playgroundQuestions.map((question) => question.year))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
+                              {[...new Set(questionBank.map((question) => question.year).filter((value): value is number => value !== null))].sort((a, b) => b - a).map((value) => <option key={value} value={value}>{value}</option>)}
                             </select>
                           </div>
                           <PlaygroundTopicPicker
@@ -1161,6 +1219,25 @@ export function PlaygroundExperience() {
                             questionCounts={draftTopicCounts}
                             compact
                           />
+                          <div className="border-t border-[var(--border)] pt-3">
+                            <button type="button" aria-expanded={draftAdvancedOpen} aria-controls="playground-advanced-practice"
+                              onClick={()=>setDraftAdvancedOpen((value)=>!value)}
+                              className="flex w-full items-center justify-between gap-2 text-left text-[11px] font-extrabold text-[var(--text)]">
+                              <span className="inline-flex items-center gap-2"><SlidersHorizontal size={15} className="text-[var(--primary)]"/> Ensayos y preguntas exactas</span>
+                              <motion.span animate={{rotate:draftAdvancedOpen?180:0}} transition={{duration:.18}}><ChevronRight size={15}/></motion.span>
+                            </button>
+                            <AnimatePresence initial={false}>
+                              {draftAdvancedOpen && (
+                                <motion.div id="playground-advanced-practice" initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
+                                  exit={{opacity:0,height:0}} transition={{duration:.2}} className="overflow-hidden">
+                                  <div className="mt-3 border-t border-[var(--border)] pt-3">
+                                    <PlaygroundAdvancedPicker questions={questionBank} sources={sources} compact
+                                      selected={draftQuestionIds} onChange={(next)=>{setDraftQuestionIds(next);setDraftQuestion("random");setFilterDecisionOpen(false);}}/>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                           <label className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold">
                             <input type="checkbox" checked={draftSavedOnly} onChange={(event) => { setDraftSavedOnly(event.target.checked); setDraftQuestion("random"); }} />
                             Solo preguntas guardadas
