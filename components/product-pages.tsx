@@ -36,13 +36,14 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
 import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
+import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, getM1UnitsForAxis, type M1UnitId } from "@/lib/m1-curriculum";
 
 const learningNodes = [
-  { title: "Números racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
-  { title: "Porcentajes y variación", subtitle: "Dominio alto", state: "done", xp: "+20 XP" },
-  { title: "Potencias y raíces", subtitle: "Reforzar", state: "active", xp: "+30 XP" },
+  { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
+  { title: "Porcentaje", subtitle: "Dominio alto", state: "done", xp: "+20 XP" },
+  { title: "Potencias y raíces enésimas", subtitle: "Reforzar", state: "active", xp: "+30 XP" },
   { title: "Expresiones algebraicas", subtitle: "Siguiente unidad", state: "next", xp: "+30 XP" },
-  { title: "Ecuaciones lineales", subtitle: "Bloqueado", state: "locked", xp: "+40 XP" },
+  { title: "Ecuaciones e inecuaciones de primer grado", subtitle: "Bloqueado", state: "locked", xp: "+40 XP" },
 ];
 
 export function LearnExperience() {
@@ -68,7 +69,7 @@ export function LearnExperience() {
               <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">Ruta actual</div>
               <div className="mt-1 text-lg font-extrabold">Fundamentos prioritarios</div>
             </div>
-            <div className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--muted)]">3/12 nodos</div>
+            <div className="rounded-full bg-[var(--surface-2)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--muted)]">2/5 nodos de ejemplo</div>
           </div>
 
           <div className="relative mt-8 space-y-7">
@@ -114,7 +115,7 @@ export function LearnExperience() {
             <div className="flex items-center gap-2 text-sm font-extrabold"><Target size={18} className="text-red-500" />Talón de Aquiles</div>
             <div className="mt-4 rounded-2xl bg-red-50 p-4 dark:bg-red-950/20">
               <div className="text-[10px] font-extrabold uppercase tracking-[.1em] text-red-500">Geometría</div>
-              <div className="mt-1 text-lg font-extrabold">Teorema de Tales</div>
+              <div className="mt-1 text-lg font-extrabold">Semejanza y proporcionalidad de figuras</div>
               <div className="mt-1 text-xs leading-5 text-[var(--muted)]">34% de dominio · evidencia media</div>
             </div>
             <button className="soft-button mt-4 w-full rounded-xl px-4 py-3 text-xs font-extrabold">Hacer flash quiz</button>
@@ -132,6 +133,36 @@ export function LearnExperience() {
           </div>
         </aside>
       </div>
+      <section className="surface mt-5 rounded-[22px] p-5 sm:p-7" aria-label="Temario oficial M1 Admisión 2027">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--primary)]">DEMRE · Admisión 2027</p>
+            <h2 className="mt-1 text-xl font-extrabold">Temario completo · {M1_UNITS.length} subejes</h2>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--muted)]">Las 16 unidades temáticas oficiales, organizadas en 4 ejes. La ruta superior sigue siendo una demostración; esta lista no inventa lecciones ni niveles de dominio.</p>
+          </div>
+          <a href={M1_CURRICULUM_SOURCE} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-[var(--border)] px-3 py-2 text-[11px] font-bold text-[var(--text)] hover:bg-[var(--surface-2)]">
+            Ver temario DEMRE <ArrowRight size={13} className="ml-1 inline" />
+          </a>
+        </div>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {M1_AXES.map((axis) => (
+            <div key={axis.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-extrabold">{axis.name}</h3>
+                <span className="text-[10px] font-semibold text-[var(--muted)]">{axis.units.length} subejes</span>
+              </div>
+              <ol className="mt-3 space-y-2">
+                {axis.units.map((unit, index) => (
+                  <li key={unit.id} className="flex items-start gap-2.5 text-xs leading-5">
+                    <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[var(--surface)] text-[10px] font-extrabold text-[var(--muted)]">{index + 1}</span>
+                    <span className="font-semibold text-[var(--text)]">{unit.name}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      </section>
       </PageContentTransition>
     </AppShell>
   );
