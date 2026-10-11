@@ -444,7 +444,7 @@ export function DashboardTopNav({
   sidebarCollapsed: boolean;
 }) {
   return (
-    <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] transition-[margin-left] duration-300 ease-out lg:ml-[var(--sidebar-width)]">
+    <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] transition-[margin-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:ml-[var(--sidebar-width)]">
       <div className="mx-auto flex h-full w-full max-w-[1280px] items-center gap-2 px-4 sm:px-6">
         <AnimatePresence mode="popLayout" initial={false}>
           {sidebarCollapsed && (
