@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Clock3, Flag, Grid3X3, Target, Trophy, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Clock3,
+  Eraser, Flag, Grid3X3, Pencil, RotateCcw, Settings, Trash2, Trophy, X,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
+import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 
 type DemoQuestion = {
   domain: string;
@@ -25,10 +29,8 @@ const BASE: DemoQuestion[] = [
   { domain: "Probabilidad y estadística", unitId: "reglas-probabilidades", prompt: "En una bolsa hay 3 bolas rojas y 2 azules. La probabilidad de sacar una azul es:", options: ["2/3", "2/5", "3/5", "1/2"], answer: 1 },
 ];
 
-const QUESTIONS = Array.from({ length: 65 }, (_, i) => {
-  const base = BASE[i % BASE.length];
-  return { ...base, number: i + 1 };
-});
+const QUESTIONS = Array.from({ length: 65 }, (_, i) => ({ ...BASE[i % BASE.length], number: i + 1 }));
+const QUESTION_FONT = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 function formatTime(total: number) {
   const minutes = Math.floor(total / 60).toString().padStart(2, "0");
@@ -36,150 +38,348 @@ function formatTime(total: number) {
   return minutes + ":" + seconds;
 }
 
+/**
+ * Essay uses Playground's large paper and top toolbar, while its timer,
+ * unanswered questions, markings, 65-question navigation and result remain
+ * independent from Playground's immediate-answer checking.
+ */
 export function ExamSession() {
   const router = useRouter();
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<Array<number | null>>(() => Array(65).fill(null));
-  const [flagged, setFlagged] = useState<boolean[]>(() => Array(65).fill(false));
+  const [answers, setAnswers] = useState<Array<number | null>>(() => Array(QUESTIONS.length).fill(null));
+  const [flagged, setFlagged] = useState<boolean[]>(() => Array(QUESTIONS.length).fill(false));
   const [seconds, setSeconds] = useState(2 * 60 * 60 + 20 * 60);
-  const [palette, setPalette] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
+  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
+  const [drawingColor, setDrawingColor] = useState("#2563eb");
+  const [strokesByQuestion, setStrokesByQuestion] = useState<Record<number, PlaygroundInkStroke[]>>({});
+  const paperScrollRef = useRef<HTMLDivElement>(null);
+  const q = QUESTIONS[index];
+  const answered = answers.filter((value) => value !== null).length;
+  const markedCount = flagged.filter(Boolean).length;
+  const pendingCount = QUESTIONS.length - answered;
+  const inkStrokes = strokesByQuestion[index] ?? [];
 
   useEffect(() => {
     const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const answered = answers.filter((value) => value !== null).length;
-  const q = QUESTIONS[index];
+  useEffect(() => {
+    const stored = localStorage.getItem("paessed-essay-paper-theme");
+    if (stored === "auto" || stored === "light" || stored === "dark") setPaperTheme(stored);
+  }, []);
+
+  useEffect(() => {
+    paperScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    setPaletteOpen(false);
+    setSettingsOpen(false);
+    setDrawingEnabled(false);
+  }, [index]);
+
+  useEffect(() => {
+    if (!paletteOpen && !settingsOpen && !confirmFinish) return;
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPaletteOpen(false);
+        setSettingsOpen(false);
+        setConfirmFinish(false);
+      }
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [paletteOpen, settingsOpen, confirmFinish]);
+
+  const paperPalette = paperTheme === "dark"
+    ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", footer: "#151d2c" }
+    : paperTheme === "light"
+      ? { bg: "#ffffff", fg: "#111827", muted: "#64748b", border: "#e2e8f0", soft: "#f1f5f9", option: "#f8fafc", optionHover: "#fff7ed", selected: "#fff7ed", footer: "#fcfcfd" }
+      : { bg: "var(--surface)", fg: "var(--text)", muted: "var(--muted)", border: "var(--border)", soft: "var(--surface-2)", option: "var(--surface-2)", optionHover: "var(--surface-3)", selected: "var(--primary-soft)", footer: "var(--surface)" };
+  const paperStyle = {
+    "--pg-bg": paperPalette.bg, "--pg-fg": paperPalette.fg,
+    "--pg-muted": paperPalette.muted, "--pg-border": paperPalette.border,
+    "--pg-soft": paperPalette.soft, "--pg-option": paperPalette.option,
+    "--pg-option-hover": paperPalette.optionHover, "--pg-selected": paperPalette.selected,
+    "--pg-footer": paperPalette.footer,
+  } as CSSProperties;
 
   const finish = () => {
     const correct = answers.reduce<number>((sum, value, i) => sum + (value === QUESTIONS[i].answer ? 1 : 0), 0);
-    const omitted = 65 - answered;
+    const omitted = QUESTIONS.length - answered;
     const wrong = answered - correct;
-    const score = Math.round(100 + (correct / 65) * 900);
+    const score = Math.round(100 + (correct / QUESTIONS.length) * 900);
     localStorage.setItem("paessed-last-exam", JSON.stringify({
       correct, wrong, omitted, score, secondsLeft: seconds, completedAt: new Date().toISOString(),
     }));
     router.push("/app/ensayos/resultado");
   };
 
-  const choose = (option: number) => {
-    const copy = [...answers];
-    copy[index] = option;
-    setAnswers(copy);
+  const goToQuestion = (nextIndex: number) => {
+    setIndex(Math.max(0, Math.min(QUESTIONS.length - 1, nextIndex)));
+  };
+  const toggleFlag = () => {
+    setFlagged((previous) => previous.map((marked, i) => i === index ? !marked : marked));
+  };
+  const updateStrokes = (next: PlaygroundInkStroke[]) => {
+    setStrokesByQuestion((previous) => ({ ...previous, [index]: next }));
+  };
+  const changePaperTheme = (next: "auto" | "light" | "dark") => {
+    setPaperTheme(next);
+    localStorage.setItem("paessed-essay-paper-theme", next);
+    setSettingsOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)]">
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] backdrop-blur-xl">
-        <div className="mx-auto flex h-[68px] max-w-[1380px] items-center gap-3 px-4 sm:px-6">
-          <Link href="/app/ensayos" className="soft-button grid h-9 w-9 place-items-center rounded-xl" aria-label="Salir del ensayo"><ArrowLeft size={16} /></Link>
-          <div className="min-w-0">
-            <div className="text-[10px] font-extrabold uppercase tracking-[.12em] text-[var(--muted)]">Ensayo M1 · modo prototipo</div>
-            <div className="truncate text-sm font-extrabold">Simulación completa · 65 preguntas</div>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setPalette(!palette)} className="soft-button hidden items-center gap-2 rounded-xl px-3 py-2 text-xs font-extrabold sm:flex">
-              <Grid3X3 size={15} />{answered}/65
-            </button>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-extrabold">
-              <Clock3 size={15} className={seconds < 600 ? "text-red-500" : "text-[var(--primary)]"} />
-              {formatTime(seconds)}
-            </div>
-          </div>
-        </div>
-        <div className="h-1.5 bg-[var(--surface-3)]">
-          <div className="h-full bg-[var(--primary)] transition-all" style={{ width: ((index + 1) / 65) * 100 + "%" }} />
-        </div>
-      </header>
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]" aria-label="Ensayo M1 · 65 preguntas">
+      <header className="relative z-30 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+          <Link
+            href="/app/ensayos"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+            aria-label="Volver a Ensayos"
+          >
+            <ChevronLeft size={18} />
+            <span className="hidden sm:inline">Volver a ensayos</span>
+            <span className="sm:hidden">Volver</span>
+          </Link>
 
-      <main className="mx-auto grid w-full max-w-[1380px] gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section className="surface-raised rounded-[24px] p-5 sm:p-7">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-[var(--secondary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--secondary)]">{q.domain}</span>
-              <span className="text-[10px] font-bold text-[var(--muted)]">Pregunta {q.number} de 65</span>
-              <span className="text-[10px] font-semibold text-[var(--muted)]">{getM1Unit(q.unitId)?.name}</span>
-            </div>
+          <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
+            <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
+              <span>Matemática M1</span>
+              <span className="text-[var(--secondary)]">Ensayos</span>
+            </p>
+            <p className="truncate text-[10px] font-medium text-[var(--muted)]">
+              Simulación de práctica · {answered}/{QUESTIONS.length} respondidas
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
             <button
-              onClick={() => {
-                const copy = [...flagged];
-                copy[index] = !copy[index];
-                setFlagged(copy);
-              }}
-              className={"inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-extrabold " + (flagged[index] ? "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300" : "bg-[var(--surface-2)] text-[var(--muted)]")}
+              type="button"
+              aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz para cálculos"}
+              title={drawingEnabled ? "Cerrar lápiz" : "Hacer cálculos sobre la hoja"}
+              aria-pressed={drawingEnabled}
+              onClick={() => { setDrawingEnabled((previous) => !previous); setPaletteOpen(false); setSettingsOpen(false); }}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
             >
-              <Flag size={14} fill={flagged[index] ? "currentColor" : "none"} />Marcar
+              <Pencil size={18} />
             </button>
-          </div>
-
-          <div className="mt-7 max-w-3xl text-lg font-bold leading-8 sm:text-xl">{q.prompt}</div>
-
-          <div className="mt-8 space-y-3">
-            {q.options.map((option, optionIndex) => {
-              const active = answers[index] === optionIndex;
-              return (
-                <button
-                  key={option}
-                  onClick={() => choose(optionIndex)}
-                  className={"flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition-all " + (active
-                    ? "border-orange-400 bg-orange-50 shadow-[0_3px_0_#fb923c] dark:bg-orange-950/20"
-                    : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-2)]")}
-                >
-                  <span className={"grid h-8 w-8 shrink-0 place-items-center rounded-xl text-xs font-extrabold " + (active ? "bg-[var(--primary)] text-white" : "bg-[var(--surface-3)] text-[var(--muted)]")}>{String.fromCharCode(65 + optionIndex)}</span>
-                  <span className="font-bold">{option}</span>
-                  {active && <Check size={18} className="ml-auto text-[var(--primary)]" />}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-8 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-5">
-            <button onClick={() => setIndex(Math.max(0, index - 1))} disabled={index === 0} className="soft-button rounded-xl px-4 py-3 text-xs font-extrabold disabled:opacity-40">Anterior</button>
-            <div className="flex gap-2">
-              {index < 64 ? (
-                <button onClick={() => setIndex(index + 1)} className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold">Siguiente <ArrowRight size={15} /></button>
-              ) : (
-                <button onClick={finish} className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"><Trophy size={15} />Finalizar ensayo</button>
-              )}
+            <button
+              type="button"
+              onClick={toggleFlag}
+              aria-label={flagged[index] ? "Desmarcar pregunta para revisar" : "Marcar pregunta para revisar"}
+              title={flagged[index] ? "Quitar marca de revisión" : "Marcar para revisar"}
+              aria-pressed={flagged[index]}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (flagged[index] ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+            >
+              <Flag size={18} fill={flagged[index] ? "currentColor" : "none"} />
+            </button>
+            <button
+              type="button"
+              aria-label="Abrir mapa de preguntas"
+              title="Mapa de preguntas"
+              aria-expanded={paletteOpen}
+              onClick={() => { setPaletteOpen((previous) => !previous); setSettingsOpen(false); setDrawingEnabled(false); }}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (paletteOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+            >
+              <Grid3X3 size={18} />
+            </button>
+            <button
+              type="button"
+              aria-label="Ajustes de apariencia de la hoja"
+              title="Ajustes de la hoja"
+              aria-expanded={settingsOpen}
+              onClick={() => { setSettingsOpen((previous) => !previous); setPaletteOpen(false); setDrawingEnabled(false); }}
+              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+            >
+              <Settings size={18} />
+            </button>
+            <div
+              role="timer"
+              aria-label="Tiempo restante del ensayo"
+              className="ml-1 inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 text-[11px] font-extrabold tabular-nums sm:px-3"
+            >
+              <Clock3 size={14} className={seconds < 600 ? "text-rose-500" : "text-[var(--primary)]"} />
+              <span className={seconds < 600 ? "text-rose-500" : "text-[var(--text)]"}>{formatTime(seconds)}</span>
             </div>
           </div>
-        </section>
+        </div>
 
-        <aside className="space-y-4">
-          <div className="surface rounded-2xl p-4">
-            <div className="flex items-center justify-between text-xs font-extrabold">
-              <span>Mapa del ensayo</span>
-              <button onClick={() => setPalette(!palette)} className="text-[var(--primary)] sm:hidden">Ver</button>
+        <div role="progressbar" aria-label="Avance por el ensayo" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1} className="h-0.5 bg-[var(--surface-3)]">
+          <div className="h-full bg-[var(--primary)] transition-[width] duration-200" style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
+        </div>
+
+        {drawingEnabled && (
+          <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
+            <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar" aria-pressed={drawingTool === "pen"}
+              className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
+              <Pencil size={16} />
+            </button>
+            <button type="button" onClick={() => setDrawingTool("eraser")} aria-label="Borrar trazo" aria-pressed={drawingTool === "eraser"}
+              className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
+              <Eraser size={16} />
+            </button>
+            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
+            {(["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827"] as const).map((ink) => (
+              <button key={ink} type="button" title={ink} aria-label={"Color de tinta " + ink}
+                aria-pressed={drawingColor === ink && drawingTool === "pen"}
+                onClick={() => { setDrawingColor(ink); setDrawingTool("pen"); }}
+                className={"grid h-8 w-8 place-items-center rounded-lg border " + (drawingColor === ink && drawingTool === "pen" ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "border-transparent hover:border-[var(--border)]")}>
+                <span className="h-4 w-4 rounded-full border border-slate-400/40" style={{ backgroundColor: ink }} />
+              </button>
+            ))}
+            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
+            <button type="button" onClick={() => updateStrokes(inkStrokes.slice(0, -1))} disabled={!inkStrokes.length} title="Deshacer trazo" aria-label="Deshacer trazo"
+              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"><RotateCcw size={16} /></button>
+            <button type="button" onClick={() => updateStrokes([])} disabled={!inkStrokes.length} title="Borrar trazos" aria-label="Borrar todos los trazos"
+              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"><Trash2 size={16} /></button>
+            <span className="hidden text-[10px] text-[var(--muted)] md:inline">Cierra el lápiz para responder</span>
+          </div>
+        )}
+
+        {(paletteOpen || settingsOpen) && (
+          <button type="button" aria-label="Cerrar panel" className="fixed inset-0 z-30 cursor-default" onClick={() => { setPaletteOpen(false); setSettingsOpen(false); }} />
+        )}
+        {paletteOpen && (
+          <section role="dialog" aria-modal="false" aria-label="Mapa del ensayo" className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[13px] font-extrabold">Mapa de preguntas</h2>
+              <button type="button" onClick={() => setPaletteOpen(false)} aria-label="Cerrar mapa" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
             </div>
-            <div className="mt-4 grid grid-cols-10 gap-1.5 lg:grid-cols-5">
+            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+              <div className="rounded-lg bg-emerald-500/10 px-1 py-2 text-emerald-600 dark:text-emerald-400">{answered} respondidas</div>
+              <div className="rounded-lg bg-amber-500/10 px-1 py-2 text-amber-600 dark:text-amber-400">{markedCount} marcadas</div>
+              <div className="rounded-lg bg-[var(--surface-2)] px-1 py-2 text-[var(--muted)]">{pendingCount} pendientes</div>
+            </div>
+            <div className="mt-3 grid grid-cols-10 gap-1.5">
               {QUESTIONS.map((item, i) => {
                 const active = i === index;
                 const hasAnswer = answers[i] !== null;
                 const marked = flagged[i];
-                let klass = "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]";
-                if (hasAnswer) klass = "border-emerald-400/50 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300";
-                if (marked) klass = "border-amber-400/50 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300";
-                if (active) klass = "border-orange-400 bg-orange-50 text-orange-700 ring-2 ring-orange-200 dark:bg-orange-950/30 dark:text-orange-300";
+                const tone = active ? "border-orange-500 bg-[var(--primary-soft)] text-[var(--primary)] ring-2 ring-orange-500/30"
+                  : marked ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                  : hasAnswer ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                  : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]";
                 return (
-                  <button key={item.number} onClick={() => setIndex(i)} className={"aspect-square rounded-lg border text-[9px] font-extrabold " + klass}>{item.number}</button>
+                  <button type="button" key={item.number} onClick={() => { goToQuestion(i); setPaletteOpen(false); }}
+                    aria-label={"Ir a pregunta " + item.number + (marked ? ", marcada" : hasAnswer ? ", respondida" : ", pendiente")}
+                    aria-current={active ? "step" : undefined}
+                    className={"aspect-square min-w-0 rounded-md border text-[10px] font-extrabold transition-colors hover:border-[var(--primary)] " + tone}>
+                    {item.number}
+                  </button>
                 );
               })}
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[9px] font-bold text-[var(--muted)]">
-              <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/20">{answered}<br />respondidas</div>
-              <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/20">{flagged.filter(Boolean).length}<br />marcadas</div>
-              <div className="rounded-lg bg-[var(--surface-2)] p-2">{65 - answered}<br />pendientes</div>
+            <p className="mt-3 text-[10px] leading-4 text-[var(--muted)]">Puedes cambiar de pregunta sin perder tus respuestas. Las marcadas se destacan en amarillo.</p>
+            <button type="button" onClick={() => { setPaletteOpen(false); setConfirmFinish(true); }}
+              className="mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-extrabold hover:border-[var(--primary)]">
+              <Trophy size={15} /> Finalizar ensayo
+            </button>
+          </section>
+        )}
+        {settingsOpen && (
+          <section role="group" aria-label="Apariencia de la hoja" className="absolute right-3 top-[calc(100%+9px)] z-40 w-[min(300px,calc(100vw-24px))] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
+              <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
+            </div>
+            {([
+              { value: "auto", title: "Según PAESSED" },
+              { value: "light", title: "Hoja clara" },
+              { value: "dark", title: "Hoja oscura" },
+            ] as const).map((item) => (
+              <button type="button" key={item.value} onClick={() => changePaperTheme(item.value)}
+                aria-pressed={paperTheme === item.value}
+                className={"mb-1 flex min-h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[11px] font-bold " + (paperTheme === item.value ? "border-[var(--primary)] bg-[var(--primary-soft)]" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}>
+                {item.title}
+                {paperTheme === item.value && <Check size={15} className="text-[var(--primary)]" />}
+              </button>
+            ))}
+          </section>
+        )}
+      </header>
+
+      <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta del ensayo">
+        <article style={paperStyle} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {q.number}</span>
+              <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
+              {flagged[index] && <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600"><Flag size={12} fill="currentColor" /> Marcada</span>}
+            </div>
+            <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
+              {q.domain} · {getM1Unit(q.unitId)?.name}
+            </span>
+          </div>
+
+          <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+            <div className="relative flex min-h-full flex-col">
+              <h2 style={QUESTION_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+                {q.prompt}
+              </h2>
+              <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
+                {q.options.map((option, optionIndex) => {
+                  const active = answers[index] === optionIndex;
+                  const letter = String.fromCharCode(65 + optionIndex);
+                  return (
+                    <button type="button" key={letter} aria-pressed={active} onClick={() => setAnswers((previous) => previous.map((value, i) => i === index ? optionIndex : value))}
+                      className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:min-h-[36px] sm:px-3 " + (active ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
+                      <span style={QUESTION_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                      <span style={QUESTION_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <PlaygroundScratchpad key={index} enabled={drawingEnabled} mode={drawingTool} color={drawingColor} strokes={inkStrokes} onChange={updateStrokes} />
             </div>
           </div>
 
-          <div className="surface rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-xs font-extrabold"><Target size={15} className="text-[var(--secondary)]" />Antes de terminar</div>
-            <p className="mt-2 text-[10px] leading-4 text-[var(--muted)]">Puedes dejar preguntas omitidas. PAESSED las considera evidencia distinta a una respuesta incorrecta.</p>
-            <button onClick={finish} className="soft-button mt-4 w-full rounded-xl px-4 py-3 text-[10px] font-extrabold">Finalizar ahora</button>
-          </div>
-        </aside>
+          <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button type="button" onClick={() => goToQuestion(index - 1)} disabled={index === 0}
+                className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">Pregunta {index + 1} de {QUESTIONS.length}</span>
+              <div className="ml-auto flex items-center gap-2">
+                {index < QUESTIONS.length - 1 ? (
+                  <button type="button" onClick={() => goToQuestion(index + 1)}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)]">
+                    Siguiente <ChevronRight size={16} />
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => setConfirmFinish(true)}
+                    className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold">
+                    <Trophy size={16} /> Finalizar ensayo
+                  </button>
+                )}
+              </div>
+            </div>
+          </footer>
+        </article>
       </main>
+
+      {confirmFinish && (
+        <div role="presentation" className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/65 px-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmFinish(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="exam-finish-title" className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h2 id="exam-finish-title" className="text-lg font-extrabold">¿Finalizar el ensayo?</h2>
+              <button type="button" onClick={() => setConfirmFinish(false)} aria-label="Volver al ensayo" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={17} /></button>
+            </div>
+            <p className="mt-3 text-[12px] leading-5 text-[var(--muted)]">
+              Llevas {answered} de {QUESTIONS.length} preguntas respondidas. {pendingCount} quedarán omitidas. Puedes seguir revisando tus respuestas antes de entregar.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirmFinish(false)} className="soft-button min-h-10 rounded-xl px-4 text-[11px] font-bold">Seguir respondiendo</button>
+              <button type="button" onClick={finish} className="tactile-primary min-h-10 rounded-xl px-4 text-[11px] font-extrabold">Entregar ensayo</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
