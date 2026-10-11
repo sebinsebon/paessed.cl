@@ -18,7 +18,7 @@ const easeOut = [0.22, 1, 0.36, 1] as const;
 const countLabel = (count: number) => count === 1 ? "1 pregunta" : `${count} preguntas`;
 
 export function PlaygroundTopicPicker({ selected, onChange, questionCounts, compact = false }: TopicPickerProps) {
-  const [expanded, setExpanded] = useState<string[]>(compact ? [] : ["numeros", "algebra"]);
+  const [expanded, setExpanded] = useState<string[]>([]);
   const reduceMotion = Boolean(useReducedMotion());
   const selectedSet = new Set(selected);
   const allSelected = selected.length === ALL_M1_UNIT_IDS.length;
