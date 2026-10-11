@@ -64,3 +64,21 @@ export function getM1UnitsForAxis(axisId: M1AxisId) {
 export function getM1Unit(unitId: string) {
   return M1_UNITS.find((unit) => unit.id === unitId);
 }
+
+/** Canonical order and stable IDs for selecting several M1 subejes together. */
+export function toggleM1UnitSelection(selected: readonly M1UnitId[], id: M1UnitId): M1UnitId[] {
+  const next = new Set(selected);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return M1_UNITS.map((unit) => unit.id).filter((unitId) => next.has(unitId));
+}
+
+/** Clicking an axis selects all its subejes, or clears them if all were selected. */
+export function toggleM1AxisSelection(selected: readonly M1UnitId[], axisId: M1AxisId): M1UnitId[] {
+  const axis = M1_AXES.find((item) => item.id === axisId);
+  if (!axis) return [...selected];
+  const next = new Set(selected);
+  const allPresent = axis.units.every((unit) => next.has(unit.id));
+  axis.units.forEach((unit) => allPresent ? next.delete(unit.id) : next.add(unit.id));
+  return M1_UNITS.map((unit) => unit.id).filter((unitId) => next.has(unitId));
+}
