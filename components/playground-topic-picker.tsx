@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, RotateCcw, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { M1_AXES, M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
 
 export const ALL_M1_UNIT_IDS: M1UnitId[] = M1_UNITS.map((unit) => unit.id);
@@ -46,8 +46,9 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
         <div>
           <div className="text-[12px] font-extrabold text-[var(--text)]">Elige qué quieres practicar</div>
           <p aria-live="polite" className="mt-0.5 text-[11px] leading-5 text-[var(--muted)]">
-            {selected.length} de 16 subejes · {countLabel(totalAvailable)} disponibles
+            {selected.length} de {ALL_M1_UNIT_IDS.length} subejes · {countLabel(totalAvailable)} disponibles
           </p>
+          {!compact && <p className="mt-1 text-[11px] text-[var(--muted)]">Puedes combinar subejes de distintos ejes o seleccionar un eje completo.</p>}
         </div>
         <div className="flex items-center gap-1.5">
           <button type="button" onClick={() => update(ALL_M1_UNIT_IDS)} disabled={allSelected}
@@ -98,7 +99,7 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
                 </button>
               </div>
               {open && (
-                <div id={panelId} className="space-y-1.5 border-t border-[var(--border)] bg-[var(--surface-2)]/40 p-2.5">
+                <div id={panelId} className="space-y-1.5 border-t border-[var(--border)] bg-[var(--surface-2)] p-2.5">
                   {axis.units.map((unit) => {
                     const chosen = selectedSet.has(unit.id);
                     const n = questionCounts[unit.id] ?? 0;
