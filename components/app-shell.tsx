@@ -66,7 +66,7 @@ export function AppShell({ children, title, eyebrow, wide = false, immersive = f
       {!immersive && <DashboardTopNav dark={dark} setDark={setDark} onTour={openTour} sidebarCollapsed={sidebarCollapsed} />}
       <main
         aria-label={eyebrow ? eyebrow + " · " + title : title}
-        className={(immersive ? "h-dvh overflow-hidden" : "min-h-screen") + " transition-[padding-left] duration-300 ease-out lg:pl-[var(--sidebar-width)]"}
+        className={(immersive ? "h-dvh overflow-hidden" : "min-h-screen") + " transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]"}
       >
         <div className={immersive ? "h-full w-full min-h-0 overflow-hidden" : `mx-auto w-full px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7 ${wide ? "max-w-none" : "max-w-[1280px]"}`}>{children}</div>
       </main>
