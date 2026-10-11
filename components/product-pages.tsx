@@ -34,7 +34,7 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { PageHeadingTransition, PageContentTransition } from "@/components/app-page-transition";
+import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
 import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
@@ -50,19 +50,19 @@ const learningNodes = [
 export function LearnExperience() {
   return (
     <AppShell title="Aprender" eyebrow="Ruta adaptativa">
-      <PageHeadingTransition>
       <section className="mb-6">
         <div className="inline-flex items-center gap-2 rounded-full bg-[var(--primary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--primary)]">
           <Sparkles size={14} />RUTA PERSONALIZADA
         </div>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-[-.03em]">Tu camino para subir M1</h1>
+        <PageHeadingTransition>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-[-.03em]">Tu camino para subir M1</h1>
+        </PageHeadingTransition>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
           Avanza por unidades cortas. PAESSED mueve el orden cuando tus respuestas muestran una nueva debilidad o una mejora real.
         </p>
       </section>
-      </PageHeadingTransition>
 
-      <PageContentTransition>
+      
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_360px]">
         <section className="surface-raised rounded-[24px] p-5 sm:p-7">
           <div className="flex items-center justify-between">
@@ -164,7 +164,7 @@ export function LearnExperience() {
           ))}
         </div>
       </section>
-      </PageContentTransition>
+      
     </AppShell>
   );
 }
@@ -995,19 +995,19 @@ export function PlaygroundExperience() {
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="mx-auto w-full max-w-[1460px] pb-5"
       >
-        <PageHeadingTransition>
         <header className="mb-7 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.16em] text-[var(--primary)]">Banco de preguntas</p>
-            <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
+            <PageHeadingTransition>
+              <h1 className="text-[34px] font-extrabold leading-tight tracking-[-.04em] sm:text-[42px]">Playground</h1>
+            </PageHeadingTransition>
             <p className="mt-1.5 max-w-[640px] text-[13px] leading-[1.6] text-[var(--muted)] sm:text-sm">
               Prepara tu práctica de Matemática M1. Elige qué quieres reforzar y comienza.
             </p>
           </div>
         </header>
-        </PageHeadingTransition>
 
-        <PageContentTransition>
+        
         <div>
         <section aria-label="Banco de preguntas disponible" className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-4">
           <span className="text-[14px] font-bold text-[var(--text)]">
@@ -1142,7 +1142,7 @@ export function PlaygroundExperience() {
           Las preguntas guardadas quedan en este navegador. Prototipo con cuatro preguntas originales de ejemplo, no extraídas de pruebas oficiales del DEMRE. Los años son referenciales.
         </p>
         </div>
-        </PageContentTransition>
+        
       </motion.div>
       ) : (
         <motion.div
@@ -1529,19 +1529,19 @@ export function PlaygroundExperience() {
 export function ProfileExperience() {
   return (
     <AppShell title="Perfil" eyebrow="Tu cuenta">
-      <PageHeadingTransition>
       <section className="mb-6">
         <div className="flex items-center gap-4">
           <div className="grid h-16 w-16 place-items-center rounded-[22px] bg-[var(--secondary)] text-xl font-extrabold text-white">S</div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-[-.03em]">Seba</h1>
+            <PageHeadingTransition>
+              <h1 className="text-3xl font-extrabold tracking-[-.03em]">Seba</h1>
+            </PageHeadingTransition>
             <div className="mt-1 text-sm text-[var(--muted)]">Preparando PAES M1 · Meta 780 pts</div>
           </div>
         </div>
       </section>
-      </PageHeadingTransition>
 
-      <PageContentTransition>
+      
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="space-y-4">
           <div className="surface rounded-2xl p-5 sm:p-6">
@@ -1592,7 +1592,7 @@ export function ProfileExperience() {
           </div>
         </aside>
       </div>
-      </PageContentTransition>
+      
     </AppShell>
   );
 }
