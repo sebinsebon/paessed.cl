@@ -4,23 +4,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Clock3, Flag, Grid3X3, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 
 type DemoQuestion = {
   domain: string;
+  unitId: M1UnitId;
   prompt: string;
   options: string[];
   answer: number;
 };
 
 const BASE: DemoQuestion[] = [
-  { domain: "Números", prompt: "Si un precio de $80.000 aumenta un 15%, ¿cuál es el nuevo precio?", options: ["$88.000", "$90.000", "$92.000", "$95.000"], answer: 2 },
-  { domain: "Álgebra y Funciones", prompt: "Si f(x) = 2x + 5, ¿cuánto vale f(6)?", options: ["12", "15", "17", "22"], answer: 2 },
-  { domain: "Geometría", prompt: "Un triángulo rectángulo tiene catetos 9 y 12. ¿Cuánto mide la hipotenusa?", options: ["13", "15", "18", "21"], answer: 1 },
-  { domain: "Probabilidad y Estadística", prompt: "La mediana de 2, 4, 4, 7, 9 es:", options: ["4", "5", "5,2", "7"], answer: 0 },
-  { domain: "Números", prompt: "¿Cuál expresión equivale a 3² · 3³?", options: ["3⁵", "6⁵", "9⁶", "3⁶"], answer: 0 },
-  { domain: "Álgebra y Funciones", prompt: "¿Cuál es la solución de 5x - 10 = 20?", options: ["4", "5", "6", "8"], answer: 2 },
-  { domain: "Geometría", prompt: "El área de un rectángulo de lados 8 cm y 5 cm es:", options: ["13 cm²", "26 cm²", "40 cm²", "80 cm²"], answer: 2 },
-  { domain: "Probabilidad y Estadística", prompt: "En una bolsa hay 3 bolas rojas y 2 azules. La probabilidad de sacar una azul es:", options: ["2/3", "2/5", "3/5", "1/2"], answer: 1 },
+  { domain: "Números", unitId: "porcentaje", prompt: "Si un precio de $80.000 aumenta un 15%, ¿cuál es el nuevo precio?", options: ["$88.000", "$90.000", "$92.000", "$95.000"], answer: 2 },
+  { domain: "Álgebra y funciones", unitId: "funcion-lineal-afin", prompt: "Si f(x) = 2x + 5, ¿cuánto vale f(6)?", options: ["12", "15", "17", "22"], answer: 2 },
+  { domain: "Geometría", unitId: "figuras-geometricas", prompt: "Un triángulo rectángulo tiene catetos 9 y 12. ¿Cuánto mide la hipotenusa?", options: ["13", "15", "18", "21"], answer: 1 },
+  { domain: "Probabilidad y estadística", unitId: "representacion-datos-tablas-graficos", prompt: "El promedio de 2, 4, 4, 7 y 8 es:", options: ["4", "5", "5,2", "7"], answer: 1 },
+  { domain: "Números", unitId: "potencias-raices-enesimas", prompt: "¿Cuál expresión equivale a 3² · 3³?", options: ["3⁵", "6⁵", "9⁶", "3⁶"], answer: 0 },
+  { domain: "Álgebra y funciones", unitId: "ecuaciones-inecuaciones-primer-grado", prompt: "¿Cuál es la solución de 5x - 10 = 20?", options: ["4", "5", "6", "8"], answer: 2 },
+  { domain: "Geometría", unitId: "figuras-geometricas", prompt: "El área de un rectángulo de lados 8 cm y 5 cm es:", options: ["13 cm²", "26 cm²", "40 cm²", "80 cm²"], answer: 2 },
+  { domain: "Probabilidad y estadística", unitId: "reglas-probabilidades", prompt: "En una bolsa hay 3 bolas rojas y 2 azules. La probabilidad de sacar una azul es:", options: ["2/3", "2/5", "3/5", "1/2"], answer: 1 },
 ];
 
 const QUESTIONS = Array.from({ length: 65 }, (_, i) => {
@@ -97,6 +99,7 @@ export function ExamSession() {
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-[var(--secondary-soft)] px-3 py-1.5 text-[10px] font-extrabold text-[var(--secondary)]">{q.domain}</span>
               <span className="text-[10px] font-bold text-[var(--muted)]">Pregunta {q.number} de 65</span>
+              <span className="text-[10px] font-semibold text-[var(--muted)]">{getM1Unit(q.unitId)?.name}</span>
             </div>
             <button
               onClick={() => {
