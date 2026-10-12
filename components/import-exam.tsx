@@ -227,7 +227,7 @@ async function parseFile(file: File): Promise<ParsedPackage> {
     const finalJson: unknown = parsed.data;
     const packageFiles = ["final.json", "manifest.json", ...Array.from(parsed.validation.resources.values(), (resource) => resource.path)];
     const summary = buildSummary(finalJson, file, packageFiles, "final.json");
-    summary.issues.push(...parsed.validation.warnings);
+    summary.issues.push(...(parsed.validation.warnings ?? []));
     return { summary, finalJson, archive: file, packageFiles, finalJsonPath: "final.json" };
   }
 
