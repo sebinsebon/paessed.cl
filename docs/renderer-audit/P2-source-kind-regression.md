@@ -54,4 +54,6 @@ La regresión P2 ZIP falló con el código anterior al comprobar que MathML esta
 
 Capturas inspeccionadas en Chrome/Windows. No se afirma haber probado Safari/iPhone físicos. Para repetir se usa `npm run test:renderer-visual` contra un build de producción, según las instrucciones de [P3](P3-regression.md).
 
-Se publicará la corrección en esta misma rama; no se integrará a main. El acceso visual autenticado a la preview depende de la autorización Vercel previamente pendiente.
+Corrección publicada en `5f53cd2`, en esta misma rama. Vercel informó `success / Deployment has completed`, deployment `dpl_HXrfNdwVnbZxRUC5enekYyuWM4X2`. [Preview de Ensayos](https://paesseduiux-git-feat-pae-47bc3d-sebinsebonzb-gmailcoms-projects.vercel.app/app/ensayos).
+
+El fetch autenticado de ese deployment devuelve 403 (`read_protection_bypass`), por falta de autorización del conector para el equipo/proyecto. La comprobación visual remota sigue pendiente; las pruebas anteriores comprueban producción local. No se cambió protección ni se hizo merge a main.
