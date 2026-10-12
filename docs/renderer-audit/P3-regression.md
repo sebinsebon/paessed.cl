@@ -52,4 +52,6 @@ Las cuatro capturas incluyen todas las alternativas. Los snapshots se generaron,
 
 Para repetir: instalar dependencias, ejecutar `npm run build`, iniciar `npm run start -- --port 3104` y luego `npm run test:renderer-visual`. Instalar Chromium con `npx playwright install chromium` o definir `PAESSED_BROWSER_CHANNEL=chrome` para usar Chrome instalado. `PAESSED_BASE_URL` permite apuntar a otro servidor. No actualizar snapshots para aceptar un fallo sin inspeccionarlo.
 
-Vercel mantiene autenticación de preview; la comprobación remota se registrará tras publicar. La evidencia anterior comprueba producción local, no una preview remota autenticada. No se desactivó protección ni se hizo merge a main.
+Corrección publicada en `600cebd`. Vercel informó `success / Deployment has completed` para ese commit, deployment `dpl_8adCMhGDhVE5b6nzkia84ruHPWiC`. [Preview de Ensayos](https://paesseduiux-git-feat-pae-47bc3d-sebinsebonzb-gmailcoms-projects.vercel.app/app/ensayos).
+
+El acceso autenticado del conector a ese deployment devolvió 403 (`read_protection_bypass`): falta autorización para el proyecto/equipo de Vercel. La comprobación visual remota sigue pendiente. La evidencia anterior comprueba producción local, no una preview remota autenticada. No se desactivó protección ni se hizo merge a main.
