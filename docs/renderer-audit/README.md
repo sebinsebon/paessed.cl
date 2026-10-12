@@ -2,7 +2,7 @@
 
 Rama: `feat/paessed-standalone-renderer`. Base: lector `3e837f3`, sobre `origin/main` `ef90df4079c82d4ab8489ad0e4e897fb545d9492` (UI reciente de Ensayos/Playground y subejes M1). Fetch realizado antes y después de implementar; main y lector son ancestros de esta rama. No hubo divergencias ni conflictos. No se hizo merge a main.
 
-Cambios locales anteriores preservados en el stash `Preserve local setup before standalone renderer integration` y en `../renderer-audit-20261012/`: `next-env.d.ts`, `tsconfig.json`, `AGENTS.md`, `CLAUDE.md`, `package-lock.json` y parche binario. La configuración que Next regeneró durante las pruebas no forma parte del commit.
+Cambios locales anteriores preservados en el stash `Preserve local setup before standalone renderer integration` y en `../renderer-audit-20261012/`: `next-env.d.ts`, `tsconfig.json`, `AGENTS.md`, `CLAUDE.md`, `package-lock.json` y parche binario. Fueron restaurados después del commit; su contenido coincide con el respaldo (Git normalizó algunos finales de línea). La configuración que Next regeneró durante las pruebas no forma parte del commit. Se restableció el servidor dev existente en el puerto 3102 tras el build y se comprobó HTTP 200.
 
 ## Comparación y alcance
 
@@ -80,4 +80,14 @@ Para repetir las regresiones: instalar dependencias y `npx playwright install ch
 - No hay snapshots universales estables de Inicio/Playground: contienen animaciones y la captura previa incluye herramientas dev. Se inspeccionaron las diferencias y no hay cambios de código ni CSS dirigidos a esas pantallas.
 - El warning preexistente de Next sobre `experimental.viewTransition` y los avisos de workspace/Node no se corrigieron dentro de este alcance. La configuración de transitions no fue modificada.
 
-Estado: candidato listo para revisión e integración técnica; los defects de assets no bloquean el motor. La aceptación visual final en dispositivos reales sigue pendiente. Publicación/preview se registrarán después del push; no se integrará a main automáticamente.
+## Publicación
+
+Rama publicada en GitHub; commits de código: `8c917cb` (adaptador de importación) y `243cee7` (motor, tests y evidencia). Vercel informó `success / Deployment has completed` para `243cee7`; deployment `dpl_SUibJ1qe1ABMdZKGxAfoduGUu9YX`, proyecto `paesseduiux`.
+
+- [Inicio de la preview](https://paesseduiux-git-feat-pae-47bc3d-sebinsebonzb-gmailcoms-projects.vercel.app/app/inicio).
+- [Ensayos de la preview](https://paesseduiux-git-feat-pae-47bc3d-sebinsebonzb-gmailcoms-projects.vercel.app/app/ensayos).
+- [Estado del deployment](https://vercel.com/sebinsebonzb-gmailcoms-projects/paesseduiux/SUibJ1qe1ABMdZKGxAfoduGUu9YX).
+
+La preview requiere autenticación Vercel: el navegador anónimo redirige al login (el HTTP 200 final pertenece al login). El conector devuelve 403 al consultar el equipo y al acceder a ambas rutas mediante el fetch autenticado; no hay credenciales CLI ni sesión de navegador conectada disponible. Por tanto, los 13 flujos UI y las capturas finales verifican el build de producción local, no la preview remota. Para completar esa comprobación se necesita una conexión Vercel autorizada para `sebinsebonzb-gmailcoms-projects` o una sesión autenticada disponible. No se modificó Deployment Protection.
+
+Estado: implementación lista para revisión técnica; los defectos de assets no bloquean el motor. La aprobación final para integrar a main queda pendiente de comprobar la preview autenticada y de la aceptación visual en dispositivos reales. No se hizo merge a main.
