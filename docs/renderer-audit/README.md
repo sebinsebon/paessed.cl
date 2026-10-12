@@ -1,5 +1,7 @@
 # Auditoría del renderizador PAESSED — 12 octubre 2026
 
+Seguimiento: [corrección de P3 y regresión de navegación fría](P3-regression.md). Actualiza la carga de hojas y la puntuación display descritas en esta auditoría inicial.
+
 Rama: `feat/paessed-standalone-renderer`. Base: lector `3e837f3`, sobre `origin/main` `ef90df4079c82d4ab8489ad0e4e897fb545d9492` (UI reciente de Ensayos/Playground y subejes M1). Fetch realizado antes y después de implementar; main y lector son ancestros de esta rama. No hubo divergencias ni conflictos. No se hizo merge a main.
 
 Cambios locales anteriores preservados en el stash `Preserve local setup before standalone renderer integration` y en `../renderer-audit-20261012/`: `next-env.d.ts`, `tsconfig.json`, `AGENTS.md`, `CLAUDE.md`, `package-lock.json` y parche binario. Fueron restaurados después del commit; su contenido coincide con el respaldo (Git normalizó algunos finales de línea). La configuración que Next regeneró durante las pruebas no forma parte del commit. Se restableció el servidor dev existente en el puerto 3102 tras el build y se comprobó HTTP 200.

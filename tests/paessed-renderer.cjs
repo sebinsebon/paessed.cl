@@ -37,6 +37,14 @@ test('structured question content stays readable and safe in a real browser',asy
   assert.equal(await page.locator('mfrac').count(),1);
   assert.equal(await page.locator('.paessed-math-display').evaluate(e=>getComputedStyle(e).textAlign),'center');
  });
+ await t.test('closing punctuation stays with a display formula without changing its math mode',async()=>{
+  await render([{type:'text',text:'¿Cuál es el valor de la expresión '},{type:'math',latex:'\\frac{0,5-\\frac{1}{4}}{0,25+\\frac{1}{2}}',display:true},{type:'text',text:'?'}]);
+  assert.equal(await page.locator('.paessed-math-display .paessed-math-punctuation').count(),1);
+  assert.equal(await page.locator('.paessed-math-punctuation').textContent(),'?');
+  assert.equal(await page.locator('.paessed-paragraph').count(),1);
+  assert.equal(await page.locator('.paessed-math-display math').getAttribute('display'),'block');
+  assert.equal(await page.locator('mfrac').count(),3);
+ });
  await t.test('inline fractions and radicals do not use clipping scrollboxes',async()=>{
   await render([{type:'math',latex:'\\left(\\frac{3}{2},\\frac{5}{2}\\right)+\\sqrt[4]{5^3}',display:false}]);
   const state=await page.locator('.paessed-math').evaluate(e=>({x:getComputedStyle(e).overflowX,y:getComputedStyle(e).overflowY}));

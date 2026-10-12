@@ -525,8 +525,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             {record.summary.sourceKind === "paessed" && <>
-              <link rel="stylesheet" href="/paessed/katex/katex.min.css" />
-              <link rel="stylesheet" href="/paessed/block-renderer.css" />
+              <link rel="stylesheet" href="/paessed/katex/katex.min.css" precedence="paessed-katex" />
+              <link rel="stylesheet" href="/paessed/block-renderer.css" precedence="paessed-blocks" />
             </>}
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
               <div className="flex flex-wrap items-center gap-2">

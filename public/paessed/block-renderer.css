@@ -3,6 +3,7 @@
 .paessed-blocks .paessed-paragraph { margin: 0 0 .65em; }
 .paessed-blocks .paessed-paragraph:last-child { margin-bottom: 0; }
 .paessed-blocks .paessed-text { white-space: pre-wrap; }
+.paessed-blocks .paessed-math { position: relative; }
 .paessed-blocks .paessed-math-inline { display: inline-block; vertical-align: baseline; }
 .paessed-blocks .paessed-math .katex { white-space: nowrap; }
 .paessed-blocks .paessed-math-display,
@@ -13,8 +14,10 @@
   /* Space for tall radicals, accents and a scrollbar without clipping ink. */
   padding-block: .25em;
 }
-.paessed-blocks .paessed-math-display { margin: .5em 0; text-align: center; }
+.paessed-blocks .paessed-math-display { margin: .5em 0; text-align: center; white-space: nowrap; }
 .paessed-blocks .katex-display { margin: 0; }
+.paessed-blocks .paessed-math-display .katex-display { display: inline-block; vertical-align: middle; }
+.paessed-blocks .paessed-math-punctuation { vertical-align: middle; }
 .paessed-blocks .paessed-image {
   display: block;
   width: auto;
