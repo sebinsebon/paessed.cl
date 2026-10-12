@@ -1,1 +1,33 @@
-.paessed-blocks{line-height:1.7}.paessed-text{white-space:pre-wrap}.paessed-math{display:inline-block;max-width:100%;overflow-x:auto;vertical-align:middle}.paessed-image{margin:1rem 0}.paessed-table{border-collapse:collapse;margin:.75rem 0}.paessed-table td{border:1px solid #94a3b8;padding:.5rem}.paessed-unresolved{color:#b45309;border:1px solid currentColor;padding:.5rem;margin:.5rem 0}.paessed-blocks .katex-display{margin:.5rem 0}
+/* Question content only; paper, controls and application typography are inherited. */
+.paessed-blocks { min-width: 0; max-width: 100%; line-height: 1.7; overflow-wrap: anywhere; }
+.paessed-blocks .paessed-paragraph { margin: 0 0 .65em; }
+.paessed-blocks .paessed-paragraph:last-child { margin-bottom: 0; }
+.paessed-blocks .paessed-text { white-space: pre-wrap; }
+.paessed-blocks .paessed-math-inline { display: inline-block; vertical-align: baseline; }
+.paessed-blocks .paessed-math .katex { white-space: nowrap; }
+.paessed-blocks .paessed-math-display,
+.paessed-blocks .paessed-math-overflow {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  /* Space for tall radicals, accents and a scrollbar without clipping ink. */
+  padding-block: .25em;
+}
+.paessed-blocks .paessed-math-display { margin: .5em 0; text-align: center; }
+.paessed-blocks .katex-display { margin: 0; }
+.paessed-blocks .paessed-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 470px;
+  margin: 1rem auto;
+  object-fit: contain;
+}
+.paessed-blocks .paessed-image:only-child { margin-block: 0; }
+.paessed-blocks .paessed-table-wrap { max-width: 100%; overflow-x: auto; margin: .75rem 0; }
+.paessed-blocks .paessed-table { border-collapse: collapse; }
+.paessed-blocks .paessed-table td { border: 1px solid var(--pg-border, #94a3b8); padding: .5rem; min-width: 4em; vertical-align: middle; }
+.paessed-blocks .paessed-table .paessed-paragraph { margin: 0; }
+.paessed-blocks .paessed-unresolved { color: var(--pg-fg, inherit); border: 1px solid currentColor; padding: .5rem; margin: .5rem 0; white-space: pre-wrap; }
+.paessed-blocks [tabindex="0"]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

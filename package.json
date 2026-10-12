@@ -7,6 +7,7 @@
     "build": "next build",
     "test:curriculum": "node --experimental-strip-types --test tests/m1-curriculum.test.mjs",
     "test:exam-progress": "node --experimental-strip-types --test tests/demo-exam-progress.test.mjs",
+    "test:renderer": "node --test tests/paessed-renderer.cjs",
     "start": "next start"
   },
   "dependencies": {
@@ -19,6 +20,7 @@
     "jszip": "^3.10.1"
   },
   "devDependencies": {
+    "playwright": "1.64.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

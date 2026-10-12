@@ -1,0 +1,17 @@
+{
+  "passed": [
+    "strict import 0.1.0",
+    "answer selection",
+    "bookmark",
+    "pen stroke",
+    "eraser",
+    "navigation",
+    "reload restores progress",
+    "question map",
+    "four option graphs",
+    "UI export hashes/bytes/data",
+    "UI reimport",
+    "strict import 0.2.0 curriculum"
+  ],
+  "errors": []
+}
