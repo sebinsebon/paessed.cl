@@ -16,5 +16,11 @@ export function PaessedBlocks({blocks,assetUrls}:{blocks:unknown[];assetUrls:Map
   void document.fonts.ready.then(()=>{if(active)fit();});
   return ()=>{active=false;observer.disconnect();};
  },[blocks,assetUrls]);
- return <div ref={ref} className='paessed-blocks'/>;
+ // Styles belong to structured content, independently of the import extension.
+ // React waits for these resources and deduplicates them across question/options.
+ return <>
+  <link rel="stylesheet" href="/paessed/katex/katex.min.css" precedence="paessed-katex" />
+  <link rel="stylesheet" href="/paessed/block-renderer.css" precedence="paessed-blocks" />
+  <div ref={ref} className='paessed-blocks'/>
+ </>;
 }

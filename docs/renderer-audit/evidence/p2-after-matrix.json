@@ -1,0 +1,274 @@
+[
+  {
+    "name": "TESLA.paessed",
+    "sourceKind": "paessed",
+    "dataIdentical": true,
+    "styles": [
+      "http://127.0.0.1:3104/_next/static/chunks/36uyoyn5-conr.css",
+      "http://127.0.0.1:3104/paessed/katex/katex.min.css",
+      "http://127.0.0.1:3104/paessed/block-renderer.css"
+    ],
+    "mathml": [
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      }
+    ],
+    "mathCount": 11
+  },
+  {
+    "name": "TESLA.zip",
+    "sourceKind": "zip",
+    "dataIdentical": true,
+    "styles": [
+      "http://127.0.0.1:3104/_next/static/chunks/36uyoyn5-conr.css",
+      "http://127.0.0.1:3104/paessed/katex/katex.min.css",
+      "http://127.0.0.1:3104/paessed/block-renderer.css"
+    ],
+    "mathml": [
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      }
+    ],
+    "mathCount": 11
+  },
+  {
+    "name": "final.json",
+    "sourceKind": "json",
+    "dataIdentical": true,
+    "styles": [
+      "http://127.0.0.1:3104/_next/static/chunks/36uyoyn5-conr.css",
+      "http://127.0.0.1:3104/paessed/katex/katex.min.css",
+      "http://127.0.0.1:3104/paessed/block-renderer.css"
+    ],
+    "mathml": [
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      }
+    ],
+    "mathCount": 11
+  },
+  {
+    "name": "TESLA-generic.zip",
+    "sourceKind": "zip",
+    "dataIdentical": true,
+    "styles": [
+      "http://127.0.0.1:3104/_next/static/chunks/36uyoyn5-conr.css",
+      "http://127.0.0.1:3104/paessed/katex/katex.min.css",
+      "http://127.0.0.1:3104/paessed/block-renderer.css"
+    ],
+    "mathml": [
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      },
+      {
+        "position": "absolute",
+        "width": 1,
+        "height": 1
+      }
+    ],
+    "mathCount": 11
+  }
+]
