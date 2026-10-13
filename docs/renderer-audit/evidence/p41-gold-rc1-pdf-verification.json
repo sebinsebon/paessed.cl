@@ -1,0 +1,78 @@
+{
+  "package": {
+    "valid": true,
+    "questions": 65,
+    "assets": 18,
+    "warnings": [],
+    "semantic_correctness": "not_proven_by_structural_validation",
+    "pipeline": "pdf-direct",
+    "run_id": "tesla-verified-01",
+    "files": 20
+  },
+  "pdf_crops": [
+    {
+      "id": "crop-q41-opt-a",
+      "exact_direct_pdf_render": true,
+      "labels_margin_points": 10,
+      "vertical_axis_bbox": [
+        163.89256286621094,
+        143.490234375,
+        164.68955993652344,
+        295.8905029296875
+      ],
+      "vertical_axis_margin_points": 10,
+      "dimensions": [
+        480,
+        360
+      ]
+    },
+    {
+      "id": "crop-q41-opt-b",
+      "exact_direct_pdf_render": true,
+      "labels_margin_points": 10,
+      "vertical_axis_bbox": [
+        474.925537109375,
+        143.490234375,
+        475.7225341796875,
+        295.8905029296875
+      ],
+      "vertical_axis_margin_points": 10,
+      "dimensions": [
+        480,
+        360
+      ]
+    },
+    {
+      "id": "crop-q41-opt-c",
+      "exact_direct_pdf_render": true,
+      "labels_margin_points": 10,
+      "vertical_axis_bbox": [
+        145.28854370117188,
+        326.764892578125,
+        146.08554077148438,
+        479.155517578125
+      ],
+      "vertical_axis_margin_points": 10,
+      "dimensions": [
+        480,
+        380
+      ]
+    },
+    {
+      "id": "crop-q41-opt-d",
+      "exact_direct_pdf_render": true,
+      "labels_margin_points": 10,
+      "vertical_axis_bbox": [
+        493.54754638671875,
+        328.035888671875,
+        494.34454345703125,
+        480.426513671875
+      ],
+      "vertical_axis_margin_points": 10,
+      "dimensions": [
+        480,
+        380
+      ]
+    }
+  ]
+}

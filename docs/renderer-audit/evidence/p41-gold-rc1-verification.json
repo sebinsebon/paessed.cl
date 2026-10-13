@@ -1,0 +1,28 @@
+{
+  "status": "verified-candidate-not-promoted",
+  "browser": "Chrome on Windows",
+  "runtime": "production build served by next start",
+  "playwright": {
+    "failed": 0,
+    "snapshotsUpdatedInFinalRun": false,
+    "passed": 55,
+    "candidateTests": 12,
+    "originalTests": 43
+  },
+  "modules": {
+    "progress": 4,
+    "curriculum": 6,
+    "renderer": 10,
+    "candidate": 3,
+    "resources": 5
+  },
+  "typeScript": "PASS",
+  "build": "PASS",
+  "changedTestsLint": "PASS",
+  "pythonSyntax": "PASS",
+  "pdfium": "153.0.7999.0",
+  "pypdfium2": "5.13.0",
+  "remoteVisual": "pending Vercel authorization",
+  "packageSha256": "d011d81d3a464f7f1755661af67cb8e70dee3ab2910550f769b977053519f30c",
+  "sourcePackageSha256": "2eedea311058d63e9a8b1eb9d67f638bd541f3634c97a521088bdaad767275d7"
+}

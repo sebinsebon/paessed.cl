@@ -1,7 +1,7 @@
 const {defineConfig}=require('@playwright/test');
 module.exports=defineConfig({
  testDir:__dirname,
- testMatch:['paessed-navigation.spec.cjs','paessed-resources.spec.cjs'],
+ testMatch:['paessed-navigation.spec.cjs','paessed-resources.spec.cjs','tesla-p41-candidate.spec.cjs'],
  fullyParallel:false,
  workers:1,
  reporter:'list',
