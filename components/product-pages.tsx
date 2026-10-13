@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import JSZip from "jszip";
+import { PaessedBlocks } from "@/components/paessed-blocks";
+import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
+import { blockAssetIds } from "@/lib/imported-resources";
+import type { ImportedExamRecord } from "@/lib/local-imports";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
-  BarChart3,
   BookOpen,
   Bookmark,
   Check,
@@ -16,23 +18,17 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  CircleDot,
-  Clock3,
   Flame,
-  Gamepad2,
   Lock,
   Play,
-  Route,
   Search,
   Settings,
   SlidersHorizontal,
   Sparkles,
-  X,
   Target,
   Trophy,
   UserRound,
   Upload,
-  PackageCheck,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition } from "@/components/app-page-transition";
@@ -40,6 +36,8 @@ import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
 import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
 import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { useDrawingTools } from "@/components/use-drawing-tools";
+import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
 import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
 
@@ -79,7 +77,7 @@ export function LearnExperience() {
 
           <div className="relative mt-8 space-y-7">
             <div className="absolute bottom-8 left-[27px] top-8 w-1 rounded-full bg-[var(--surface-3)]" />
-            {learningNodes.map((node, index) => {
+            {learningNodes.map((node) => {
               const active = node.state === "active";
               const done = node.state === "done";
               const locked = node.state === "locked";
@@ -523,7 +521,6 @@ function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readon
 }
 
 const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
-const playgroundQuestionFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
   const ids = questions.map((question) => question.id);
@@ -542,8 +539,7 @@ export function PlaygroundExperience() {
   const [importedSources, setImportedSources] = useState<BankSource[]>([]);
   const [sourceLoading, setSourceLoading] = useState(true);
   const [sourceError, setSourceError] = useState<string | null>(null);
-  const importedArchives = useRef<Record<string, Blob>>({});
-  const [questionAssets, setQuestionAssets] = useState<Array<{ path: string; url: string }>>([]);
+  const [importedRecords, setImportedRecords] = useState<Record<string, ImportedExamRecord>>({});
   const [chosenQuestionIds, setChosenQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question) => question.id));
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [draftAdvancedOpen, setDraftAdvancedOpen] = useState(false);
@@ -559,7 +555,7 @@ export function PlaygroundExperience() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isPracticing, setIsPracticing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
@@ -601,7 +597,7 @@ export function PlaygroundExperience() {
     let mounted = true;
     void loadPlaygroundImports().then((result) => {
       if (!mounted) return;
-      importedArchives.current = result.archives;
+      setImportedRecords(result.records);
       setImportedSources(result.sources);
       setImportedQuestions(result.questions);
       setChosenQuestionIds((old) => [...new Set([...old, ...result.questions.map((q) => q.id)])]);
@@ -612,26 +608,19 @@ export function PlaygroundExperience() {
     return () => { mounted = false; };
   }, []);
 
-  // Lazily load assets for the current imported question and revoke on change.
-  useEffect(() => {
-    let disposed = false;
-    const urls: string[] = [];
-    setQuestionAssets([]);
-    const blob = current && importedArchives.current[current.sourceId];
-    if (!blob || !current?.assetPaths?.length) return;
-    void blob.arrayBuffer().then((buffer)=>JSZip.loadAsync(buffer)).then(async(zip)=>{
-      const files=Object.keys(zip.files).filter((name)=>!zip.files[name].dir);
-      const found=await Promise.all((current.assetPaths??[]).map(async(path)=>{
-        const name=files.find((x)=>x===path)??files.find((x)=>x.endsWith("/"+path));
-        const file=name&&zip.file(name);
-        if (!file) return null;
-        const url=URL.createObjectURL(await file.async("blob"));urls.push(url);
-        return {path,url};
-      }));
-      if (!disposed) setQuestionAssets(found.filter((x):x is {path:string;url:string}=>!!x));
-    }).catch(()=>{});
-    return ()=>{disposed=true;urls.forEach((url)=>URL.revokeObjectURL(url));};
-  }, [current?.id, importedQuestions]);
+  const sourceRecord = isPracticing && current ? importedRecords[current.sourceId] ?? null : null;
+  const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(sourceRecord);
+  const questionAssets = (current?.assetPaths ?? []).flatMap(path => {
+    const url = resourceUrls.byPath.get(path); return url ? [{ path, url }] : [];
+  });
+  const resourceIds = [...blockAssetIds(current?.stemBlocks), ...(current?.optionBlocks ?? []).flatMap(blocks => blockAssetIds(blocks)),
+    ...blockAssetIds(current?.explanationBlocks), ...(current?.assetPaths ?? [])];
+  const currentResourceErrors = [...new Set(resourceIds.flatMap(id => {
+    const error = resourceIssues.get(id); return error ? [error] : [];
+  }))];
+  const displayedResourceError = resourceError || currentResourceErrors[0];
+
+  useEffect(() => { setDrawingEnabled(false); }, [current?.id, setDrawingEnabled]);
 
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
@@ -1124,10 +1113,11 @@ export function PlaygroundExperience() {
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
-                  aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz para cálculos"}
+                  aria-label={drawingButtonLabel}
                   aria-pressed={drawingEnabled}
-                  title={drawingEnabled ? "Cerrar herramientas de dibujo" : "Hacer cálculos a mano"}
-                  onClick={() => { setSettingsOpen(false); setDrawingEnabled((previous) => !previous); }}
+                  aria-expanded={drawingMenuOpen}
+                  title={drawingButtonLabel}
+                  onClick={() => { setSettingsOpen(false); toggleDrawing(); }}
                   className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
                     (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
                 >
@@ -1306,12 +1296,13 @@ export function PlaygroundExperience() {
               </div>
               </div>
             </div>
-            {drawingEnabled && current && (
+            {drawingMenuOpen && current && (
               <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[var(--text)] shadow-lg sm:right-6">
                 <button
                   type="button"
                   onClick={() => setDrawingTool("pen")}
                   aria-pressed={drawingTool === "pen"}
+                  aria-label="Dibujar"
                   title="Dibujar"
                   className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
                 ><Pencil size={16} /></button>
@@ -1319,6 +1310,7 @@ export function PlaygroundExperience() {
                   type="button"
                   onClick={() => setDrawingTool("eraser")}
                   aria-pressed={drawingTool === "eraser"}
+                  aria-label="Borrar trazo"
                   title="Borrar trazo"
                   className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
                 ><Eraser size={16} /></button>
@@ -1374,11 +1366,14 @@ export function PlaygroundExperience() {
 
                 <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
                   <div className="relative flex min-h-full flex-col">
-                  <h2 style={playgroundQuestionFont} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+                  {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
+                  {current.stemBlocks ? <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
+                    <PaessedBlocks blocks={current.stemBlocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
+                  </div> : <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                     {current.stem}
-                  </h2>
+                  </h2>}
 
-                  {questionAssets.length > 0 && (
+                  {!current.stemBlocks && questionAssets.length > 0 && (
                     <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-3">
                       {questionAssets.map((asset) => (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -1394,7 +1389,7 @@ export function PlaygroundExperience() {
                   )}
                   <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
                     {current.options.map((option, index) => {
-                      const letter = playgroundAnswerLetters[index];
+                      const letter = current.optionLabels?.[index] ?? playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
                       const correct = isRevealed && current.correct !== null && current.correct === letter;
                       const wrong = isRevealed && current.correct !== null && selected && !correct;
@@ -1410,12 +1405,12 @@ export function PlaygroundExperience() {
                           key={letter}
                           type="button"
                           aria-pressed={selected}
-                          disabled={isRevealed}
+                          disabled={isRevealed || drawingEnabled}
                           onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
                           className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " + tone}
                         >
-                          <span style={playgroundQuestionFont} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                          <span style={playgroundQuestionFont} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
+                          <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                          <div style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{current.optionBlocks?.[index] ? <PaessedBlocks blocks={current.optionBlocks[index]} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : option}</div>
                           {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
                         </button>
                       );
@@ -1427,7 +1422,7 @@ export function PlaygroundExperience() {
                       ? "border-emerald-500/50 bg-[var(--pg-good)]"
                       : "border-rose-500/50 bg-[var(--pg-bad)]")}>
                       <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
-                      <p className="mt-1">{current.explanation}</p>
+                      <div style={QUESTION_PAPER_FONT} className="mt-1">{current.explanationBlocks ? <PaessedBlocks blocks={current.explanationBlocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : current.explanation}</div>
                     </div>
                   )}
                   {isRevealed && current.correct === null && (
@@ -1435,8 +1430,9 @@ export function PlaygroundExperience() {
                       Respuesta registrada. Este archivo no contiene un solucionario verificable para esta pregunta.
                     </p>
                   )}
-                  <PlaygroundScratchpad
+                  <PlaygroundScratchpad key={current.id}
                     enabled={drawingEnabled}
+                    onInteractionStart={hideDrawingTools}
                     mode={drawingTool}
                     color={drawingColor}
                     strokes={currentStrokes}

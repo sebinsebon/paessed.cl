@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, FileJson2, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AppShell } from "@/components/app-shell";
 import { PaessedBlocks } from "@/components/paessed-blocks";
-import { blockAssetIds, imageReferences, resolveImportedResources } from "@/lib/imported-resources";
+import { blockAssetIds, imageReferences } from "@/lib/imported-resources";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { useDrawingTools } from "@/components/use-drawing-tools";
+import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
+import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 
 type RecordLike = Record<string, unknown>;
@@ -94,7 +97,6 @@ function getOptions(question: unknown): Array<{ key: string; text: string; block
   });
 }
 
-const PAPER_FONT: CSSProperties = { fontFamily: 'Georgia, "Times New Roman", serif' };
 const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
 type SavedImportedProgress = {
   index: number;
@@ -145,14 +147,11 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
-  const [resourceUrls, setResourceUrls] = useState<{byId:Map<string,string>;byPath:Map<string,string>}>({byId:new Map(),byPath:new Map()});
-  const [resourcesLoading, setResourcesLoading] = useState(false);
-  const [resourceIssues, setResourceIssues] = useState<Map<string,string>>(new Map());
-  const [resourceError, setResourceError] = useState("");
+  const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -212,36 +211,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const owned = new Set<string>();
-    setResourceUrls({byId:new Map(),byPath:new Map()});
-    setResourceError("");
-    setResourceIssues(new Map());
-    setResourcesLoading(!!record);
-    if (!record) return;
-    void resolveImportedResources(record,{cancelled:()=>cancelled}).then((resolved) => {
-      if (cancelled) return;
-      const urls=new Map<Blob,string>();
-      const urlFor=(blob:Blob)=>{
-        let url=urls.get(blob);
-        if(!url){url=URL.createObjectURL(blob);urls.set(blob,url);owned.add(url);}
-        return url;
-      };
-      const byId=new Map(Array.from(resolved.byId,([key,blob])=>[key,urlFor(blob)]));
-      const byPath=new Map(Array.from(resolved.byPath,([key,blob])=>[key,urlFor(blob)]));
-      setResourceUrls({byId,byPath});
-      const issues=new Map<string,string>();
-      for(const item of resolved.coverage)if(item.error){issues.set(item.id,item.error);issues.set(item.path,item.error);}
-      setResourceIssues(issues);
-    }).catch((error) => {
-      if (!cancelled) setResourceError(error instanceof Error ? error.message : "No se pudieron verificar los recursos del paquete.");
-    }).finally(()=>{
-      if(!cancelled)setResourcesLoading(false);
-    });
-    return () => { cancelled = true; owned.forEach(url=>URL.revokeObjectURL(url)); };
-  }, [record]);
-
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
@@ -260,7 +229,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
     setMapOpen(false);
     setSettingsOpen(false);
     setDrawingEnabled(false);
-  }, [active]);
+  }, [active, setDrawingEnabled]);
 
   useEffect(() => {
     if (!mapOpen && !settingsOpen) return;
@@ -328,9 +297,10 @@ export function ImportedExamViewer({ id }: { id: string }) {
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" title="Herramienta de lápiz"
-              aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz"}
+              aria-label={drawingButtonLabel}
               aria-pressed={drawingEnabled}
-              onClick={() => { setDrawingEnabled((open) => !open); setMapOpen(false); setSettingsOpen(false); }}
+              aria-expanded={drawingMenuOpen}
+              onClick={() => { toggleDrawing(); setMapOpen(false); setSettingsOpen(false); }}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
                 (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
               <Pencil size={18}/>
@@ -361,7 +331,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             style={{ width: questions.length ? ((active + 1) / questions.length) * 100 + "%" : "0%" }} />
         </div>
 
-        {drawingEnabled && (
+        {drawingMenuOpen && (
           <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
             <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar"
               aria-pressed={drawingTool === "pen"} className={"grid h-8 w-8 place-items-center rounded-lg " +
@@ -511,13 +481,13 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   )}
                   {isRecord(current) && Array.isArray(current.stem) ? (
                     <>
-                      <div className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
+                      <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
                         <PaessedBlocks blocks={current.stem} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
                       </div>
                     </>
                   ) : (
                     <>
-                      <h2 style={PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+                      <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                         {questionText(current)}
                       </h2>
                   {assetUrls.length > 0 && (
@@ -542,8 +512,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
                             onClick={() => setAnswers((prev) => ({ ...prev, [String(active)]: letter }))}
                             className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
                               (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
-                            <span style={PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                            {option.blocks ? <PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
+                            <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                            {option.blocks ? <div style={QUESTION_PAPER_FONT} className="min-w-0"><PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /></div> : <span style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
                           </button>
                         );
                       })}
@@ -554,7 +524,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                     </p>
                   )}
                   <PlaygroundScratchpad key={active} enabled={drawingEnabled}
-                    mode={drawingTool} color={drawingColor} strokes={currentStrokes}
+                    onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={currentStrokes}
                     onChange={(next) => setStrokes((previous) => ({ ...previous, [active]: next }))}/>
                 </div>
               ) : (
