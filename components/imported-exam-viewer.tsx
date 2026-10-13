@@ -459,13 +459,18 @@ export function ImportedExamViewer({ id }: { id: string }) {
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                 <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
                   N.º {current ? getQuestionId(current, active) : "—"}
                 </span>
                 <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
                   {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
                 </span>
+                {isRecord(current) && isRecord(current.curriculum) && (
+                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
+                    {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
+                  </span>
+                )}
               </div>
               <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
             </div>
@@ -474,11 +479,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
               {current ? (
                 <div className="relative flex min-h-full flex-col">
                   {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
-                  {isRecord(current) && isRecord(current.curriculum) && (
-                    <p className="mb-3 text-[11px] font-medium text-[var(--pg-muted)]">
-                      {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
-                    </p>
-                  )}
                   {isRecord(current) && Array.isArray(current.stem) ? (
                     <>
                       <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
