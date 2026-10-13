@@ -251,6 +251,12 @@ export function ImportedExamViewer({ id }: { id: string }) {
     "--pg-option": paperPalette.option, "--pg-option-hover": paperPalette.optionHover,
     "--pg-selected": paperPalette.selected, "--pg-footer": paperPalette.footer,
   } as CSSProperties;
+  const curriculum = isRecord(current) && isRecord(current.curriculum) ? current.curriculum : null;
+  const curriculumStatusClass = curriculum?.en_temario === "si"
+    ? paperTheme === "dark" ? "text-emerald-400" : paperTheme === "light" ? "text-emerald-700" : "text-emerald-700 dark:text-emerald-400"
+    : curriculum?.en_temario === "no"
+      ? paperTheme === "dark" ? "text-red-400" : paperTheme === "light" ? "text-red-600" : "text-red-600 dark:text-red-400"
+      : "text-[var(--pg-muted)]";
 
   const displayedQuestions = useMemo(() => {
     const term = query.toLowerCase().trim();
@@ -459,18 +465,21 @@ export function ImportedExamViewer({ id }: { id: string }) {
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
-              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2 text-left">
                 <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
                   N.º {current ? getQuestionId(current, active) : "—"}
                 </span>
+                {curriculum && (
+                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
+                    {String(curriculum.eje ?? "Clasificación pendiente")} · {String(curriculum.subeje ?? "")} · {" "}
+                    <span className={"whitespace-nowrap " + curriculumStatusClass}>
+                      Temario: {curriculum.en_temario === "si" ? "sí" : String(curriculum.en_temario ?? "dudoso")}
+                    </span>
+                  </span>
+                )}
                 <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
                   {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
                 </span>
-                {isRecord(current) && isRecord(current.curriculum) && (
-                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
-                    {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
-                  </span>
-                )}
               </div>
               <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
             </div>
