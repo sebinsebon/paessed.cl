@@ -67,6 +67,14 @@ test('structured question content stays readable and safe in a real browser',asy
   await page.locator('img').evaluate(e=>e.dispatchEvent(new Event('error')));
   assert((await page.locator('[role=alert]').textContent()).includes('Imagen rota'));
  });
+ await t.test('pending resource loads report status and retain a real missing-resource error afterwards',async()=>{
+  await page.evaluate(()=>window.PaessedBlocks.renderBlocks(document.getElementById('content'),[{type:'image',asset_id:'pending',alt:'Pendiente'}],{assetUrls:new Map(),loadingAssets:true}));
+  assert.equal(await page.locator('[role=alert]').count(),0);
+  assert.equal(await page.locator('[role=status]').textContent(),'Cargando recurso: pending');
+  await render([{type:'image',asset_id:'pending',alt:'Pendiente'}]);
+  assert.equal(await page.locator('[role=status]').count(),0);
+  assert.equal(await page.locator('[role=alert]').textContent(),'Recurso no disponible: pending');
+ });
  await t.test('one malformed block cannot leave the previous question visible',async()=>{
   await render([{type:'text',text:'Anterior.'}]);
   await render([{type:'unsupported'},{type:'text',text:'Actual.'}]);

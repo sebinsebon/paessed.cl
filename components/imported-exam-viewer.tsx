@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import JSZip from "jszip";
 import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, FileJson2, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AppShell } from "@/components/app-shell";
 import { PaessedBlocks } from "@/components/paessed-blocks";
-import { readPaessed } from "@/lib/paessed-package";
+import { blockAssetIds, imageReferences, resolveImportedResources } from "@/lib/imported-resources";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 
@@ -104,24 +103,6 @@ type SavedImportedProgress = {
   strokes: Record<number, PlaygroundInkStroke[]>;
 };
 
-function imageReferences(value: unknown): string[] {
-  const found = new Set<string>();
-  const visit = (item: unknown, depth: number): void => {
-    if (depth > 10 || item === null || item === undefined) return;
-    if (typeof item === "string") {
-      const normalized = item.replace(/\\/g, "/");
-      const matches = normalized.match(/(?:^|\/)assets\/[^?#\s"'<>]+?\.(?:png|jpe?g|gif|webp|svg)(?=[?#\s"'<>]|$)/gi) ?? [];
-      for (const match of matches) found.add(match.replace(/^.*?(assets\/)/i, "assets/"));
-    } else if (Array.isArray(item)) {
-      for (const child of item) visit(child, depth + 1);
-    } else if (isRecord(item)) {
-      for (const child of Object.values(item)) visit(child, depth + 1);
-    }
-  };
-  visit(value, 0);
-  return [...found];
-}
-
 function readSavedProgress(id: string, questionCount: number): SavedImportedProgress {
   const empty: SavedImportedProgress = { index: 0, answers: {}, bookmarks: [], strokes: {} };
   try {
@@ -168,9 +149,9 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
-  const [archive, setArchive] = useState<JSZip | null>(null);
-  const [assetUrls, setAssetUrls] = useState<Array<{ path: string; url: string }>>([]);
-  const [paessedAssetUrls, setPaessedAssetUrls] = useState<Map<string, string>>(new Map());
+  const [resourceUrls, setResourceUrls] = useState<{byId:Map<string,string>;byPath:Map<string,string>}>({byId:new Map(),byPath:new Map()});
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [resourceIssues, setResourceIssues] = useState<Map<string,string>>(new Map());
   const [resourceError, setResourceError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -180,7 +161,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     setRestored(false);
     setRecord(null);
     setLoadError(false);
-    setArchive(null);
     if (!id) {
       setLoading(false);
       return;
@@ -234,62 +214,46 @@ export function ImportedExamViewer({ id }: { id: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setArchive(null);
-    if (!record?.archive || record.summary.sourceKind === "paessed") return;
-    void record.archive.arrayBuffer()
-      .then((data) => JSZip.loadAsync(data))
-      .then((zip) => { if (!cancelled) setArchive(zip); })
-      .catch(() => { if (!cancelled) setArchive(null); });
-    return () => { cancelled = true; };
-  }, [record]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const urls = new Map<string, string>();
-    setPaessedAssetUrls(new Map());
+    const owned = new Set<string>();
+    setResourceUrls({byId:new Map(),byPath:new Map()});
     setResourceError("");
-    if (!record?.archive || record.summary.sourceKind !== "paessed") return;
-    void readPaessed(record.archive).then((parsed) => {
+    setResourceIssues(new Map());
+    setResourcesLoading(!!record);
+    if (!record) return;
+    void resolveImportedResources(record,{cancelled:()=>cancelled}).then((resolved) => {
       if (cancelled) return;
-      parsed.blobs.forEach((blob, resourceId) => urls.set(resourceId, URL.createObjectURL(blob)));
-      setPaessedAssetUrls(new Map(urls));
+      const urls=new Map<Blob,string>();
+      const urlFor=(blob:Blob)=>{
+        let url=urls.get(blob);
+        if(!url){url=URL.createObjectURL(blob);urls.set(blob,url);owned.add(url);}
+        return url;
+      };
+      const byId=new Map(Array.from(resolved.byId,([key,blob])=>[key,urlFor(blob)]));
+      const byPath=new Map(Array.from(resolved.byPath,([key,blob])=>[key,urlFor(blob)]));
+      setResourceUrls({byId,byPath});
+      const issues=new Map<string,string>();
+      for(const item of resolved.coverage)if(item.error){issues.set(item.id,item.error);issues.set(item.path,item.error);}
+      setResourceIssues(issues);
     }).catch((error) => {
       if (!cancelled) setResourceError(error instanceof Error ? error.message : "No se pudieron verificar los recursos del paquete.");
+    }).finally(()=>{
+      if(!cancelled)setResourcesLoading(false);
     });
-    return () => { cancelled = true; urls.forEach((url) => URL.revokeObjectURL(url)); };
+    return () => { cancelled = true; owned.forEach(url=>URL.revokeObjectURL(url)); };
   }, [record]);
 
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
   const referencedImages = useMemo(() => imageReferences(current), [current]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const created: string[] = [];
-    setAssetUrls([]);
-    if (!archive || referencedImages.length === 0) return;
-    const allNames = Object.keys(archive.files).filter((name) => !archive.files[name].dir);
-    void Promise.all(referencedImages.map(async (ref) => {
-      const normalized = ref.replace(/\\/g, "/").replace(/^\.?\//, "");
-      const name = allNames.find((entry) => entry === normalized) ??
-        allNames.find((entry) => entry.endsWith("/" + normalized));
-      if (!name) return null;
-      const file = archive.file(name);
-      if (!file) return null;
-      const blob = await file.async("blob");
-      const url = URL.createObjectURL(blob);
-      created.push(url);
-      return { path: normalized, url };
-    })).then((items) => {
-      if (!cancelled) setAssetUrls(items.filter((item): item is { path: string; url: string } => item !== null));
-      else created.forEach((url) => URL.revokeObjectURL(url));
-    }).catch(() => { /* Missing illustrations should not block a question. */ });
-    return () => {
-      cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [archive, referencedImages]);
+  const currentResourceErrors=useMemo(()=>{
+    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
+    return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
+  },[current,currentOptions,referencedImages,resourceIssues]);
+  const displayedResourceError=resourceError||(currentResourceErrors.length?`${currentResourceErrors.length} recursos no disponibles. ${currentResourceErrors[0]}`:'');
+  const assetUrls=useMemo(()=>referencedImages.flatMap(path=>{
+    const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
+  }),[referencedImages,resourceUrls]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
@@ -539,7 +503,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
               {current ? (
                 <div className="relative flex min-h-full flex-col">
-                  {resourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{resourceError}</p>}
+                  {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
                   {isRecord(current) && isRecord(current.curriculum) && (
                     <p className="mb-3 text-[11px] font-medium text-[var(--pg-muted)]">
                       {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
@@ -548,7 +512,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   {isRecord(current) && Array.isArray(current.stem) ? (
                     <>
                       <div className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
-                        <PaessedBlocks blocks={current.stem} assetUrls={paessedAssetUrls} />
+                        <PaessedBlocks blocks={current.stem} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
                       </div>
                     </>
                   ) : (
@@ -579,7 +543,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                             className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
                               (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
                             <span style={PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                            {option.blocks ? <PaessedBlocks blocks={option.blocks} assetUrls={paessedAssetUrls} /> : <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
+                            {option.blocks ? <PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
                           </button>
                         );
                       })}

@@ -8,6 +8,7 @@
     "test:curriculum": "node --experimental-strip-types --test tests/m1-curriculum.test.mjs",
     "test:exam-progress": "node --experimental-strip-types --test tests/demo-exam-progress.test.mjs",
     "test:renderer": "node --test tests/paessed-renderer.cjs",
+    "test:resources": "node --test tests/imported-resources.cjs",
     "test:renderer-visual": "playwright test --config tests/paessed-visual.config.cjs",
     "start": "next start"
   },

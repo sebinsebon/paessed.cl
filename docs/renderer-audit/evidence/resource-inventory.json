@@ -1,0 +1,635 @@
+{
+  "file": "..\\contrato\\package_corregido.zip",
+  "schema": "0.1.0",
+  "questions": 65,
+  "assets": 18,
+  "references": 18,
+  "rows": [
+    {
+      "number": "1",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "2",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "3",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "4",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "5",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "6",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "7",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "8",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "9",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "10",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "11",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "12",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "13",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "14",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "15",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "16",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "17",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "18",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "19",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "20",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "21",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "22",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "23",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "24",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "25",
+      "references": [
+        "crop-q25-terrenos"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "26",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "27",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "28",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "29",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "30",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "31",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "32",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "33",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "34",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "35",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "36",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "37",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "38",
+      "references": [
+        "crop-q38-grafico-precios"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "39",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "40",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "41",
+      "references": [
+        "crop-q41-opt-a",
+        "crop-q41-opt-b",
+        "crop-q41-opt-c",
+        "crop-q41-opt-d"
+      ],
+      "found": 4,
+      "hash_valid": 4
+    },
+    {
+      "number": "42",
+      "references": [
+        "crop-q42-tela"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "43",
+      "references": [
+        "crop-q43-escuadra"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "44",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "45",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "46",
+      "references": [
+        "crop-q46-trapezoide"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "47",
+      "references": [
+        "crop-q47-triangulo"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "48",
+      "references": [
+        "crop-q48-caja"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "49",
+      "references": [
+        "crop-q49-velas"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "50",
+      "references": [
+        "crop-q50-vector-c"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "51",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "52",
+      "references": [
+        "crop-q52-figura-abcd"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "53",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "54",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "55",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "56",
+      "references": [
+        "crop-q56-grafico-barras"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "57",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "58",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "59",
+      "references": [
+        "crop-q59-poligono-notas"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "60",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "61",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "62",
+      "references": [
+        "crop-q62-diagrama-cajon"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    },
+    {
+      "number": "63",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "64",
+      "references": [],
+      "found": 0,
+      "hash_valid": 0
+    },
+    {
+      "number": "65",
+      "references": [
+        "crop-q65-nutrientes"
+      ],
+      "found": 1,
+      "hash_valid": 1
+    }
+  ],
+  "asset_stats": [
+    {
+      "id": "crop-q25-terrenos",
+      "path": "assets/crops/crop-q25-terrenos.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 20893,
+      "png_dimensions": [
+        840,
+        320
+      ]
+    },
+    {
+      "id": "crop-q41-opt-a",
+      "path": "assets/crops/crop-q41-opt-a.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 14086,
+      "png_dimensions": [
+        480,
+        300
+      ]
+    },
+    {
+      "id": "crop-q41-opt-b",
+      "path": "assets/crops/crop-q41-opt-b.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 13669,
+      "png_dimensions": [
+        480,
+        300
+      ]
+    },
+    {
+      "id": "crop-q41-opt-c",
+      "path": "assets/crops/crop-q41-opt-c.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 12219,
+      "png_dimensions": [
+        480,
+        300
+      ]
+    },
+    {
+      "id": "crop-q41-opt-d",
+      "path": "assets/crops/crop-q41-opt-d.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 10518,
+      "png_dimensions": [
+        480,
+        300
+      ]
+    },
+    {
+      "id": "crop-q42-tela",
+      "path": "assets/crops/crop-q42-tela.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 9354,
+      "png_dimensions": [
+        320,
+        300
+      ]
+    },
+    {
+      "id": "crop-q43-escuadra",
+      "path": "assets/crops/crop-q43-escuadra.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 7550,
+      "png_dimensions": [
+        240,
+        240
+      ]
+    },
+    {
+      "id": "crop-q46-trapezoide",
+      "path": "assets/crops/crop-q46-trapezoide.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 12205,
+      "png_dimensions": [
+        220,
+        180
+      ]
+    },
+    {
+      "id": "crop-q47-triangulo",
+      "path": "assets/crops/crop-q47-triangulo.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 9007,
+      "png_dimensions": [
+        240,
+        270
+      ]
+    },
+    {
+      "id": "crop-q48-caja",
+      "path": "assets/crops/crop-q48-caja.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 7831,
+      "png_dimensions": [
+        528,
+        279
+      ]
+    },
+    {
+      "id": "crop-q49-velas",
+      "path": "assets/crops/crop-q49-velas.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 26812,
+      "png_dimensions": [
+        770,
+        248
+      ]
+    },
+    {
+      "id": "crop-q50-vector-c",
+      "path": "assets/crops/crop-q50-vector-c.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 12487,
+      "png_dimensions": [
+        300,
+        280
+      ]
+    },
+    {
+      "id": "crop-q52-figura-abcd",
+      "path": "assets/crops/crop-q52-figura-abcd.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 15716,
+      "png_dimensions": [
+        340,
+        330
+      ]
+    },
+    {
+      "id": "crop-q56-grafico-barras",
+      "path": "assets/crops/crop-q56-grafico-barras.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 33366,
+      "png_dimensions": [
+        815,
+        537
+      ]
+    },
+    {
+      "id": "crop-q59-poligono-notas",
+      "path": "assets/crops/crop-q59-poligono-notas.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 19798,
+      "png_dimensions": [
+        540,
+        300
+      ]
+    },
+    {
+      "id": "crop-q62-diagrama-cajon",
+      "path": "assets/crops/crop-q62-diagrama-cajon.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 23121,
+      "png_dimensions": [
+        620,
+        330
+      ]
+    },
+    {
+      "id": "crop-q65-nutrientes",
+      "path": "assets/crops/crop-q65-nutrientes.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 48074,
+      "png_dimensions": [
+        760,
+        469
+      ]
+    },
+    {
+      "id": "crop-q38-grafico-precios",
+      "path": "assets/crops/crop-q38-grafico-precios.png",
+      "exists": true,
+      "hash_valid": true,
+      "size": 29254,
+      "png_dimensions": [
+        768,
+        518
+      ]
+    }
+  ],
+  "extra_files": [
+    "audit/revision_por_pregunta.json"
+  ]
+}
