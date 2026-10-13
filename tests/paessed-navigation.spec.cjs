@@ -42,10 +42,19 @@ async function importTesla(page,{mode='paessed',number=3}={}){
 async function styledMath(page){
  const mathml=page.locator('.paessed-blocks .katex-mathml');
  await expect(mathml.first()).toBeAttached();
- expect(await mathml.evaluateAll(nodes=>nodes.every(e=>{
-  const s=getComputedStyle(e);const r=e.getBoundingClientRect();
-  return s.position==='absolute'&&s.overflow==='hidden'&&r.width<=1&&r.height<=1;
- }))).toBe(true);
+ let states;
+ // Resource loading can replace a block between locator resolution and this
+ // evaluation. Detached nodes have empty styles, but are never visible. Retry
+ // only that stale sample; keep the actual clipping checks strict below.
+ await expect.poll(async()=>{
+  states=await mathml.evaluateAll(nodes=>nodes.map(e=>{
+   if(!e.isConnected)return {connected:false};
+   const s=getComputedStyle(e);const r=e.getBoundingClientRect();
+   return {connected:true,position:s.position,overflow:s.overflow,width:r.width,height:r.height};
+  }));
+  return states.length>0&&states.every(s=>s.connected);
+ }).toBe(true);
+ expect(states.every(s=>s.position==='absolute'&&s.overflow==='hidden'&&s.width<=1&&s.height<=1),JSON.stringify(states)).toBe(true);
  expect(await page.locator('.paessed-blocks .katex-html').evaluateAll(nodes=>nodes.every(e=>e.getAttribute('aria-hidden')==='true'))).toBe(true);
  await expect(page.locator('.paessed-blocks [role="alert"]')).toHaveCount(0);
 }

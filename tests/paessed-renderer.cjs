@@ -91,4 +91,36 @@ test('structured question content stays readable and safe in a real browser',asy
    assert.equal(await page.locator('.paessed-math').evaluate(e=>e.scrollWidth>e.clientWidth),true);
   }
  });
+ await t.test('wide nested radicals/fractions retain all vertical boxes and cannot scroll vertically',async()=>{
+  const rich='\\frac{\\sqrt[4]{x_1^{12}+y^2}}{\\sqrt{\\frac{1}{1+x_1}}}';
+  for(const display of [false,true]){
+   await render([{type:'math',latex:Array(24).fill(rich).join('+'),display}]);
+   const before=await page.locator('.paessed-math').evaluate(e=>{
+    const s=getComputedStyle(e);e.scrollTop=100;const top=e.scrollTop;e.scrollTop=0;
+    return{x:s.overflowX,y:s.overflowY,top,height:e.clientHeight,scrollHeight:e.scrollHeight,width:e.clientWidth,scrollWidth:e.scrollWidth};
+   });
+   assert.equal(before.x,'auto');assert.equal(before.y,'hidden');assert.equal(before.top,0);assert(before.scrollHeight<=before.height);assert(before.scrollWidth>before.width);
+   await page.evaluate(()=>window.PaessedBlocks.fitMath(document.getElementById('content')));
+   assert.equal(await page.locator('.paessed-math').evaluate(e=>e.clientHeight),before.height);
+   assert.equal(await page.locator('mroot').count(),24);assert.equal(await page.locator('mfrac').count(),48);
+  }
+ });
+ await t.test('resize removes overflow geometry and focus regions when the formula fits',async()=>{
+  await render([{type:'math',latex:Array(30).fill('x^2').join('+'),display:true}]);
+  assert.equal(await page.locator('.paessed-math').getAttribute('tabindex'),'0');
+  try{
+   await page.setViewportSize({width:9000,height:844});
+   await page.locator('#content').evaluate(e=>{e.style.width='9000px';window.PaessedBlocks.fitMath(e);});
+   assert.equal(await page.locator('.paessed-math-overflow').count(),0);
+   assert.equal(await page.locator('.paessed-math').getAttribute('tabindex'),null);
+   assert.equal(await page.locator('.paessed-math').evaluate(e=>getComputedStyle(e).overflowY),'visible');
+  }finally{await page.setViewportSize({width:390,height:844});await page.locator('#content').evaluate(e=>e.style.width='300px');}
+ });
+ await t.test('wide structured tables preserve horizontal scrolling and grow for tall cell math',async()=>{
+  const latex='\\frac{\\sqrt[4]{x_1^{12}+y^2}}{\\sqrt{\\frac{1}{1+x_1}}}';
+  await render([{type:'table',rows:[Array.from({length:10},()=>[{type:'math',latex,display:false}])]}]);
+  assert.equal(await page.locator('.paessed-table-wrap').getAttribute('aria-label'),'Tabla desplazable');
+  const state=await page.locator('.paessed-table-wrap').evaluate(e=>{e.scrollTop=100;return{x:getComputedStyle(e).overflowX,y:getComputedStyle(e).overflowY,top:e.scrollTop,height:e.clientHeight,scrollHeight:e.scrollHeight,width:e.clientWidth,scrollWidth:e.scrollWidth};});
+  assert.equal(state.x,'auto');assert.equal(state.y,'hidden');assert.equal(state.top,0);assert(state.scrollHeight<=state.height);assert(state.scrollWidth>state.width);
+ });
 });

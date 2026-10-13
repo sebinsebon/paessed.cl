@@ -8,6 +8,8 @@ Seguimiento de imágenes: [resolución común de recursos y exportación](TESLA-
 
 Corrección de datos: [candidata Gold rc1 de P41 desde el PDF fuente](TESLA-P41-Gold-rc1.md), con cuatro recortes completos, paquete independiente y regresiones que conservan el original.
 
+Scroll del contenido: [P47, fórmulas y tablas con viewport solo cuando falta ancho](P47-overflow-regression.md), con pruebas de símbolos completos, imágenes proporcionales y responsive.
+
 Rama: `feat/paessed-standalone-renderer`. Base: lector `3e837f3`, sobre `origin/main` `ef90df4079c82d4ab8489ad0e4e897fb545d9492` (UI reciente de Ensayos/Playground y subejes M1). Fetch realizado antes y después de implementar; main y lector son ancestros de esta rama. No hubo divergencias ni conflictos. No se hizo merge a main.
 
 Cambios locales anteriores preservados en el stash `Preserve local setup before standalone renderer integration` y en `../renderer-audit-20261012/`: `next-env.d.ts`, `tsconfig.json`, `AGENTS.md`, `CLAUDE.md`, `package-lock.json` y parche binario. Fueron restaurados después del commit; su contenido coincide con el respaldo (Git normalizó algunos finales de línea). La configuración que Next regeneró durante las pruebas no forma parte del commit. Se restableció el servidor dev existente en el puerto 3102 tras el build y se comprobó HTTP 200.

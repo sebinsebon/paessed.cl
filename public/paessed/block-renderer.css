@@ -10,11 +10,18 @@
 .paessed-blocks .paessed-math-overflow {
   display: block;
   max-width: 100%;
-  overflow-x: auto;
-  /* Space for tall radicals, accents and a scrollbar without clipping ink. */
+  /* Ordinary math has no scroll viewport, so tall ink stays visible. */
   padding-block: .25em;
 }
 .paessed-blocks .paessed-math-display { margin: .5em 0; text-align: center; white-space: nowrap; }
+.paessed-blocks .paessed-math-overflow {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Keep the beginning reachable; centering a wide equation loses its left. */
+  text-align: left;
+  padding-block-start: var(--paessed-overflow-pad-start, .25em);
+  padding-block-end: var(--paessed-overflow-pad-end, .25em);
+}
 .paessed-blocks .katex-display { margin: 0; }
 .paessed-blocks .paessed-math-display .katex-display { display: inline-block; vertical-align: middle; }
 .paessed-blocks .paessed-math-punctuation { vertical-align: middle; }
@@ -28,7 +35,13 @@
   object-fit: contain;
 }
 .paessed-blocks .paessed-image:only-child { margin-block: 0; }
-.paessed-blocks .paessed-table-wrap { max-width: 100%; overflow-x: auto; margin: .75rem 0; }
+.paessed-blocks .paessed-table-wrap { max-width: 100%; margin: .75rem 0; }
+.paessed-blocks .paessed-table-overflow {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block-start: var(--paessed-overflow-pad-start, 0px);
+  padding-block-end: var(--paessed-overflow-pad-end, 0px);
+}
 .paessed-blocks .paessed-table { border-collapse: collapse; }
 .paessed-blocks .paessed-table td { border: 1px solid var(--pg-border, #94a3b8); padding: .5rem; min-width: 4em; vertical-align: middle; }
 .paessed-blocks .paessed-table .paessed-paragraph { margin: 0; }
