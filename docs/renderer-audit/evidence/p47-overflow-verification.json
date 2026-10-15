@@ -1,0 +1,39 @@
+{
+  "baseCommit": "210dea18ea0ef844ae0d09b465310f76b6f28375",
+  "branch": "feat/paessed-standalone-renderer",
+  "productionVisual": {
+    "passed": 68,
+    "failed": 0,
+    "newOverflowTests": 13,
+    "previousTests": 55,
+    "updatedSnapshotsInFinalRun": false
+  },
+  "coldNavigationRepeated": {
+    "passed": 20,
+    "repeats": 5,
+    "formats": [
+      "paessed",
+      "zip",
+      "json",
+      "generic-zip"
+    ]
+  },
+  "domRenderer": {
+    "chromium": 13,
+    "firefox": 13,
+    "webkit": 13
+  },
+  "modules": {
+    "curriculum": 6,
+    "contracts": "PASS",
+    "progress": 4,
+    "teslaP41": 3,
+    "resources": 5
+  },
+  "typeScript": "PASS",
+  "lintChangedJs": "PASS",
+  "build": "PASS",
+  "originalPackageSha256": "2eedea311058d63e9a8b1eb9d67f638bd541f3634c97a521088bdaad767275d7",
+  "candidateP41Sha256": "d011d81d3a464f7f1755661af67cb8e70dee3ab2910550f769b977053519f30c",
+  "previewVisual": "pending Vercel project authorization"
+}

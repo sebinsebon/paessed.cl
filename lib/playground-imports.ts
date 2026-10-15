@@ -1,4 +1,4 @@
-import { getImportedExam, listImportedExams } from "@/lib/local-imports";
+import { getImportedExam, listImportedExams, type ImportedExamRecord } from "@/lib/local-imports";
 import { M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
 
 type Data = Record<string, unknown>;
@@ -10,6 +10,10 @@ export type BankQuestion = {
   sourceId: string; axis: string; topic: string; unitId: M1UnitId | null;
   stem: string; options: string[]; correct: string | null; explanation: string;
   assetPaths?: string[];
+  stemBlocks?: unknown[];
+  optionBlocks?: Array<unknown[] | undefined>;
+  optionLabels?: string[];
+  explanationBlocks?: unknown[];
 };
 export type BankSource = { id: string; name: string; fileName?: string; count: number; imported: boolean };
 
@@ -62,7 +66,7 @@ function letter(value: unknown): string | null {
   return /^[A-E]$/.test(direct) ? direct : null;
 }
 function tagUnit(item: Data): M1UnitId | null {
-  const raw = firstText(item.unitId,item.unit_id,item.subeje,item.subtopic,item.topic);
+  const raw = record(item.curriculum) ? firstText(item.curriculum.subeje) : firstText(item.unitId,item.unit_id,item.subeje,item.subtopic,item.topic);
   const unit = M1_UNITS.find((candidate) =>
     candidate.id === raw || candidate.name.toLocaleLowerCase("es") === raw.toLocaleLowerCase("es"));
   return unit?.id ?? null;
@@ -75,13 +79,18 @@ export function convertImportedExamQuestions(examId: string, title: string, json
     const unit = M1_UNITS.find((candidate) => candidate.id === unitId);
     const sourceYear = firstText(record(json) ? json.year : null,record(json) ? nested(json.metadata,"year") : null);
     const year = /^20\d{2}$/.test(sourceYear) ? Number(sourceYear) : null;
-    const optionData = question.options ?? question.alternatives ?? question.choices;
+    const optionData = question.options ?? question.alternatives ?? question.choices ?? question.answers;
     const options = Array.isArray(optionData) ? optionData.map((entry) =>
-      record(entry) ? firstText(entry.content,entry.text,entry.value,entry.label) : readText(entry)
+      record(entry) ? firstText(entry.blocks,entry.content,entry.text,entry.value) : readText(entry)
     ) : [];
     const solution = record(question.solution) ? question.solution : {};
-    const correct = letter(question.correct_answer ?? question.correctAnswer ?? question.correct_option ??
+    const contract = record(json) && json.format === "paessed-benchmark";
+    const answer = record(question.answer) ? question.answer : {};
+    const correct = contract ? (answer.status === "verified" ? letter(answer.label) : null) :
+      letter(question.correct_answer ?? question.correctAnswer ?? question.correct_option ??
       question.correctOption ?? question.answer ?? solution.answer ?? solution.correct_answer);
+    const explanation = record(question.explanation) ? question.explanation : {};
+    const explanationBlocks = Array.isArray(explanation.blocks) && (!contract || explanation.status === "verified") ? explanation.blocks : undefined;
     const num = question.number ?? question.question_number ?? question.questionId ?? question.id;
     const number = typeof num === "number" && Number.isFinite(num) ? num :
       typeof num === "string" && /^\d+$/.test(num) ? Number(num) : index+1;
@@ -91,7 +100,11 @@ export function convertImportedExamQuestions(examId: string, title: string, json
       number, year, collection:title, axis:unit?.axisName ?? "Sin clasificar",
       topic:unit?.name ?? "Sin subeje asignado", unitId,
       stem:firstText(question.stem,question.prompt,question.statement,question.text,question.content,question.body) || "Pregunta sin texto reconocible.",
-      options,correct,explanation:firstText(solution.explanation,question.explanation) || "",
+      options,correct,explanation:contract ? readText(explanationBlocks) : firstText(solution.explanation,question.explanation),
+      stemBlocks: Array.isArray(question.stem) ? question.stem : undefined,
+      optionBlocks: Array.isArray(optionData) ? optionData.map(entry => record(entry) && Array.isArray(entry.blocks) ? entry.blocks : undefined) : [],
+      optionLabels: Array.isArray(optionData) ? optionData.map((entry,index) => record(entry) ? firstText(entry.label,entry.key,entry.id) || String.fromCharCode(65+index) : String.fromCharCode(65+index)) : [],
+      explanationBlocks,
       assetPaths:referenceImages(question),
     };
   });
@@ -101,9 +114,9 @@ export async function loadPlaygroundImports() {
   const results = await Promise.all(summaries.map(async (item) => {
     try {
       const full = await getImportedExam(item.id);
-      return { summary:item, questions:full ? convertImportedExamQuestions(item.id,item.title,full.finalJson):[], archive:full?.archive };
+      return { summary:item, questions:full ? convertImportedExamQuestions(item.id,item.title,full.finalJson):[], record:full };
     } catch {
-      return { summary:item, questions:[] as BankQuestion[],archive:undefined };
+      return { summary:item, questions:[] as BankQuestion[],record:null };
     }
   }));
   return {
@@ -112,6 +125,6 @@ export async function loadPlaygroundImports() {
       count:item.questions.length,imported:true,
     })),
     questions:results.flatMap((item) => item.questions),
-    archives:Object.fromEntries(results.filter((item)=>Boolean(item.archive)).map((item)=>["imported:"+item.summary.id,item.archive!])) as Record<string,Blob>,
+    records:Object.fromEntries(results.filter((item)=>Boolean(item.record)).map((item)=>["imported:"+item.summary.id,item.record!])) as Record<string,ImportedExamRecord>,
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import JSZip from "jszip";
+import {readPaessed, validatePaessed} from "@/lib/paessed-package";
 import Link from "next/link";
 import { ChangeEvent, DragEvent, ReactNode, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
@@ -83,6 +84,7 @@ function hasExplicitId(question: unknown): boolean {
 
 function getAnswer(question: unknown): unknown {
   if (!isRecord(question)) return undefined;
+  if (isRecord(question.answer) && "label" in question.answer) return question.answer.label ?? undefined;
   const direct = [question.answer, question.correct_answer, question.correctAnswer, question.key, question.correct_option, question.correctOption];
   for (const value of direct) {
     if (value !== undefined && value !== null && value !== "") return value;
@@ -213,40 +215,40 @@ async function parseFile(file: File): Promise<ParsedPackage> {
   if (!/\.(paessed|zip|json)$/i.test(lower)) throw new Error("Usa un archivo .paessed, .zip o final.json.");
 
   if (lower.endsWith(".json")) {
+    if (file.size > 24 * 1024 * 1024) throw new Error("JSON demasiado grande.");
     const finalJson: unknown = JSON.parse(await file.text());
+    if (isRecord(finalJson) && finalJson.format === "paessed-benchmark") validatePaessed(finalJson);
     const packageFiles = [file.name];
     return { summary: buildSummary(finalJson, file, packageFiles, file.name), finalJson, packageFiles, finalJsonPath: file.name };
   }
 
+  if (lower.endsWith(".paessed")) {
+    const parsed = await readPaessed(file);
+    const finalJson: unknown = parsed.data;
+    const packageFiles = ["final.json", "manifest.json", ...Array.from(parsed.validation.resources.values(), (resource) => resource.path)];
+    const summary = buildSummary(finalJson, file, packageFiles, "final.json");
+    summary.issues.push(...(parsed.validation.warnings ?? []));
+    return { summary, finalJson, archive: file, packageFiles, finalJsonPath: "final.json" };
+  }
+
+  // Preserve main's permissive legacy ZIP path for older imports with extra files
+  // or nested final.json; only the .paessed extension uses the strict package reader.
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const entries = Object.keys(zip.files).filter((name) => !zip.files[name].dir);
   const finalCandidates = entries
     .filter((name) => /(^|\/)final\.json$/i.test(name))
     .sort((a, b) => a.split("/").length - b.split("/").length || a.length - b.length);
   const finalPath = finalCandidates[0];
-
   if (!finalPath) {
     const empty: unknown = {};
-    return {
-      summary: buildSummary(empty, file, entries, ""),
-      finalJson: empty,
-      archive: file,
-      packageFiles: entries,
-      finalJsonPath: "",
-      fatalError: "El paquete se pudo abrir, pero no contiene final.json.",
-    };
+    return { summary: buildSummary(empty, file, entries, ""), finalJson: empty, archive: file,
+      packageFiles: entries, finalJsonPath: "", fatalError: "El paquete se pudo abrir, pero no contiene final.json." };
   }
-
   const raw = await zip.file(finalPath)?.async("string");
   if (!raw) throw new Error("final.json existe, pero no se pudo leer.");
   const finalJson: unknown = JSON.parse(raw);
-  return {
-    summary: buildSummary(finalJson, file, entries, finalPath),
-    finalJson,
-    archive: file,
-    packageFiles: entries,
-    finalJsonPath: finalPath,
-  };
+  return { summary: buildSummary(finalJson, file, entries, finalPath), finalJson, archive: file,
+    packageFiles: entries, finalJsonPath: finalPath };
 }
 
 /** Drag-and-drop entry point shared by the Ensayos list and the importer. */

@@ -36,7 +36,7 @@ const QUESTION_PATHS: FieldPath[] = [
   ["questions"], ["items"], ["exam", "questions"], ["test", "questions"],
   ["content", "questions"], ["data", "questions"],
 ];
-const NUMBER_FIELDS = ["id", "question_id", "questionId", "number", "index"];
+const NUMBER_FIELDS = ["number", "index"];
 const STEM_FIELDS = ["stem", "prompt", "statement", "text", "content", "body"];
 const ANSWER_FIELDS = ["correct_answer", "correctAnswer", "answer", "correct_option", "correctOption", "key"];
 const SOLUTION_FIELDS = ["answer", "correct_answer", "correct", "option", "key"];
@@ -82,6 +82,7 @@ function scalar(value: unknown): value is string | number {
 function textPath(question: JsonObject): FieldPath | null {
   for (const field of STEM_FIELDS) {
     const value = question[field];
+    if (Array.isArray(value) && value.length === 1 && isJsonObject(value[0]) && value[0].type === "text" && typeof value[0].text === "string") return [field, 0, "text"];
     if (typeof value === "string") return [field];
     if (isJsonObject(value) && value.type === "text" && typeof value.text === "string") return [field, "text"];
   }
@@ -96,7 +97,8 @@ function optionsView(question: JsonObject): OptionView[] {
     if (typeof value === "string") return { key: String.fromCharCode(65 + index), text: value, editablePath: [field, index] };
     if (typeof value === "number") return { key: String.fromCharCode(65 + index), text: String(value), editablePath: null };
     if (isJsonObject(value)) {
-      const key = value.key ?? value.id ?? value.label ?? String.fromCharCode(65 + index);
+      const key = value.label ?? value.key ?? value.id ?? String.fromCharCode(65 + index);
+      if(Array.isArray(value.blocks) && value.blocks.length===1 && isJsonObject(value.blocks[0]) && value.blocks[0].type=== "text" && typeof value.blocks[0].text=== "string") return {key:String(key),text:value.blocks[0].text,editablePath:[field,index,"blocks",0,"text"]};
       for (const property of ["text", "content", "value"]) {
         if (typeof value[property] === "string") return { key: String(key), text: value[property] as string, editablePath: [field, index, property] };
       }
@@ -110,6 +112,7 @@ function optionsView(question: JsonObject): OptionView[] {
 }
 
 function answerLocation(question: JsonObject): { path: FieldPath | null; complex: boolean; value: string } {
+  if(isJsonObject(question.answer) && "label" in question.answer) return {path:["answer","label"],complex:false,value: typeof question.answer.label === "string" ? question.answer.label : ""};
   const roots: FieldPath[] = [
     ...ANSWER_FIELDS.map((key): FieldPath => [key]),
     ...(isJsonObject(question.solution) ? SOLUTION_FIELDS.map((key): FieldPath => ["solution", key]) : []),
@@ -175,7 +178,8 @@ export function applyQuestionPatch(source: unknown, index: number, patch: Questi
   if (!isJsonObject(question)) throw new Error("No se puede modificar esta pregunta.");
 
   if (number !== originalView.number) {
-    const path = originalView.numberPath ?? ["id"];
+    const path = originalView.numberPath;
+    if(!path) throw new Error("Esta pregunta no tiene un número editable. El ID permanece inmutable.");
     writePath(question, path, castLike(readPath(question, path), number));
   }
   if (patch.stem !== originalView.stem) {
@@ -203,6 +207,26 @@ export function applyQuestionPatch(source: unknown, index: number, patch: Questi
       throw new Error(usesNumericCode ? "Usa el índice numérico que utiliza este solucionario." : "La respuesta debe coincidir con una de las alternativas.");
     }
     writePath(question, originalView.answerPath, castLike(previousValue, patch.answer));
+  }
+  if(isJsonObject(cloned) && cloned.format==='paessed-benchmark'){
+    const contentChanged=patch.stem!==originalView.stem || patch.options.some((text,i)=>text!==originalView.options[i]?.text);
+    const identityChanged=number!==originalView.number;
+    const answerChanged=patch.answer!==originalView.answer;
+    if(identityChanged && isJsonObject(cloned.exam) && Array.isArray(cloned.exam.expected_questions)){
+      for(const expected of cloned.exam.expected_questions)if(isJsonObject(expected)&&expected.id===question.id)expected.number=number;
+    }
+    if(contentChanged||identityChanged){
+      question.fidelity={status:'pending',review_ref:null};
+      if(contentChanged && isJsonObject(question.curriculum)){question.curriculum={eje:null,subeje:null,en_temario:'dudoso'};}
+      if(isJsonObject(question.answer)){question.answer.status=question.answer.label==null?'missing':'provisional';question.answer.source_ref=null;question.answer.origin=question.answer.label==null?'none':'model';}
+    }
+    if(answerChanged && isJsonObject(question.answer)){question.answer.status='provisional';question.answer.origin='model';question.answer.source_ref=null;}
+    if((contentChanged||answerChanged||identityChanged) && isJsonObject(question.explanation))question.explanation.status=Array.isArray(question.explanation.blocks)&&question.explanation.blocks.length?'provisional':'missing';
+    if(contentChanged||answerChanged||identityChanged){
+      const issues=Array.isArray(question.issues)?question.issues as string[]:[];
+      question.issues=[...new Set([...issues,'USER_EDITED',...(contentChanged && isJsonObject(question.curriculum)?['CURRICULUM_PENDING']:[])])];
+      if(isJsonObject(cloned.run)){cloned.run.eligible=false;delete cloned.run.accuracy;delete cloned.run.gold_certification;delete cloned.run.certification;delete cloned.run.quality;cloned.run.web_edit={question_id:question.id,edited_at:new Date().toISOString(),requires_review:true};}
+    }
   }
   return cloned;
 }

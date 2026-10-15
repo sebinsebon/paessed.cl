@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import JSZip from "jszip";
-import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, FileJson2, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AppShell } from "@/components/app-shell";
+import { PaessedBlocks } from "@/components/paessed-blocks";
+import { blockAssetIds, imageReferences } from "@/lib/imported-resources";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { useDrawingTools } from "@/components/use-drawing-tools";
+import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
+import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 
 type RecordLike = Record<string, unknown>;
@@ -78,26 +82,21 @@ function questionText(question: unknown): string {
   return "Pregunta sin texto reconocible.";
 }
 
-function getOptions(question: unknown): Array<{ key: string; text: string }> {
+function getOptions(question: unknown): Array<{ key: string; text: string; blocks?: unknown[] }> {
   if (!isRecord(question)) return [];
   const candidate = question.options ?? question.alternatives ?? question.choices ?? question.answers;
   if (!Array.isArray(candidate)) return [];
-
   return candidate.map((option, index) => {
-    if (typeof option === "string" || typeof option === "number") {
-      return { key: String.fromCharCode(65 + index), text: String(option) };
-    }
+    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: String(option) };
     if (isRecord(option)) {
-      const key = option.key ?? option.id ?? option.label ?? String.fromCharCode(65 + index);
-      const text = flatten(option.content ?? option.text ?? option.value ?? option.label).replace(/\s+/g, " ").trim();
-      return { key: String(key), text: text || "Alternativa sin texto reconocible." };
+      const key = option.label ?? option.key ?? option.id ?? String.fromCharCode(65 + index);
+      const text = flatten(option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
+      return { key: String(key), text: text || "Alternativa sin texto reconocible.", blocks: Array.isArray(option.blocks) ? option.blocks : undefined };
     }
     return { key: String.fromCharCode(65 + index), text: "Alternativa sin texto reconocible." };
   });
 }
 
-
-const PAPER_FONT: CSSProperties = { fontFamily: 'Georgia, "Times New Roman", serif' };
 const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
 type SavedImportedProgress = {
   index: number;
@@ -105,24 +104,6 @@ type SavedImportedProgress = {
   bookmarks: number[];
   strokes: Record<number, PlaygroundInkStroke[]>;
 };
-
-function imageReferences(value: unknown): string[] {
-  const found = new Set<string>();
-  const visit = (item: unknown, depth: number): void => {
-    if (depth > 10 || item === null || item === undefined) return;
-    if (typeof item === "string") {
-      const normalized = item.replace(/\\/g, "/");
-      const matches = normalized.match(/(?:^|\/)assets\/[^?#\s"'<>]+?\.(?:png|jpe?g|gif|webp|svg)(?=[?#\s"'<>]|$)/gi) ?? [];
-      for (const match of matches) found.add(match.replace(/^.*?(assets\/)/i, "assets/"));
-    } else if (Array.isArray(item)) {
-      for (const child of item) visit(child, depth + 1);
-    } else if (isRecord(item)) {
-      for (const child of Object.values(item)) visit(child, depth + 1);
-    }
-  };
-  visit(value, 0);
-  return [...found];
-}
 
 function readSavedProgress(id: string, questionCount: number): SavedImportedProgress {
   const empty: SavedImportedProgress = { index: 0, answers: {}, bookmarks: [], strokes: {} };
@@ -166,12 +147,11 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
-  const [archive, setArchive] = useState<JSZip | null>(null);
-  const [assetUrls, setAssetUrls] = useState<Array<{ path: string; url: string }>>([]);
+  const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -180,7 +160,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     setRestored(false);
     setRecord(null);
     setLoadError(false);
-    setArchive(null);
     if (!id) {
       setLoading(false);
       return;
@@ -232,55 +211,25 @@ export function ImportedExamViewer({ id }: { id: string }) {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    setArchive(null);
-    if (!record?.archive) return;
-    void record.archive.arrayBuffer()
-      .then((data) => JSZip.loadAsync(data))
-      .then((zip) => { if (!cancelled) setArchive(zip); })
-      .catch(() => { if (!cancelled) setArchive(null); });
-    return () => { cancelled = true; };
-  }, [record]);
-
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
   const referencedImages = useMemo(() => imageReferences(current), [current]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const created: string[] = [];
-    setAssetUrls([]);
-    if (!archive || referencedImages.length === 0) return;
-    const allNames = Object.keys(archive.files).filter((name) => !archive.files[name].dir);
-    void Promise.all(referencedImages.map(async (ref) => {
-      const normalized = ref.replace(/\\/g, "/").replace(/^\.?\//, "");
-      const name = allNames.find((entry) => entry === normalized) ??
-        allNames.find((entry) => entry.endsWith("/" + normalized));
-      if (!name) return null;
-      const file = archive.file(name);
-      if (!file) return null;
-      const blob = await file.async("blob");
-      const url = URL.createObjectURL(blob);
-      created.push(url);
-      return { path: normalized, url };
-    })).then((items) => {
-      if (!cancelled) setAssetUrls(items.filter((item): item is { path: string; url: string } => item !== null));
-      else created.forEach((url) => URL.revokeObjectURL(url));
-    }).catch(() => { /* Missing illustrations should not block a question. */ });
-    return () => {
-      cancelled = true;
-      created.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [archive, referencedImages]);
+  const currentResourceErrors=useMemo(()=>{
+    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
+    return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
+  },[current,currentOptions,referencedImages,resourceIssues]);
+  const displayedResourceError=resourceError||(currentResourceErrors.length?`${currentResourceErrors.length} recursos no disponibles. ${currentResourceErrors[0]}`:'');
+  const assetUrls=useMemo(()=>referencedImages.flatMap(path=>{
+    const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
+  }),[referencedImages,resourceUrls]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
     setMapOpen(false);
     setSettingsOpen(false);
     setDrawingEnabled(false);
-  }, [active]);
+  }, [active, setDrawingEnabled]);
 
   useEffect(() => {
     if (!mapOpen && !settingsOpen) return;
@@ -348,9 +297,10 @@ export function ImportedExamViewer({ id }: { id: string }) {
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" title="Herramienta de lápiz"
-              aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz"}
+              aria-label={drawingButtonLabel}
               aria-pressed={drawingEnabled}
-              onClick={() => { setDrawingEnabled((open) => !open); setMapOpen(false); setSettingsOpen(false); }}
+              aria-expanded={drawingMenuOpen}
+              onClick={() => { toggleDrawing(); setMapOpen(false); setSettingsOpen(false); }}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
                 (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
               <Pencil size={18}/>
@@ -381,7 +331,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             style={{ width: questions.length ? ((active + 1) / questions.length) * 100 + "%" : "0%" }} />
         </div>
 
-        {drawingEnabled && (
+        {drawingMenuOpen && (
           <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
             <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar"
               aria-pressed={drawingTool === "pen"} className={"grid h-8 w-8 place-items-center rounded-lg " +
@@ -509,13 +459,18 @@ export function ImportedExamViewer({ id }: { id: string }) {
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                 <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
                   N.º {current ? getQuestionId(current, active) : "—"}
                 </span>
                 <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
                   {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
                 </span>
+                {isRecord(current) && isRecord(current.curriculum) && (
+                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
+                    {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
+                  </span>
+                )}
               </div>
               <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
             </div>
@@ -523,9 +478,18 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
               {current ? (
                 <div className="relative flex min-h-full flex-col">
-                  <h2 style={PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
-                    {questionText(current)}
-                  </h2>
+                  {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
+                  {isRecord(current) && Array.isArray(current.stem) ? (
+                    <>
+                      <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
+                        <PaessedBlocks blocks={current.stem} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+                        {questionText(current)}
+                      </h2>
                   {assetUrls.length > 0 && (
                     <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-4">
                       {assetUrls.map((asset) => (
@@ -535,6 +499,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
                           className="max-h-[360px] max-w-full rounded-lg object-contain" />
                       ))}
                     </div>
+                  )}
+                      </>
                   )}
                   {currentOptions.length ? (
                     <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
@@ -546,8 +512,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
                             onClick={() => setAnswers((prev) => ({ ...prev, [String(active)]: letter }))}
                             className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
                               (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
-                            <span style={PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                            <span style={PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>
+                            <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                            {option.blocks ? <div style={QUESTION_PAPER_FONT} className="min-w-0"><PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /></div> : <span style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
                           </button>
                         );
                       })}
@@ -558,7 +524,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                     </p>
                   )}
                   <PlaygroundScratchpad key={active} enabled={drawingEnabled}
-                    mode={drawingTool} color={drawingColor} strokes={currentStrokes}
+                    onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={currentStrokes}
                     onChange={(next) => setStrokes((previous) => ({ ...previous, [active]: next }))}/>
                 </div>
               ) : (

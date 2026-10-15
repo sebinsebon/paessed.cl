@@ -1,0 +1,49 @@
+/* Question content only; paper, controls and application typography are inherited. */
+.paessed-blocks { min-width: 0; max-width: 100%; line-height: 1.7; overflow-wrap: anywhere; }
+.paessed-blocks .paessed-paragraph { margin: 0 0 .65em; }
+.paessed-blocks .paessed-paragraph:last-child { margin-bottom: 0; }
+.paessed-blocks .paessed-text { white-space: pre-wrap; }
+.paessed-blocks .paessed-math { position: relative; }
+.paessed-blocks .paessed-math-inline { display: inline-block; vertical-align: baseline; }
+.paessed-blocks .paessed-math .katex { white-space: nowrap; }
+.paessed-blocks .paessed-math-display,
+.paessed-blocks .paessed-math-overflow {
+  display: block;
+  max-width: 100%;
+  /* Ordinary math has no scroll viewport, so tall ink stays visible. */
+  padding-block: .25em;
+}
+.paessed-blocks .paessed-math-display { margin: .5em 0; text-align: center; white-space: nowrap; }
+.paessed-blocks .paessed-math-overflow {
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Keep the beginning reachable; centering a wide equation loses its left. */
+  text-align: left;
+  padding-block-start: var(--paessed-overflow-pad-start, .25em);
+  padding-block-end: var(--paessed-overflow-pad-end, .25em);
+}
+.paessed-blocks .katex-display { margin: 0; }
+.paessed-blocks .paessed-math-display .katex-display { display: inline-block; vertical-align: middle; }
+.paessed-blocks .paessed-math-punctuation { vertical-align: middle; }
+.paessed-blocks .paessed-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 470px;
+  margin: 1rem auto;
+  object-fit: contain;
+}
+.paessed-blocks .paessed-image:only-child { margin-block: 0; }
+.paessed-blocks .paessed-table-wrap { max-width: 100%; margin: .75rem 0; }
+.paessed-blocks .paessed-table-overflow {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block-start: var(--paessed-overflow-pad-start, 0px);
+  padding-block-end: var(--paessed-overflow-pad-end, 0px);
+}
+.paessed-blocks .paessed-table { border-collapse: collapse; }
+.paessed-blocks .paessed-table td { border: 1px solid var(--pg-border, #94a3b8); padding: .5rem; min-width: 4em; vertical-align: middle; }
+.paessed-blocks .paessed-table .paessed-paragraph { margin: 0; }
+.paessed-blocks .paessed-unresolved { color: var(--pg-fg, inherit); border: 1px solid currentColor; padding: .5rem; margin: .5rem 0; white-space: pre-wrap; }
+.paessed-blocks [tabindex="0"]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

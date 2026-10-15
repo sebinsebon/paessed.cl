@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 
 type PlaygroundInkPoint = { x: number; y: number };
 export type PlaygroundInkStroke = { color: string; points: PlaygroundInkPoint[] };
@@ -12,17 +12,19 @@ export function PlaygroundScratchpad({
   color,
   strokes,
   onChange,
+  onInteractionStart,
 }: {
   enabled: boolean;
   mode: "pen" | "eraser";
   color: string;
   strokes: PlaygroundInkStroke[];
   onChange: (next: PlaygroundInkStroke[]) => void;
+  onInteractionStart?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const liveStrokeRef = useRef<PlaygroundInkStroke | null>(null);
 
-  const draw = () => {
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -56,7 +58,7 @@ export function PlaygroundScratchpad({
         ctx.stroke();
       }
     }
-  };
+  }, [strokes]);
 
   useEffect(() => {
     draw();
@@ -65,7 +67,7 @@ export function PlaygroundScratchpad({
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [strokes, enabled]);
+  }, [draw, enabled]);
 
   const pointOf = (event: ReactPointerEvent<HTMLCanvasElement>): PlaygroundInkPoint => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -97,6 +99,7 @@ export function PlaygroundScratchpad({
     if (!enabled) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    onInteractionStart?.();
     const point = pointOf(event);
     if (mode === "eraser") {
       eraseAt(point);

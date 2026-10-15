@@ -11,6 +11,8 @@ import { usePersistentAppShell } from "@/components/persistent-app-shell";
 import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress, writeDemoExamProgress } from "@/lib/demo-exam-progress";
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { useDrawingTools } from "@/components/use-drawing-tools";
+import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 
 type DemoQuestion = {
   domain: string;
@@ -32,7 +34,6 @@ const BASE: DemoQuestion[] = [
 ];
 
 const QUESTIONS = Array.from({ length: 65 }, (_, i) => ({ ...BASE[i % BASE.length], number: i + 1 }));
-const QUESTION_FONT = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 function formatTime(total: number) {
   const minutes = Math.floor(total / 60).toString().padStart(2, "0");
@@ -66,7 +67,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
-  const [drawingEnabled, setDrawingEnabled] = useState(false);
+  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<number, PlaygroundInkStroke[]>>({});
@@ -122,7 +123,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
     setPaletteOpen(false);
     setSettingsOpen(false);
     setDrawingEnabled(false);
-  }, [index]);
+  }, [index, setDrawingEnabled]);
 
   useEffect(() => {
     if (!paletteOpen && !settingsOpen && !confirmFinish) return;
@@ -215,10 +216,11 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              aria-label={drawingEnabled ? "Desactivar lápiz" : "Activar lápiz para cálculos"}
-              title={drawingEnabled ? "Cerrar lápiz" : "Hacer cálculos sobre la hoja"}
+              aria-label={drawingButtonLabel}
+              title={drawingButtonLabel}
               aria-pressed={drawingEnabled}
-              onClick={() => { setDrawingEnabled((previous) => !previous); setPaletteOpen(false); setSettingsOpen(false); }}
+              aria-expanded={drawingMenuOpen}
+              onClick={() => { toggleDrawing(); setPaletteOpen(false); setSettingsOpen(false); }}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
             >
               <Pencil size={18} />
@@ -268,7 +270,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           <div className="h-full bg-[var(--primary)] transition-[width] duration-200" style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
         </div>
 
-        {drawingEnabled && (
+        {drawingMenuOpen && (
           <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
             <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar" aria-pressed={drawingTool === "pen"}
               className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
@@ -373,7 +375,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
 
           <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
             <div className="relative flex min-h-full flex-col">
-              <h2 style={QUESTION_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
+              <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                 {q.prompt}
               </h2>
               <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
@@ -383,13 +385,13 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
                   return (
                     <button type="button" key={letter} aria-pressed={active} onClick={() => setAnswers((previous) => previous.map((value, i) => i === index ? optionIndex : value))}
                       className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:min-h-[36px] sm:px-3 " + (active ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
-                      <span style={QUESTION_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                      <span style={QUESTION_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
+                      <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
+                      <span style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
                     </button>
                   );
                 })}
               </div>
-              <PlaygroundScratchpad key={index} enabled={drawingEnabled} mode={drawingTool} color={drawingColor} strokes={inkStrokes} onChange={updateStrokes} />
+              <PlaygroundScratchpad key={index} enabled={drawingEnabled} onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={inkStrokes} onChange={updateStrokes} />
             </div>
           </div>
 

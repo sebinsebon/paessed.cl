@@ -1,0 +1,588 @@
+[
+  {
+    "question": "1",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "2",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "3",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "4",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "5",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "6",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "7",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "8",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "9",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "10",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "11",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "12",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "13",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "14",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "15",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "16",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "17",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "18",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "19",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "20",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "21",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "22",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "23",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "24",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "25",
+    "resourceIds": [
+      "crop-q25-terrenos"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q25-terrenos: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "26",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "27",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "28",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "29",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "30",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "31",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "32",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "33",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "34",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "35",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "36",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "37",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "38",
+    "resourceIds": [
+      "crop-q38-grafico-precios"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q38-grafico-precios: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "39",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "40",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "41",
+    "resourceIds": [
+      "crop-q41-opt-a",
+      "crop-q41-opt-b",
+      "crop-q41-opt-c",
+      "crop-q41-opt-d"
+    ],
+    "expected": 4,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q41-opt-a: sin archivo adjunto",
+      "crop-q41-opt-b: sin archivo adjunto",
+      "crop-q41-opt-c: sin archivo adjunto",
+      "crop-q41-opt-d: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "42",
+    "resourceIds": [
+      "crop-q42-tela"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q42-tela: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "43",
+    "resourceIds": [
+      "crop-q43-escuadra"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q43-escuadra: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "44",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "45",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "46",
+    "resourceIds": [
+      "crop-q46-trapezoide"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q46-trapezoide: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "47",
+    "resourceIds": [
+      "crop-q47-triangulo"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q47-triangulo: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "48",
+    "resourceIds": [
+      "crop-q48-caja"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q48-caja: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "49",
+    "resourceIds": [
+      "crop-q49-velas"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q49-velas: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "50",
+    "resourceIds": [
+      "crop-q50-vector-c"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q50-vector-c: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "51",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "52",
+    "resourceIds": [
+      "crop-q52-figura-abcd"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q52-figura-abcd: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "53",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "54",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "55",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "56",
+    "resourceIds": [
+      "crop-q56-grafico-barras"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q56-grafico-barras: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "57",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "58",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "59",
+    "resourceIds": [
+      "crop-q59-poligono-notas"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q59-poligono-notas: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "60",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "61",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "62",
+    "resourceIds": [
+      "crop-q62-diagrama-cajon"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q62-diagrama-cajon: sin archivo adjunto"
+    ]
+  },
+  {
+    "question": "63",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "64",
+    "resourceIds": [],
+    "expected": 0,
+    "found": 0,
+    "loaded": 0,
+    "errors": []
+  },
+  {
+    "question": "65",
+    "resourceIds": [
+      "crop-q65-nutrientes"
+    ],
+    "expected": 1,
+    "found": 0,
+    "loaded": 0,
+    "errors": [
+      "crop-q65-nutrientes: sin archivo adjunto"
+    ]
+  }
+]

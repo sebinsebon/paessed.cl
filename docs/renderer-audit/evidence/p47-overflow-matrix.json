@@ -1,0 +1,146 @@
+[
+  {
+    "mobile": false,
+    "theme": "light",
+    "formulaWidth": 304.125,
+    "containerWidth": 1060,
+    "before": {
+      "overflowY": "auto",
+      "verticalScroll": 2,
+      "rect": [
+        69,
+        768.625,
+        1060,
+        68.171875
+      ],
+      "padding": [
+        "5.25px",
+        "5.25px"
+      ],
+      "overflowX": "auto"
+    },
+    "after": {
+      "overflowY": "visible",
+      "verticalScroll": 0,
+      "rect": [
+        69,
+        768.625,
+        1060,
+        68.171875
+      ],
+      "padding": [
+        "5.25px",
+        "5.25px"
+      ],
+      "overflowX": "visible"
+    }
+  },
+  {
+    "mobile": false,
+    "theme": "dark",
+    "formulaWidth": 304.125,
+    "containerWidth": 1060,
+    "before": {
+      "overflowY": "auto",
+      "verticalScroll": 2,
+      "rect": [
+        69,
+        768.625,
+        1060,
+        68.171875
+      ],
+      "padding": [
+        "5.25px",
+        "5.25px"
+      ],
+      "overflowX": "auto"
+    },
+    "after": {
+      "overflowY": "visible",
+      "verticalScroll": 0,
+      "rect": [
+        69,
+        768.625,
+        1060,
+        68.171875
+      ],
+      "padding": [
+        "5.25px",
+        "5.25px"
+      ],
+      "overflowX": "visible"
+    }
+  },
+  {
+    "mobile": true,
+    "theme": "light",
+    "formulaWidth": 264.5625,
+    "containerWidth": 325,
+    "before": {
+      "overflowY": "auto",
+      "verticalScroll": 2,
+      "rect": [
+        25,
+        453.453125,
+        325,
+        58.4375
+      ],
+      "padding": [
+        "4.5px",
+        "4.5px"
+      ],
+      "overflowX": "auto"
+    },
+    "after": {
+      "overflowY": "visible",
+      "verticalScroll": 0,
+      "rect": [
+        25,
+        453.453125,
+        325,
+        58.4375
+      ],
+      "padding": [
+        "4.5px",
+        "4.5px"
+      ],
+      "overflowX": "visible"
+    }
+  },
+  {
+    "mobile": true,
+    "theme": "dark",
+    "formulaWidth": 264.5625,
+    "containerWidth": 325,
+    "before": {
+      "overflowY": "auto",
+      "verticalScroll": 2,
+      "rect": [
+        25,
+        453.453125,
+        325,
+        58.4375
+      ],
+      "padding": [
+        "4.5px",
+        "4.5px"
+      ],
+      "overflowX": "auto"
+    },
+    "after": {
+      "overflowY": "visible",
+      "verticalScroll": 0,
+      "rect": [
+        25,
+        453.453125,
+        325,
+        58.4375
+      ],
+      "padding": [
+        "4.5px",
+        "4.5px"
+      ],
+      "overflowX": "visible"
+    }
+  }
+]
