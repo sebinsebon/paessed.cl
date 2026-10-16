@@ -147,6 +147,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [reviewMode, setReviewMode] = useState(false);
   const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
@@ -160,6 +161,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
     setRestored(false);
     setRecord(null);
     setLoadError(false);
+    setReviewMode(false);
     if (!id) {
       setLoading(false);
       return;
@@ -214,11 +216,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
+  const reviewAnswer = isRecord(current) && isRecord(current.answer) ? current.answer : null;
+  const reviewExplanation = isRecord(current) && isRecord(current.explanation) ? current.explanation : null;
+  const reviewIssues = isRecord(current) && Array.isArray(current.issues) ? current.issues.filter((issue): issue is string => typeof issue === "string") : [];
   const referencedImages = useMemo(() => imageReferences(current), [current]);
   const currentResourceErrors=useMemo(()=>{
-    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
+    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...blockAssetIds(reviewMode?reviewExplanation?.blocks:[]),...referencedImages];
     return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
-  },[current,currentOptions,referencedImages,resourceIssues]);
+  },[current,currentOptions,referencedImages,resourceIssues,reviewMode,reviewExplanation]);
   const displayedResourceError=resourceError||(currentResourceErrors.length?`${currentResourceErrors.length} recursos no disponibles. ${currentResourceErrors[0]}`:'');
   const assetUrls=useMemo(()=>referencedImages.flatMap(path=>{
     const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
@@ -472,7 +477,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   </span>
                 )}
               </div>
-              <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
+              <div className="flex items-center gap-3">
+                {reviewAnswer && <button type="button" aria-pressed={reviewMode} aria-controls="package-review"
+                  onClick={() => { setReviewMode((value) => !value); setDrawingEnabled(false); }}
+                  className="min-h-9 rounded-md border border-[var(--pg-border)] px-3 text-[11px] font-bold hover:bg-[var(--pg-soft)]">
+                  {reviewMode ? "Cerrar revisión del paquete" : "Revisar contenido del paquete"}
+                </button>}
+                <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
+              </div>
             </div>
 
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
@@ -522,6 +534,21 @@ export function ImportedExamViewer({ id }: { id: string }) {
                     <p className="mt-auto max-w-[1060px] rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-[12px] text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
                       El archivo no tiene alternativas reconocibles para esta pregunta.
                     </p>
+                  )}
+                  {reviewMode && reviewAnswer && (
+                    <section id="package-review" aria-label="Revisión del contenido del paquete" className="relative z-10 mt-6 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] p-4">
+                      <h2 className="text-sm font-bold">Revisión del contenido del paquete</h2>
+                      <p className="mt-2 text-sm">Esta vista muestra la respuesta y explicación guardadas en el archivo. No corrige tu selección ni certifica el contenido.</p>
+                      {(reviewAnswer.status !== "verified" || reviewExplanation?.status !== "verified") && (
+                        <p role="alert" className="mt-3 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Contenido pendiente de verificación. La respuesta y explicación pueden depender de supuestos o contener errores; revisa las observaciones.</p>
+                      )}
+                      <p className="mt-3 text-sm">Respuesta del archivo: {String(reviewAnswer.label ?? "Sin respuesta")} · Estado: {reviewAnswer.status === "verified" ? "verificada" : reviewAnswer.status === "provisional" ? "provisional" : "ausente"}</p>
+                      <h3 className="mt-4 text-sm font-bold">Explicación del archivo · {reviewExplanation?.status === "verified" ? "verificada" : reviewExplanation?.status === "provisional" ? "provisional" : "ausente"}</h3>
+                      {reviewExplanation && Array.isArray(reviewExplanation.blocks) && reviewExplanation.blocks.length > 0 ? (
+                        <div style={QUESTION_PAPER_FONT} className="mt-2"><PaessedBlocks blocks={reviewExplanation.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /></div>
+                      ) : <p className="mt-2 text-sm">El archivo no contiene una explicación.</p>}
+                      {reviewIssues.length > 0 && <div className="mt-4 text-sm"><h3 className="font-bold">Observaciones del archivo</h3><ul className="mt-2 list-disc space-y-2 pl-5">{reviewIssues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></div>}
+                    </section>
                   )}
                   <PlaygroundScratchpad key={active} enabled={drawingEnabled}
                     onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={currentStrokes}
