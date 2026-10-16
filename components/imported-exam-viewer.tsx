@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isRecord, getQuestions, getQuestionId, getOptions, questionText, questionVisibleContent } from "@/lib/imported-question-content";
 import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -12,90 +13,6 @@ import { useDrawingTools } from "@/components/use-drawing-tools";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
-
-type RecordLike = Record<string, unknown>;
-
-function isRecord(value: unknown): value is RecordLike {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function nested(record: RecordLike, ...keys: string[]): unknown {
-  let current: unknown = record;
-  for (const key of keys) {
-    if (!isRecord(current)) return undefined;
-    current = current[key];
-  }
-  return current;
-}
-
-function getQuestions(document: unknown): unknown[] {
-  if (!isRecord(document)) return [];
-  const candidates = [
-    document.questions,
-    document.items,
-    nested(document, "exam", "questions"),
-    nested(document, "test", "questions"),
-    nested(document, "content", "questions"),
-    nested(document, "data", "questions"),
-  ];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate;
-  }
-  return [];
-}
-
-function getQuestionId(question: unknown, index: number): string {
-  if (!isRecord(question)) return String(index + 1);
-  const value = question.id ?? question.question_id ?? question.questionId ?? question.number ?? question.index;
-  return typeof value === "string" || typeof value === "number" ? String(value) : String(index + 1);
-}
-
-function flatten(value: unknown, depth = 0): string {
-  if (depth > 7 || value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.map((item) => flatten(item, depth + 1)).filter(Boolean).join(" ");
-  if (!isRecord(value)) return "";
-
-  const type = typeof value.type === "string" ? value.type.toLowerCase() : "";
-  if (type === "text") return flatten(value.text ?? value.content ?? value.value, depth + 1);
-  if (type === "math") {
-    const latex = value.latex ?? value.value ?? value.content;
-    return typeof latex === "string" ? latex : "";
-  }
-  if (type === "table" && Array.isArray(value.rows)) return flatten(value.rows, depth + 1);
-
-  for (const key of ["text", "prompt", "statement", "stem", "content", "body", "question", "label"]) {
-    if (key in value) {
-      const text = flatten(value[key], depth + 1);
-      if (text) return text;
-    }
-  }
-  return "";
-}
-
-function questionText(question: unknown): string {
-  if (!isRecord(question)) return "Pregunta sin texto reconocible.";
-  for (const candidate of [question.stem, question.prompt, question.statement, question.text, question.content, question.body]) {
-    const text = flatten(candidate).replace(/\s+/g, " ").trim();
-    if (text) return text;
-  }
-  return "Pregunta sin texto reconocible.";
-}
-
-function getOptions(question: unknown): Array<{ key: string; text: string; blocks?: unknown[] }> {
-  if (!isRecord(question)) return [];
-  const candidate = question.options ?? question.alternatives ?? question.choices ?? question.answers;
-  if (!Array.isArray(candidate)) return [];
-  return candidate.map((option, index) => {
-    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: String(option) };
-    if (isRecord(option)) {
-      const key = option.label ?? option.key ?? option.id ?? String.fromCharCode(65 + index);
-      const text = flatten(option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
-      return { key: String(key), text: text || "Alternativa sin texto reconocible.", blocks: Array.isArray(option.blocks) ? option.blocks : undefined };
-    }
-    return { key: String.fromCharCode(65 + index), text: "Alternativa sin texto reconocible." };
-  });
-}
 
 const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
 type SavedImportedProgress = {
@@ -147,6 +64,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
+
   const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
@@ -214,7 +132,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
-  const referencedImages = useMemo(() => imageReferences(current), [current]);
+  const referencedImages = useMemo(() => imageReferences(questionVisibleContent(current)), [current]);
   const currentResourceErrors=useMemo(()=>{
     const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
     return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
@@ -472,7 +390,9 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   </span>
                 )}
               </div>
-              <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
+              <div className="flex items-center gap-3">
+                <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
+              </div>
             </div>
 
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
