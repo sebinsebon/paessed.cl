@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isRecord, getQuestions, getQuestionId, getOptions, questionText, questionVisibleContent } from "@/lib/imported-question-content";
 import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -12,90 +13,6 @@ import { useDrawingTools } from "@/components/use-drawing-tools";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
-
-type RecordLike = Record<string, unknown>;
-
-function isRecord(value: unknown): value is RecordLike {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function nested(record: RecordLike, ...keys: string[]): unknown {
-  let current: unknown = record;
-  for (const key of keys) {
-    if (!isRecord(current)) return undefined;
-    current = current[key];
-  }
-  return current;
-}
-
-function getQuestions(document: unknown): unknown[] {
-  if (!isRecord(document)) return [];
-  const candidates = [
-    document.questions,
-    document.items,
-    nested(document, "exam", "questions"),
-    nested(document, "test", "questions"),
-    nested(document, "content", "questions"),
-    nested(document, "data", "questions"),
-  ];
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate;
-  }
-  return [];
-}
-
-function getQuestionId(question: unknown, index: number): string {
-  if (!isRecord(question)) return String(index + 1);
-  const value = question.id ?? question.question_id ?? question.questionId ?? question.number ?? question.index;
-  return typeof value === "string" || typeof value === "number" ? String(value) : String(index + 1);
-}
-
-function flatten(value: unknown, depth = 0): string {
-  if (depth > 7 || value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.map((item) => flatten(item, depth + 1)).filter(Boolean).join(" ");
-  if (!isRecord(value)) return "";
-
-  const type = typeof value.type === "string" ? value.type.toLowerCase() : "";
-  if (type === "text") return flatten(value.text ?? value.content ?? value.value, depth + 1);
-  if (type === "math") {
-    const latex = value.latex ?? value.value ?? value.content;
-    return typeof latex === "string" ? latex : "";
-  }
-  if (type === "table" && Array.isArray(value.rows)) return flatten(value.rows, depth + 1);
-
-  for (const key of ["text", "prompt", "statement", "stem", "content", "body", "question", "label"]) {
-    if (key in value) {
-      const text = flatten(value[key], depth + 1);
-      if (text) return text;
-    }
-  }
-  return "";
-}
-
-function questionText(question: unknown): string {
-  if (!isRecord(question)) return "Pregunta sin texto reconocible.";
-  for (const candidate of [question.stem, question.prompt, question.statement, question.text, question.content, question.body]) {
-    const text = flatten(candidate).replace(/\s+/g, " ").trim();
-    if (text) return text;
-  }
-  return "Pregunta sin texto reconocible.";
-}
-
-function getOptions(question: unknown): Array<{ key: string; text: string; blocks?: unknown[] }> {
-  if (!isRecord(question)) return [];
-  const candidate = question.options ?? question.alternatives ?? question.choices ?? question.answers;
-  if (!Array.isArray(candidate)) return [];
-  return candidate.map((option, index) => {
-    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: String(option) };
-    if (isRecord(option)) {
-      const key = option.label ?? option.key ?? option.id ?? String.fromCharCode(65 + index);
-      const text = flatten(option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
-      return { key: String(key), text: text || "Alternativa sin texto reconocible.", blocks: Array.isArray(option.blocks) ? option.blocks : undefined };
-    }
-    return { key: String.fromCharCode(65 + index), text: "Alternativa sin texto reconocible." };
-  });
-}
 
 const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
 type SavedImportedProgress = {
@@ -147,7 +64,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [reviewMode, setReviewMode] = useState(false);
+
   const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
@@ -161,7 +78,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     setRestored(false);
     setRecord(null);
     setLoadError(false);
-    setReviewMode(false);
     if (!id) {
       setLoading(false);
       return;
@@ -216,14 +132,11 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
-  const reviewAnswer = isRecord(current) && isRecord(current.answer) ? current.answer : null;
-  const reviewExplanation = isRecord(current) && isRecord(current.explanation) ? current.explanation : null;
-  const reviewIssues = isRecord(current) && Array.isArray(current.issues) ? current.issues.filter((issue): issue is string => typeof issue === "string") : [];
-  const referencedImages = useMemo(() => imageReferences(current), [current]);
+  const referencedImages = useMemo(() => imageReferences(questionVisibleContent(current)), [current]);
   const currentResourceErrors=useMemo(()=>{
-    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...blockAssetIds(reviewMode?reviewExplanation?.blocks:[]),...referencedImages];
+    const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
     return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
-  },[current,currentOptions,referencedImages,resourceIssues,reviewMode,reviewExplanation]);
+  },[current,currentOptions,referencedImages,resourceIssues]);
   const displayedResourceError=resourceError||(currentResourceErrors.length?`${currentResourceErrors.length} recursos no disponibles. ${currentResourceErrors[0]}`:'');
   const assetUrls=useMemo(()=>referencedImages.flatMap(path=>{
     const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
@@ -478,11 +391,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                {reviewAnswer && <button type="button" aria-pressed={reviewMode} aria-controls="package-review"
-                  onClick={() => { setReviewMode((value) => !value); setDrawingEnabled(false); }}
-                  className="min-h-9 rounded-md border border-[var(--pg-border)] px-3 text-[11px] font-bold hover:bg-[var(--pg-soft)]">
-                  {reviewMode ? "Cerrar revisión del paquete" : "Revisar contenido del paquete"}
-                </button>}
                 <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
               </div>
             </div>
@@ -534,21 +442,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
                     <p className="mt-auto max-w-[1060px] rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-[12px] text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
                       El archivo no tiene alternativas reconocibles para esta pregunta.
                     </p>
-                  )}
-                  {reviewMode && reviewAnswer && (
-                    <section id="package-review" aria-label="Revisión del contenido del paquete" className="relative z-10 mt-6 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] p-4">
-                      <h2 className="text-sm font-bold">Revisión del contenido del paquete</h2>
-                      <p className="mt-2 text-sm">Esta vista muestra la respuesta y explicación guardadas en el archivo. No corrige tu selección ni certifica el contenido.</p>
-                      {(reviewAnswer.status !== "verified" || reviewExplanation?.status !== "verified") && (
-                        <p role="alert" className="mt-3 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Contenido pendiente de verificación. La respuesta y explicación pueden depender de supuestos o contener errores; revisa las observaciones.</p>
-                      )}
-                      <p className="mt-3 text-sm">Respuesta del archivo: {String(reviewAnswer.label ?? "Sin respuesta")} · Estado: {reviewAnswer.status === "verified" ? "verificada" : reviewAnswer.status === "provisional" ? "provisional" : "ausente"}</p>
-                      <h3 className="mt-4 text-sm font-bold">Explicación del archivo · {reviewExplanation?.status === "verified" ? "verificada" : reviewExplanation?.status === "provisional" ? "provisional" : "ausente"}</h3>
-                      {reviewExplanation && Array.isArray(reviewExplanation.blocks) && reviewExplanation.blocks.length > 0 ? (
-                        <div style={QUESTION_PAPER_FONT} className="mt-2"><PaessedBlocks blocks={reviewExplanation.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /></div>
-                      ) : <p className="mt-2 text-sm">El archivo no contiene una explicación.</p>}
-                      {reviewIssues.length > 0 && <div className="mt-4 text-sm"><h3 className="font-bold">Observaciones del archivo</h3><ul className="mt-2 list-disc space-y-2 pl-5">{reviewIssues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></div>}
-                    </section>
                   )}
                   <PlaygroundScratchpad key={active} enabled={drawingEnabled}
                     onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={currentStrokes}
