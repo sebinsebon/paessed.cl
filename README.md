@@ -1,3 +1,5 @@
+> **Rama Aventura · actualización de prototipo (octubre de 2026).** El recorrido interactivo real está en [`/aventura`](/aventura). `/app/aprender` abre esa misma experiencia en lugar de mantener la maqueta estática. Incluye 17 microlecciones que cubren las 16 unidades temáticas M1, 102 preguntas **de demostración**, diagnóstico de 12 preguntas, repasos espaciados y una **vista previa individual** de Ranked (un reto de 10 preguntas diario, hasta 100 puntos). Para una liga semanal real entre usuarios todavía hacen falta backend, autenticación, banco verificado y validación antifraude. Ejecutar `npm run test:aventura` para probar las reglas. [Detalles técnicos](public/aventura/MVP_PLAN.md).
+
 # PAESSED — Product UI prototype v4
 
 Prototipo navegable de la experiencia completa de **PAESSED M1**, construido sobre el dashboard v3.x y el sistema visual de `DESIGN.md`.
