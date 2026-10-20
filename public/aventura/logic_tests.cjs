@@ -42,7 +42,7 @@ for(const q of first.questions){
   assert(first.skills.some(s=>s.id===q.skill));
 }
 first.act('start-from-zero');
-assert.match(first.html,/17 microlecciones/);
+assert.match(first.html,/17 habilidades completadas/);
 first.act('lesson','semejanza'); // no hard lock on curricular units
 assert.equal(first.state.session.skill,'semejanza');
 assert.equal(first.state.session.ids.length,5);
