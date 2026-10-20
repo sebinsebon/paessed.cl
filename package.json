@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "npm run test:aventura && next build",
+    "start": "next start",
+    "test:aventura": "node public/aventura/logic_tests.cjs"
   },
   "dependencies": {
     "lucide-react": "1.47.0",
