@@ -140,3 +140,46 @@ export async function deleteImportedExam(id: string): Promise<void> {
   // Delete the corresponding answers, bookmarks and drawings after the package is gone.
   try { localStorage.removeItem(IMPORTED_EXAM_PROGRESS_PREFIX + id); } catch { /* Storage may be unavailable. */ }
 }
+
+export type ImportedExamStorageUsage = {
+  id: string;
+  title: string;
+  fileName: string;
+  importedAt: string;
+  questionCount: number;
+  archiveBytes: number;
+  estimatedBytes: number;
+};
+
+function utf8Size(value: unknown): number {
+  try { return new TextEncoder().encode(JSON.stringify(value) ?? "").byteLength; }
+  catch { return 0; }
+}
+
+/** Estimate bytes actually represented by each stored record, not just source file size. */
+export async function listImportedExamStorageUsage(): Promise<ImportedExamStorageUsage[]> {
+  const database = await openDatabase();
+  let records: ImportedExamRecord[];
+  try {
+    records = await new Promise<ImportedExamRecord[]>((resolve, reject) => {
+      const transaction = database.transaction(STORE, "readonly");
+      const request = transaction.objectStore(STORE).getAll();
+      request.onsuccess = () => resolve(request.result as ImportedExamRecord[]);
+      request.onerror = () => reject(request.error ?? new Error("No se pudo medir la biblioteca local."));
+    });
+  } finally {
+    database.close();
+  }
+  return records.map((record) => {
+    const archiveBytes = record.archive?.size ?? 0;
+    return {
+      id: record.summary.id,
+      title: record.summary.title,
+      fileName: record.summary.fileName,
+      importedAt: record.summary.importedAt,
+      questionCount: record.summary.questionCount,
+      archiveBytes,
+      estimatedBytes: archiveBytes + utf8Size(record.finalJson) + utf8Size(record.summary),
+    };
+  }).sort((a, b) => b.estimatedBytes - a.estimatedBytes);
+}
