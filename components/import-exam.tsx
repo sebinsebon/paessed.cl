@@ -198,6 +198,7 @@ function buildSummary(finalJson: unknown, file: File, packageFiles: string[], fi
     id: crypto.randomUUID(),
     title: inferTitle(finalJson, file.name),
     fileName: file.name,
+    fileSizeBytes: file.size,
     questionCount: questions.length,
     idCount,
     answerCount,

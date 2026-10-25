@@ -2,6 +2,7 @@ export type ImportedExamSummary = {
   id: string;
   title: string;
   fileName: string;
+  fileSizeBytes?: number;
   questionCount: number;
   idCount: number;
   answerCount: number;
@@ -39,6 +40,37 @@ function refreshed(record:ImportedExamRecord):ImportedExamRecord {
 const DB_NAME = "paessed-local";
 const DB_VERSION = 1;
 const STORE = "imported-exams";
+export const IMPORTED_EXAM_PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
+
+export type ImportedExamProgressSummary = {
+  answeredCount: number;
+  status: "not-started" | "in-progress" | "all-answered" | "completed";
+  completedAt?: string;
+};
+
+export function readImportedExamProgress(id: string, questionCount: number): ImportedExamProgressSummary {
+  const empty: ImportedExamProgressSummary = { answeredCount: 0, status: "not-started" };
+  try {
+    const stored = localStorage.getItem(IMPORTED_EXAM_PROGRESS_PREFIX + id);
+    if (!stored) return empty;
+    const parsed: unknown = JSON.parse(stored);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return empty;
+    const value = parsed as { answers?: unknown; completedAt?: unknown };
+    const answers = value.answers && typeof value.answers === "object" && !Array.isArray(value.answers)
+      ? Object.entries(value.answers).filter(([index, answer]) =>
+          Number.isInteger(Number(index)) && Number(index) >= 0 && Number(index) < questionCount &&
+          typeof answer === "string" && answer.length > 0).length : 0;
+    const completedAt = typeof value.completedAt === "string" && !Number.isNaN(Date.parse(value.completedAt))
+      ? value.completedAt : undefined;
+    const status = completedAt ? "completed"
+      : answers === 0 ? "not-started"
+      : questionCount > 0 && answers >= questionCount ? "all-answered" : "in-progress";
+    return { answeredCount: answers, status, completedAt };
+  } catch {
+    return empty;
+  }
+}
+
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -74,7 +106,10 @@ export async function listImportedExams(): Promise<ImportedExamSummary[]> {
     request.onerror = () => reject(request.error ?? new Error("No se pudieron leer los ensayos importados."));
   });
   database.close();
-  return records.map((record) => refreshed(record).summary).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
+  return records.map((record) => {
+    const summary = refreshed(record).summary;
+    return { ...summary, fileSizeBytes: summary.fileSizeBytes ?? record.archive?.size };
+  }).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
 }
 
 export async function getImportedExam(id: string): Promise<ImportedExamRecord | null> {
@@ -87,4 +122,21 @@ export async function getImportedExam(id: string): Promise<ImportedExamRecord | 
   });
   database.close();
   return record ? refreshed(record) : null;
+}
+
+export async function deleteImportedExam(id: string): Promise<void> {
+  const database = await openDatabase();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(STORE, "readwrite");
+      transaction.objectStore(STORE).delete(id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo eliminar el ensayo."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("La eliminación fue cancelada."));
+    });
+  } finally {
+    database.close();
+  }
+  // Delete the corresponding answers, bookmarks and drawings after the package is gone.
+  try { localStorage.removeItem(IMPORTED_EXAM_PROGRESS_PREFIX + id); } catch { /* Storage may be unavailable. */ }
 }

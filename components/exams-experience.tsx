@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ImportExamPanel } from "@/components/import-exam";
 import { useEffect, useRef, useState, ViewTransition, type DragEvent } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AlertCircle,
   ArrowRight,
@@ -15,6 +15,7 @@ import {
   Info,
   RotateCcw,
   Settings2,
+  Trash2,
   Search,
   Upload,
   X,
@@ -22,7 +23,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
-import { type ImportedExamSummary, getImportedExam, listImportedExams } from "@/lib/local-imports";
+import { type ImportedExamSummary, type ImportedExamProgressSummary, deleteImportedExam, getImportedExam, listImportedExams, readImportedExamProgress } from "@/lib/local-imports";
 import { DEFAULT_EXAMS } from "@/lib/default-exams";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 
@@ -47,6 +48,22 @@ type SortOrder = "recent" | "oldest" | "score-high" | "score-low" | "name";
 type UploadFeedback = { kind: "success" | "error"; message: string };
 
 const EXAMS_PER_PAGE = 5;
+
+function formatFileSize(bytes?: number): string {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0) return "No disponible";
+  if (bytes < 1024) return bytes + " B";
+  const exponent = Math.min(3, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 }).format(bytes / 1024 ** exponent)
+    + " " + ["B", "KB", "MB", "GB"][exponent];
+}
+
+function progressLabel(progress?: ImportedExamProgressSummary): string {
+  if (progress?.status === "completed") return "Rendido";
+  if (progress?.status === "all-answered") return "Todas respondidas · Sin finalizar";
+  if (progress?.status === "in-progress") return "En progreso";
+  return "Sin iniciar";
+}
+
 
 // These are illustrative records from the original prototype, not student data.
 const exampleExams: ExamRow[] = [
@@ -261,7 +278,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
   );
 }
 
-function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void }) {
+function ExamCard({ exam, expanded, onToggle, onSettings, onDelete, progress }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void; onDelete: (button: HTMLButtonElement) => void; progress?: ImportedExamProgressSummary }) {
   const isImported = exam.kind === "imported";
   const isDefault = exam.kind === "default";
   const isCompleted = exam.status === "completed";
@@ -338,19 +355,34 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ height: { duration: 0.29, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.22 } }}
+            transition={{ height: { duration: 0.34, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.24 } }}
             className="overflow-hidden border-t border-[var(--border)] bg-[var(--surface-2)]"
           >
             <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 flex-1">
                 {isImported ? (
-                  <div className="flex flex-col gap-1.5 text-[12px] leading-5 text-[var(--muted)]">
-                    <p><span className="font-bold text-[var(--text)]">Archivo:</span> {exam.imported?.fileName}</p>
-                    <p><span className="font-bold text-[var(--text)]">Contenido:</span> {exam.questionCount} preguntas · {exam.imported?.answerCount ?? 0} respuestas en solucionario · {exam.imported?.assetCount ?? 0} recursos</p>
+                  <div className="space-y-3 text-[12px] leading-5 text-[var(--muted)]">
+                    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { label: "Tamaño del archivo", value: formatFileSize(exam.imported?.fileSizeBytes) },
+                        { label: "Realizado", value: progress?.status === "completed" ? "Sí" : "No" },
+                        { label: "Respuestas", value: (progress?.answeredCount ?? 0) + "/" + exam.questionCount },
+                        { label: "Importado", value: displayDate(exam.imported?.importedAt ?? "") },
+                      ].map((item) => (
+                        <div key={item.label} className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5">
+                          <dt className="text-[10px] font-bold text-[var(--muted)]">{item.label}</dt>
+                          <dd className="mt-1 break-words text-[12px] font-extrabold text-[var(--text)]">{item.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p><span className="font-bold text-[var(--text)]">Estado:</span> {progressLabel(progress)}</p>
+                    <p className="break-all"><span className="font-bold text-[var(--text)]">Archivo:</span> {exam.imported?.fileName}</p>
+                    <p><span className="font-bold text-[var(--text)]">Contenido:</span> {exam.questionCount} preguntas · {exam.imported?.answerCount ?? 0} claves · {exam.imported?.assetCount ?? 0} recursos</p>
                     {Boolean(exam.imported?.issues.length) && (
-                      <p className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400"><AlertCircle size={14} /> {exam.imported?.issues.length} advertencias detectadas durante la importación</p>
+                      <p className="inline-flex items-center gap-1.5 text-amber-600 dark:text-amber-400"><AlertCircle size={14} /> {exam.imported?.issues.length} advertencias de importación</p>
                     )}
-                    <p>El solucionario importado no representa respuestas rendidas por el estudiante.</p>
+                    {progress?.status === "all-answered" && <p>Respondiste todas las preguntas, pero no hay finalización registrada.</p>}
+                    {exam.imported?.fileSizeBytes === undefined && <p>El tamaño no se conservó para este archivo antiguo.</p>}
                   </div>
                 ) : isDefault ? (
                   <p className="flex items-start gap-2 text-[12px] leading-5 text-[var(--muted)]">
@@ -365,14 +397,18 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
                 )}
               </div>
               {isImported && (
-                <button
-                  type="button"
-                  onClick={onSettings}
-                  className="soft-button inline-flex min-h-10 shrink-0 items-center justify-center gap-2 self-start rounded-xl px-4 text-[12px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] md:ml-auto md:self-center"
-                  aria-label={"Abrir ajustes del ensayo " + exam.title}
-                >
-                  <Settings2 size={16} /> Ajustes
-                </button>
+                <div className="flex shrink-0 flex-wrap gap-2 md:ml-auto md:flex-col">
+                  <button type="button" onClick={onSettings}
+                    className="soft-button inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                    aria-label={"Abrir ajustes del ensayo " + exam.title}>
+                    <Settings2 size={16} /> Ajustes
+                  </button>
+                  <button type="button" onClick={(event) => onDelete(event.currentTarget)}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 text-[12px] font-bold text-rose-600 transition-colors hover:bg-rose-500/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:text-rose-400"
+                    aria-label={"Eliminar ensayo " + exam.title}>
+                    <Trash2 size={16} /> Eliminar
+                  </button>
+                </div>
               )}
             </div>
           </motion.div>
@@ -383,6 +419,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
 }
 
 export function ExamsExperience() {
+  const reduceMotion = useReducedMotion();
   const [source, setSource] = useState<ExamSource>("default");
   const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
   const [importError, setImportError] = useState(false);
@@ -395,6 +432,13 @@ export function ExamsExperience() {
   const [importing, setImporting] = useState(false);
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
+  const [progressById, setProgressById] = useState<Record<string, ImportedExamProgressSummary>>({});
+  const [deleteExamId, setDeleteExamId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteCancelRef = useRef<HTMLButtonElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -424,6 +468,62 @@ export function ExamsExperience() {
     try { sessionStorage.setItem("paessed-exams-source-v1", next); } catch { /* Optional preference. */ }
   };
 
+  useEffect(() => {
+    setProgressById(Object.fromEntries(importedExams.map((exam) =>
+      [exam.id, readImportedExamProgress(exam.id, exam.questionCount)])));
+  }, [importedExams]);
+
+  useEffect(() => {
+    if (!deleteExamId) return;
+    if (!deleting) deleteCancelRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !deleting) {
+        event.preventDefault();
+        setDeleteExamId(null);
+        window.requestAnimationFrame(() => deleteTriggerRef.current?.focus());
+      }
+      if (event.key !== "Tab") return;
+      const elements = Array.from(deleteDialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
+      if (!elements.length) return;
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [deleteExamId, deleting]);
+
+  const closeDelete = () => {
+    if (deleting) return;
+    setDeleteExamId(null);
+    setDeleteError(null);
+    window.requestAnimationFrame(() => deleteTriggerRef.current?.focus());
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteExamId || deleting) return;
+    const id = deleteExamId;
+    const title = importedExams.find((item) => item.id === id)?.title ?? "Ensayo";
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteImportedExam(id);
+      setImportedExams((previous) => previous.filter((item) => item.id !== id));
+      setExpandedId(null);
+      setSettingsExamId(null);
+      setPage(1);
+      setDeleteExamId(null);
+      setFeedback({ kind: "success", message: "«" + title + "» se eliminó de este navegador junto con su avance." });
+      window.requestAnimationFrame(() => document.getElementById("exam-source-local")?.focus());
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "No se pudo eliminar el ensayo.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const selectedForDeletion = importedExams.find((item) => item.id === deleteExamId);
   const defaultRows = buildDefaultRows();
   const localRows = buildLocalRows(importedExams);
   const rows = source === "default" ? defaultRows : localRows;
@@ -510,15 +610,21 @@ export function ExamsExperience() {
               { id: "local", label: "Local", count: localRows.length },
             ] as const).map((option) => (
               <button
+                id={"exam-source-" + option.id}
                 key={option.id}
                 type="button"
                 aria-pressed={source === option.id}
                 onClick={() => selectSource(option.id)}
-                className={"inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-[12px] font-extrabold transition-[background-color,color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:flex-none " +
-                  (source === option.id ? "bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)]" : "text-[var(--muted)] hover:text-[var(--text)]")}
+                className={"relative isolate inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-[12px] font-extrabold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:flex-none " +
+                  (source === option.id ? "text-[var(--text)]" : "text-[var(--muted)] hover:text-[var(--text)]")}
               >
-                {option.label}
-                <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] tabular-nums">{option.count}</span>
+                {source === option.id && (
+                  <motion.span layoutId="exam-active-source-pill" aria-hidden="true"
+                    transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 36 }}
+                    className="pointer-events-none absolute inset-0 z-0 rounded-[10px] bg-[var(--surface)] shadow-[var(--shadow-1)]" />
+                )}
+                <span className="relative z-10">{option.label}</span>
+                <span className="relative z-10 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] tabular-nums">{option.count}</span>
               </button>
             ))}
           </div>
@@ -595,7 +701,13 @@ export function ExamsExperience() {
           </div>
         )}
 
-        <section aria-label="Listado de ensayos" className="space-y-3.5">
+        <section aria-label="Listado de ensayos">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={source} initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-3.5">
+          <AnimatePresence initial={false} mode="popLayout">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center rounded-[20px] border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-12 text-center">
               {term ? (
@@ -621,14 +733,29 @@ export function ExamsExperience() {
               )}
             </div>
           ) : visible.map((exam) => (
-            <ExamCard
-              key={exam.id}
-              exam={exam}
-              expanded={expandedId === exam.id}
-              onToggle={() => setExpandedId((previous) => previous === exam.id ? null : exam.id)}
-              onSettings={() => { if (exam.imported) setSettingsExamId(exam.imported.id); }}
-            />
+            <motion.div key={exam.id} layout
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10, scale: 0.985 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.23, ease: [0.22, 1, 0.36, 1], layout: { type: "spring", stiffness: 320, damping: 34 } }}>
+              <ExamCard
+                exam={exam}
+                expanded={expandedId === exam.id}
+                progress={exam.imported ? progressById[exam.imported.id] : undefined}
+                onToggle={() => setExpandedId((previous) => previous === exam.id ? null : exam.id)}
+                onSettings={() => { if (exam.imported) setSettingsExamId(exam.imported.id); }}
+                onDelete={(button) => {
+                  if (!exam.imported) return;
+                  deleteTriggerRef.current = button;
+                  setDeleteError(null);
+                  setDeleteExamId(exam.imported.id);
+                }}
+              />
+            </motion.div>
           ))}
+          </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
         </section>
 
         {pageCount > 1 && (
@@ -702,6 +829,44 @@ export function ExamsExperience() {
           onSaved={async () => { setImportedExams(await listImportedExams()); }}
         />
       )}
+      <AnimatePresence initial={false}>
+        {selectedForDeletion && (
+          <motion.div key="delete-local-exam" className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18 }}>
+            <button type="button" aria-label="Cerrar confirmación de eliminación" disabled={deleting}
+              onClick={closeDelete} className="absolute inset-0 cursor-default bg-slate-950/60 backdrop-blur-[3px]" />
+            <motion.div ref={deleteDialogRef} role="alertdialog" aria-modal="true"
+              aria-labelledby="delete-exam-title" aria-describedby="delete-exam-description"
+              initial={reduceMotion ? false : { y: 15, scale: 0.965 }}
+              animate={{ y: 0, scale: 1 }} exit={reduceMotion ? {} : { y: 9, scale: 0.98 }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-[430px] rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6">
+              <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <Trash2 size={21} />
+              </div>
+              <h2 id="delete-exam-title" className="text-[21px] font-extrabold tracking-[-.03em]">¿Eliminar este ensayo?</h2>
+              <p className="mt-1 break-words text-[13px] font-bold">{selectedForDeletion.title}</p>
+              <p id="delete-exam-description" className="mt-3 text-[12px] leading-5 text-[var(--muted)]">
+                Tamaño: {formatFileSize(selectedForDeletion.fileSizeBytes)} · {selectedForDeletion.questionCount} preguntas.
+                Se borrarán el archivo, las respuestas, las marcas y los dibujos guardados en este navegador.
+                Esta acción no se puede deshacer.
+              </p>
+              {deleteError && <p role="alert" className="mt-3 rounded-lg border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-600 dark:text-rose-400">{deleteError}</p>}
+              <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button ref={deleteCancelRef} type="button" disabled={deleting} onClick={closeDelete}
+                  className="soft-button min-h-11 rounded-xl px-4 text-[12px] font-bold disabled:opacity-40">
+                  Cancelar
+                </button>
+                <button type="button" disabled={deleting} onClick={() => { void confirmDelete(); }}
+                  className="min-h-11 rounded-xl bg-rose-600 px-4 text-[12px] font-extrabold text-white transition-colors hover:bg-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:cursor-wait disabled:opacity-60">
+                  {deleting ? "Eliminando…" : "Eliminar definitivamente"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }
