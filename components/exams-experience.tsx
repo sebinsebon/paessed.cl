@@ -23,11 +23,12 @@ import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
 import { type ImportedExamSummary, getImportedExam, listImportedExams } from "@/lib/local-imports";
+import { DEFAULT_EXAMS } from "@/lib/default-exams";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 
 type ExamRow = {
   id: string;
-  kind: "example" | "imported";
+  kind: "example" | "imported" | "default";
   status: "completed" | "pending" | "library";
   title: string;
   dateValue: number;
@@ -41,6 +42,7 @@ type ExamRow = {
   imported?: ImportedExamSummary;
 };
 
+type ExamSource = "default" | "local";
 type SortOrder = "recent" | "oldest" | "score-high" | "score-low" | "name";
 type UploadFeedback = { kind: "success" | "error"; message: string };
 
@@ -91,9 +93,8 @@ function normalizeSearch(value: string): string {
   return value.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function buildRows(imported: ImportedExamSummary[]): ExamRow[] {
-  return [
-    ...imported.map((exam): ExamRow => ({
+function buildLocalRows(imported: ImportedExamSummary[]): ExamRow[] {
+  return imported.map((exam): ExamRow => ({
       id: "imported-" + exam.id,
       kind: "imported",
       status: "library",
@@ -107,9 +108,26 @@ function buildRows(imported: ImportedExamSummary[]): ExamRow[] {
       questionCount: exam.questionCount,
       href: "/app/ensayos/importado/" + encodeURIComponent(exam.id),
       imported: exam,
-    })),
-    ...exampleExams,
-  ];
+    }));
+}
+
+function buildDefaultRows(): ExamRow[] {
+  // Preserve demo cards until real Gold exams are published in the default catalog.
+  if (DEFAULT_EXAMS.length === 0) return exampleExams;
+  return DEFAULT_EXAMS.map((exam): ExamRow => ({
+    id: "default-" + exam.id,
+    kind: "default",
+    status: "library",
+    title: exam.title,
+    dateValue: exam.publishedAt ? new Date(exam.publishedAt).getTime() || 0 : 0,
+    dateLabel: exam.publishedAt ? "Publicado el " + displayDate(exam.publishedAt) : "Banco Gold PAESSED",
+    score: null,
+    correct: null,
+    incorrect: null,
+    omitted: null,
+    questionCount: exam.questionCount,
+    href: exam.href,
+  }));
 }
 
 
@@ -245,6 +263,7 @@ function QuestionMap({ exam }: { exam: ExamRow }) {
 
 function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; expanded: boolean; onToggle: () => void; onSettings: () => void }) {
   const isImported = exam.kind === "imported";
+  const isDefault = exam.kind === "default";
   const isCompleted = exam.status === "completed";
   const actionLabel = "Practicar";
   return (
@@ -253,7 +272,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
         <div className="min-w-0">
           <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
             <span className="rounded-md bg-[var(--surface-2)] px-2 py-1 text-[9px] font-extrabold uppercase tracking-[.07em] text-[var(--muted)]">
-              {isImported ? "Biblioteca local" : "Demostración"}
+              {isImported ? "Biblioteca local" : isDefault ? "Gold · Default" : "Demostración"}
             </span>
             {isCompleted && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500">
@@ -275,7 +294,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
           <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {exam.score === null ? (
               <span className="text-[14px] font-bold text-[var(--muted)]">
-                {isImported ? "Sin puntaje registrado" : "Pendiente"}
+                {exam.kind === "example" ? "Pendiente" : "Sin puntaje registrado"}
               </span>
             ) : (
               <div className="flex items-baseline gap-1">
@@ -294,7 +313,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
 
         <div className="flex items-center gap-2 md:col-span-2 xl:col-span-1 xl:flex-col xl:items-stretch">
           <Link
-            href={isImported ? exam.href : exam.href + "?source=" + encodeURIComponent(exam.id)}
+            href={exam.kind === "example" ? exam.href + "?source=" + encodeURIComponent(exam.id) : exam.href}
             aria-label={actionLabel + ": " + exam.title}
             className="inline-flex min-h-10 items-center justify-center gap-2.5 rounded-xl bg-[var(--primary)] px-4 text-[12px] font-extrabold text-white shadow-[0_3px_0_var(--primary-pressed)] transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)] active:translate-y-0.5 active:shadow-[0_1px_0_var(--primary-pressed)]"
           >
@@ -333,6 +352,11 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
                     )}
                     <p>El solucionario importado no representa respuestas rendidas por el estudiante.</p>
                   </div>
+                ) : isDefault ? (
+                  <p className="flex items-start gap-2 text-[12px] leading-5 text-[var(--muted)]">
+                    <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-500" />
+                    Ensayo verificado del catálogo Gold de PAESSED.
+                  </p>
                 ) : (
                   <p className="flex items-start gap-2 text-[12px] leading-5 text-[var(--muted)]">
                     <Info size={15} className="mt-0.5 shrink-0" />
@@ -359,6 +383,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings }: { exam: ExamRow; exp
 }
 
 export function ExamsExperience() {
+  const [source, setSource] = useState<ExamSource>("default");
   const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
   const [importError, setImportError] = useState(false);
   const [search, setSearch] = useState("");
@@ -379,7 +404,29 @@ export function ExamsExperience() {
     return () => { active = false; };
   }, []);
 
-  const rows = buildRows(importedExams);
+  useEffect(() => {
+    try {
+      const requested = new URLSearchParams(window.location.search).get("source");
+      const saved = sessionStorage.getItem("paessed-exams-source-v1");
+      const initial = requested === "local" || requested === "default" ? requested : saved;
+      if (initial === "local" || initial === "default") {
+        setSource(initial);
+        sessionStorage.setItem("paessed-exams-source-v1", initial);
+      }
+    } catch { /* Session storage may be unavailable. */ }
+  }, []);
+
+  const selectSource = (next: ExamSource) => {
+    setSource(next);
+    setSearch("");
+    setPage(1);
+    setExpandedId(null);
+    try { sessionStorage.setItem("paessed-exams-source-v1", next); } catch { /* Optional preference. */ }
+  };
+
+  const defaultRows = buildDefaultRows();
+  const localRows = buildLocalRows(importedExams);
+  const rows = source === "default" ? defaultRows : localRows;
   const term = normalizeSearch(search.trim());
   const matches = rows
     .filter((exam) => !term || normalizeSearch(exam.title + " " + exam.dateLabel + " " + (exam.imported?.fileName ?? "")).includes(term))
@@ -407,6 +454,7 @@ export function ExamsExperience() {
       const { importExamFile } = await import("@/components/import-exam");
       const summary = await importExamFile(file);
       setImportedExams(await listImportedExams());
+      selectSource("local");
       setSearch("");
       setSort("recent");
       setPage(1);
@@ -447,7 +495,7 @@ export function ExamsExperience() {
           </motion.div>
           <button
             type="button"
-            onClick={() => { window.scrollTo({ top: 0, behavior: "instant" }); setShowImportPanel(true); }}
+            onClick={() => { window.scrollTo({ top: 0, behavior: "instant" }); selectSource("local"); setShowImportPanel(true); }}
             className="tactile-primary inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-[12px] font-extrabold focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-[var(--primary)]"
           >
             <Upload size={17} strokeWidth={2.4} />
@@ -455,7 +503,34 @@ export function ExamsExperience() {
           </button>
         </header>
 
-        
+        <section aria-label="Seleccionar origen de ensayos" className="mb-5 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div role="group" aria-label="Origen de ensayos" className="inline-flex w-full items-center gap-1 rounded-[14px] border border-[var(--border)] bg-[var(--surface-2)] p-1 sm:w-auto">
+            {([
+              { id: "default", label: "Default", count: defaultRows.length },
+              { id: "local", label: "Local", count: localRows.length },
+            ] as const).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={source === option.id}
+                onClick={() => selectSource(option.id)}
+                className={"inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-[10px] px-4 text-[12px] font-extrabold transition-[background-color,color,box-shadow] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:flex-none " +
+                  (source === option.id ? "bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-1)]" : "text-[var(--muted)] hover:text-[var(--text)]")}
+              >
+                {option.label}
+                <span className="rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] tabular-nums">{option.count}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] leading-5 text-[var(--muted)]">
+            {source === "default"
+              ? DEFAULT_EXAMS.length > 0
+                ? "Catálogo oficial Gold de PAESSED."
+                : "El catálogo Gold está en preparación. Por ahora se muestran ejemplos."
+              : "Ensayos que importaste y guardaste en este navegador."}
+          </p>
+        </section>
+
         <div>
         <section aria-label="Buscar y ordenar ensayos" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
@@ -463,7 +538,9 @@ export function ExamsExperience() {
               <strong className="font-extrabold tabular-nums">{rows.length}</strong> {rows.length === 1 ? "ensayo" : "ensayos"}
             </span>
             <span className="rounded-full bg-[var(--surface-2)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)]">
-              {importedExams.length > 0 ? importedExams.length + (importedExams.length === 1 ? " importado" : " importados") + " · " : ""}2 de ejemplo
+              {source === "local"
+                ? importedExams.length + (importedExams.length === 1 ? " importado" : " importados")
+                : DEFAULT_EXAMS.length > 0 ? DEFAULT_EXAMS.length + " Gold" : "2 de ejemplo"}
             </span>
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -503,10 +580,10 @@ export function ExamsExperience() {
           </div>
         </section>
 
-        {importError && (
+        {importError && source === "local" && (
           <div role="alert" className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-2.5 text-[12px] text-[var(--text)]">
             <AlertCircle size={16} className="shrink-0 text-amber-500" />
-            No fue posible leer la biblioteca de este navegador. Los ensayos de demostración siguen visibles.
+            No fue posible leer la biblioteca local de este navegador.
           </div>
         )}
 
@@ -521,12 +598,27 @@ export function ExamsExperience() {
         <section aria-label="Listado de ensayos" className="space-y-3.5">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center rounded-[20px] border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-12 text-center">
-              <Search size={23} className="text-[var(--muted)]" />
-              <h2 className="mt-3 text-[16px] font-extrabold">No encontramos ensayos</h2>
-              <p className="mt-1 text-[12px] text-[var(--muted)]">Prueba con otra palabra o vuelve a mostrar todos.</p>
-              <button type="button" onClick={() => { setSearch(""); setPage(1); }} className="soft-button mt-4 inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold">
-                <RotateCcw size={15} /> Limpiar búsqueda
-              </button>
+              {term ? (
+                <>
+                  <Search size={23} className="text-[var(--muted)]" />
+                  <h2 className="mt-3 text-[16px] font-extrabold">No encontramos ensayos</h2>
+                  <p className="mt-1 text-[12px] text-[var(--muted)]">Prueba con otra palabra o vuelve a mostrar todos.</p>
+                  <button type="button" onClick={() => { setSearch(""); setPage(1); }} className="soft-button mt-4 inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold">
+                    <RotateCcw size={15} /> Limpiar búsqueda
+                  </button>
+                </>
+              ) : (
+                <>
+                  <FileArchive size={23} className="text-[var(--muted)]" />
+                  <h2 className="mt-3 text-[16px] font-extrabold">{source === "local" ? "Aún no tienes ensayos locales" : "Próximamente: ensayos Gold"}</h2>
+                  <p className="mt-1 text-[12px] text-[var(--muted)]">{source === "local" ? "Importa un archivo .paessed, .zip o .json para verlo aquí." : "Los ensayos verificados aparecerán en este catálogo."}</p>
+                  {source === "local" && (
+                    <button type="button" onClick={() => setShowImportPanel(true)} className="soft-button mt-4 inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold">
+                      <Upload size={15} /> Importar ensayo
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           ) : visible.map((exam) => (
             <ExamCard
@@ -552,7 +644,7 @@ export function ExamsExperience() {
           </nav>
         )}
 
-        <section
+        {source === "local" && <section
           aria-label="Arrastrar un ensayo para importar"
           onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
           onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragging(true); }}
@@ -571,7 +663,7 @@ export function ExamsExperience() {
               Formatos .paessed, .zip o .json · Se guarda en este navegador
             </p>
           </div>
-        </section>
+        </section>}
         </div>
         
           </motion.div>
@@ -593,6 +685,7 @@ export function ExamsExperience() {
               onImported={() => {
                 void listImportedExams().then((items) => {
                   setImportedExams(items);
+                  selectSource("local");
                   setSearch("");
                   setSort("recent");
                   setPage(1);
