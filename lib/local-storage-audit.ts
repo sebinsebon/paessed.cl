@@ -31,7 +31,7 @@ export type LocalStorageReport = {
   localError: string | null;
 };
 
-const CATEGORY_KEYS: Record<string, StorageCategoryId> = {
+export const CATEGORY_KEYS: Record<string, StorageCategoryId> = {
   "paessed-last-exam": "sessions",
   "paessed-diagnostic": "diagnostic",
   "paessed-playground-recent-questions": "playground",

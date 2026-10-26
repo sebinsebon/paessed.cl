@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertCircle, BarChart3, Database, HardDrive, RefreshCw, Trash2, X } from "lucide-react";
+import { LocalBackupPanel } from "@/components/local-backup-panel";
 import {
   STORAGE_CATEGORIES, clearLocalStorageCategory, clearSingleImportedExam,
   formatStorageBytes, inspectLocalStorage,
@@ -246,6 +247,8 @@ export function LocalStorageDashboard() {
         Actualmente el diagnóstico conserva su resultado y Playground conserva preguntas recientes y guardadas.
         El guardado de sesiones más completas llegará en una etapa posterior.
       </p>
+
+      <LocalBackupPanel report={report} onRestored={() => { void refresh(); }} />
 
       <AnimatePresence initial={false}>
         {deleteTarget && (
