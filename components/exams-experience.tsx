@@ -451,12 +451,12 @@ export function ExamsExperience() {
   useEffect(() => {
     try {
       const requested = new URLSearchParams(window.location.search).get("source");
-      const saved = sessionStorage.getItem("paessed-exams-source-v1");
-      const initial = requested === "local" || requested === "default" ? requested : saved;
-      if (initial === "local" || initial === "default") {
-        setSource(initial);
-        sessionStorage.setItem("paessed-exams-source-v1", initial);
-      }
+      const saved = localStorage.getItem("paessed-exams-source-v2");
+      // First visit defaults to Default. Later visits remember the user's last choice.
+      const initial = requested === "local" || requested === "default" ? requested
+        : saved === "local" || saved === "default" ? saved : "default";
+      setSource(initial);
+      if (requested === "local" || requested === "default") localStorage.setItem("paessed-exams-source-v2", initial);
     } catch { /* Session storage may be unavailable. */ }
   }, []);
 
@@ -465,7 +465,7 @@ export function ExamsExperience() {
     setSearch("");
     setPage(1);
     setExpandedId(null);
-    try { sessionStorage.setItem("paessed-exams-source-v1", next); } catch { /* Optional preference. */ }
+    try { localStorage.setItem("paessed-exams-source-v2", next); } catch { /* Optional preference. */ }
   };
 
   useEffect(() => {

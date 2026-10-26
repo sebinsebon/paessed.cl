@@ -231,6 +231,63 @@ export function applyQuestionPatch(source: unknown, index: number, patch: Questi
   return cloned;
 }
 
+/**
+ * Explicitly unsafe editor for one structured question. Never alters another question
+ * or the document's outer shape; schema validation is performed by the caller.
+ */
+export function applyAdvancedQuestionJson(source: unknown, index: number, sourceText: string): unknown {
+  if (sourceText.length > 2 * 1024 * 1024) throw new Error("El JSON de esta pregunta supera el límite de 2 MB.");
+  let proposed: unknown;
+  try { proposed = JSON.parse(sourceText); }
+  catch (error) { throw new Error("JSON inválido: " + (error instanceof Error ? error.message : "No se pudo interpretar.")); }
+  if (!isJsonObject(proposed)) throw new Error("La pregunta debe ser un objeto JSON.");
+  const original = getEditableQuestions(source)[index];
+  if (!isJsonObject(original)) throw new Error("La pregunta original tiene un formato incompatible.");
+  if (proposed.id !== original.id) {
+    throw new Error("El ID interno de la pregunta no puede cambiar: rompería referencias y respuestas guardadas.");
+  }
+  const cloned = structuredClone(source);
+  const location = locateQuestions(cloned);
+  if (!location || index < 0 || index >= location.questions.length) throw new Error("No se encontró la pregunta seleccionada.");
+
+  const edited = structuredClone(proposed);
+  const changed = JSON.stringify(original) !== JSON.stringify(proposed);
+  if (changed && isJsonObject(cloned) && cloned.format === "paessed-benchmark") {
+    // Editing rich blocks voids prior content/gold checks even if a valid answer remains.
+    edited.fidelity = { status: "pending", review_ref: null };
+    if (isJsonObject(edited.curriculum)) {
+      edited.curriculum = { eje: null, subeje: null, en_temario: "dudoso" };
+    }
+    if (isJsonObject(edited.answer)) {
+      edited.answer.status = edited.answer.label == null ? "missing" : "provisional";
+      edited.answer.source_ref = null;
+      edited.answer.origin = edited.answer.label == null ? "none" : "model";
+    }
+    if (isJsonObject(edited.explanation)) {
+      edited.explanation.status = Array.isArray(edited.explanation.blocks) && edited.explanation.blocks.length
+        ? "provisional" : "missing";
+    }
+    const issues = Array.isArray(edited.issues)
+      ? edited.issues.filter((issue): issue is string => typeof issue === "string") : [];
+    edited.issues = [...new Set([...issues, "USER_EDITED", "CURRICULUM_PENDING"])];
+    if (isJsonObject(cloned.run)) {
+      cloned.run.eligible = false;
+      delete cloned.run.accuracy;
+      delete cloned.run.gold_certification;
+      delete cloned.run.certification;
+      delete cloned.run.quality;
+      cloned.run.web_edit = {
+        question_id: original.id,
+        edited_at: new Date().toISOString(),
+        requires_review: true,
+        mode: "advanced",
+      };
+    }
+  }
+  location.questions[index] = edited;
+  return cloned;
+}
+
 export function answerCount(document: unknown): number {
   return getEditableQuestions(document).filter((question) => isJsonObject(question) && !!answerLocation(question).value).length;
 }

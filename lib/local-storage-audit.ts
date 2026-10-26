@@ -44,6 +44,7 @@ export const CATEGORY_KEYS: Record<string, StorageCategoryId> = {
   "paessed-monthly-goal": "preferences",
   "paessed-dashboard-tour-seen": "preferences",
   "paessed-user": "preferences",
+  "paessed-exams-source-v2": "preferences",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
