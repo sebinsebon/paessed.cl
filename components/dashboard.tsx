@@ -125,10 +125,6 @@ function carouselMasteryColor(percentage: number) {
   return "#ef4444";
 }
 
-function carouselMasteryStyle(percentage: number): MasteryCSS {
-  return { "--mastery": carouselMasteryColor(percentage) };
-}
-
 function MasteryBadge({ state }: { state: MasteryState }) {
   const item = MASTERY[state];
   return (
@@ -149,7 +145,8 @@ function MasteryBadge({ state }: { state: MasteryState }) {
 function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis: Axis; onOpen: (axis: Axis) => void; mobile?: boolean; duplicate?: boolean }) {
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
-  const axisColor = carouselMasteryColor(axis.percentage);
+  const axisColor = MASTERY[axis.state].color;
+  const progressColor = carouselMasteryColor(axis.percentage);
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -159,7 +156,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       transition={{ type: "spring", stiffness: 420, damping: 30 }}
       className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
       data-critical={critical}
-      style={carouselMasteryStyle(axis.percentage)}
+      style={masteryStyle(axis.state)}
     >
       <div className="flex items-start gap-3">
         <div
@@ -193,13 +190,13 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
           initial={{ width: 0 }}
           animate={{ width: `${axis.percentage}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={{ backgroundColor: axisColor }}
+          style={{ backgroundColor: progressColor }}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
         <span className="font-semibold text-[var(--muted)]">
           Estado:{" "}
-          <span style={{ color: axisColor }}>
+          <span style={{ color: progressColor }}>
             {axis.state}
           </span>
         </span>
