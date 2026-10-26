@@ -542,6 +542,7 @@ export function ExamsExperience() {
   const pageCount = Math.max(1, Math.ceil(matches.length / EXAMS_PER_PAGE));
   const currentPage = Math.min(page, pageCount);
   const visible = matches.slice((currentPage - 1) * EXAMS_PER_PAGE, currentPage * EXAMS_PER_PAGE);
+  const emptyLocalDropZone = source === "local" && importedExams.length === 0 && !term && !importError;
 
   const onDrop = async (event: DragEvent<HTMLElement>) => {
     event.preventDefault();
@@ -709,7 +710,19 @@ export function ExamsExperience() {
               className="space-y-3.5">
           <AnimatePresence initial={false} mode="popLayout">
           {visible.length === 0 ? (
-            <div className="flex flex-col items-center rounded-[20px] border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-12 text-center">
+            <div
+              role={emptyLocalDropZone ? "region" : undefined}
+              aria-label={emptyLocalDropZone ? "Zona para importar ensayos locales" : undefined}
+              onDragEnter={emptyLocalDropZone ? (event) => { event.preventDefault(); setDragging(true); } : undefined}
+              onDragOver={emptyLocalDropZone ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragging(true); } : undefined}
+              onDragLeave={emptyLocalDropZone ? (event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); } : undefined}
+              onDrop={emptyLocalDropZone ? (event) => { void onDrop(event); } : undefined}
+              className={"flex flex-col items-center rounded-[20px] text-center transition-colors duration-200 " +
+                (emptyLocalDropZone
+                  ? "min-h-[300px] justify-center border-2 border-dashed px-7 py-12 " +
+                    (dragging ? "border-[var(--primary)] bg-[var(--primary-soft)] dark:bg-[var(--surface-3)]" : "border-[var(--border-strong)] bg-[var(--surface-2)]/40")
+                  : "border border-dashed border-[var(--border)] bg-[var(--surface)] px-5 py-12")}
+            >
               {term ? (
                 <>
                   <Search size={23} className="text-[var(--muted)]" />
@@ -721,14 +734,19 @@ export function ExamsExperience() {
                 </>
               ) : (
                 <>
-                  <FileArchive size={23} className="text-[var(--muted)]" />
-                  <h2 className="mt-3 text-[16px] font-extrabold">{source === "local" ? "Aún no tienes ensayos locales" : "Próximamente: ensayos Gold"}</h2>
-                  <p className="mt-1 text-[12px] text-[var(--muted)]">{source === "local" ? "Importa un archivo .paessed, .zip o .json para verlo aquí." : "Los ensayos verificados aparecerán en este catálogo."}</p>
+                  <FileArchive size={emptyLocalDropZone ? 30 : 23} className={emptyLocalDropZone && dragging ? "text-[var(--primary)]" : "text-[var(--muted)]"} />
+                  <h2 className={"mt-3 font-extrabold " + (emptyLocalDropZone ? "text-[20px]" : "text-[16px]")}>
+                    {emptyLocalDropZone && importing ? "Importando el ensayo…" : emptyLocalDropZone && dragging ? "Suelta el archivo aquí" : source === "local" ? "Aún no tienes ensayos locales" : "Próximamente: ensayos Gold"}
+                  </h2>
+                  <p className={"mt-1 text-[var(--muted)] " + (emptyLocalDropZone ? "text-[13px]" : "text-[12px]")}>
+                    {source === "local" ? "Importa un archivo .paessed, .zip o .json para verlo aquí." : "Los ensayos verificados aparecerán en este catálogo."}
+                  </p>
                   {source === "local" && (
-                    <button type="button" onClick={() => setShowImportPanel(true)} className="soft-button mt-4 inline-flex h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold">
+                    <button type="button" onClick={() => setShowImportPanel(true)} disabled={importing} className={"soft-button mt-5 inline-flex items-center gap-2 rounded-xl px-5 text-[12px] font-bold disabled:opacity-50 " + (emptyLocalDropZone ? "min-h-11" : "h-10")}>
                       <Upload size={15} /> Importar ensayo
                     </button>
                   )}
+                  {emptyLocalDropZone && <p className="mt-3 text-[11px] text-[var(--muted)]">O arrastra y suelta tu archivo en este recuadro.</p>}
                 </>
               )}
             </div>
@@ -771,13 +789,15 @@ export function ExamsExperience() {
           </nav>
         )}
 
-        {source === "local" && <section
+        {source === "local" && importedExams.length > 0 && <button
+          type="button"
+          onClick={() => setShowImportPanel(true)}
           aria-label="Arrastrar un ensayo para importar"
           onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
           onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragging(true); }}
           onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
           onDrop={(event) => { void onDrop(event); }}
-          className={"mt-5 flex min-h-[75px] items-center gap-3 rounded-[16px] border border-dashed p-4 transition-colors duration-150 " + (dragging ? "border-[var(--primary)] bg-[var(--primary-soft)] dark:bg-[var(--surface-3)]" : "border-[var(--border-strong)] bg-[var(--surface-2)]/40")}
+          className={"mt-5 flex min-h-[75px] w-full items-center gap-3 rounded-[16px] border border-dashed p-4 text-left transition-colors duration-150 hover:border-[var(--primary)] " + (dragging ? "border-[var(--primary)] bg-[var(--primary-soft)] dark:bg-[var(--surface-3)]" : "border-[var(--border-strong)] bg-[var(--surface-2)]/40")}
         >
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
             <FileArchive size={20} />
@@ -790,7 +810,7 @@ export function ExamsExperience() {
               Formatos .paessed, .zip o .json · Se guarda en este navegador
             </p>
           </div>
-        </section>}
+        </button>}
         </div>
         
           </motion.div>

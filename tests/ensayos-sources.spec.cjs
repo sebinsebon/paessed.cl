@@ -15,7 +15,8 @@ test("Default and Local show separate exam collections", async ({ page }) => {
   await expect(localButton).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("heading", { name: "Ensayo M1 Invierno 2026" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Aún no tienes ensayos locales" })).toBeVisible();
-  await expect(page.getByText("Arrástralo aquí")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Zona para importar ensayos locales" })).toBeVisible();
+  await expect(page.getByText("¿Ya tienes un ensayo? Arrástralo aquí")).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByRole("button", { name: /^Local\s+\d+$/ })).toHaveAttribute("aria-pressed", "true");
@@ -91,4 +92,28 @@ test("Local details show file weight and progress, then delete only after confir
     };
   }), id);
   expect(state).toEqual({ exists: false, progress: null });
+});
+
+
+test("an empty Local library accepts file drops and then shows the compact import button", async ({ page }) => {
+  await page.goto("/app/ensayos?source=local");
+  const dropZone = page.getByRole("region", { name: "Zona para importar ensayos locales" });
+  await expect(dropZone).toBeVisible();
+  const fileBase64 = fs.readFileSync(path.join(__dirname, "fixtures/tesla-renderer.paessed")).toString("base64");
+  await dropZone.evaluate((element, contents) => {
+    const binary = atob(contents);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File([bytes], "TESLA.paessed", { type: "application/zip" }));
+    for (const type of ["dragenter", "dragover", "drop"]) {
+      element.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer }));
+    }
+  }, fileBase64);
+  await expect(page.getByRole("heading", { name: "ENSAYO TESLA" })).toBeVisible({ timeout: 20000 });
+  await expect(dropZone).toHaveCount(0);
+  await expect(page.getByText("¿Ya tienes un ensayo? Arrástralo aquí")).toBeVisible();
+
+  await page.getByPlaceholder("Buscar ensayo...").fill("ensayo-que-no-existe");
+  await expect(page.getByRole("heading", { name: "No encontramos ensayos" })).toBeVisible();
+  await expect(page.getByText("¿Ya tienes un ensayo? Arrástralo aquí")).toBeVisible();
 });
