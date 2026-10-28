@@ -9,6 +9,8 @@
     "test:exam-progress": "node --experimental-strip-types --test tests/demo-exam-progress.test.mjs",
     "test:playground": "node --test tests/playground-imports.cjs",
     "test:renderer": "node --test tests/paessed-renderer.cjs",
+    "test:emphasis": "node --test tests/inline-emphasis.cjs",
+    "test:emphasis-ui": "playwright test --config tests/inline-emphasis.config.cjs",
     "test:resources": "node --test tests/imported-resources.cjs",
     "test:tesla-p41": "node --test tests/tesla-p41-candidate.cjs",
     "test:renderer-visual": "playwright test --config tests/paessed-visual.config.cjs",

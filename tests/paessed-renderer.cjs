@@ -22,6 +22,23 @@ test('structured question content stays readable and safe in a real browser',asy
   const container=document.getElementById('content');
   window.PaessedBlocks.renderBlocks(container,blocks,{katex:window.katex,assetUrls:new Map([['pixel','data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a3X8AAAAASUVORK5CYII=']])});
  },blocks);}
+ await t.test('only balanced b/i create formatted DOM; math, cells and literal hostile HTML stay intact',async()=>{
+  await render([{type:'text',text:'Una <b>negrita</b> y <i>cursiva</i> <b><i>ambas</i></b>.\n<script>window.injected=true</script>'},{type:'math',latex:'x^2',display:false},{type:'table',rows:[[[{type:'text',text:'<b>Encabezado</b>'}],[{type:'math',latex:'\\frac{1}{2}',display:false}]]]}]);
+  assert.equal(await page.locator('.paessed-text b').count(),3);
+  assert.equal(await page.locator('.paessed-text i').count(),2);
+  assert.equal(await page.locator('.paessed-text b i').textContent(),'ambas');
+  assert.equal(await page.locator('td b').textContent(),'Encabezado');
+  assert.equal(await page.locator('mfrac').count(),1);
+  assert.equal(await page.evaluate(()=>window.injected),undefined);
+  assert.equal(await page.locator('#content script').count(),0);
+  for(const text of ['<b>sin cierre','<b><i>cruzadas</b></i>','<b onclick="alert(1)">atributos</b>']){
+   await render([{type:'text',text}]);
+   assert.equal(await page.locator('.paessed-text').textContent(),text);
+   assert.equal(await page.locator('#content b,#content i').count(),0);
+  }
+  await render([{type:'text',text:'<b>Primera.</b>'},{type:'text',text:'<i>Otra frase.</i>'}]);
+  assert.equal(await page.locator('.paessed-paragraph').count(),2);
+ });
  await t.test('text and inline mathematics share paragraphs; sentence blocks remain separate',async()=>{
   await render([{type:'text',text:'Valor '},{type:'math',latex:'\\sqrt[3]{x_1^2}',display:false},{type:'text',text:'.'},{type:'text',text:'Otra frase.'}]);
   assert.equal(await page.locator('.paessed-paragraph').count(),2);

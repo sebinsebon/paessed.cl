@@ -1,3 +1,4 @@
+import Emphasis from "./paessed-runtime/block-renderer.js";
 import { getImportedExam, listImportedExams, type ImportedExamRecord } from "@/lib/local-imports";
 import { M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
 
@@ -28,10 +29,10 @@ export function getImportedQuestions(data: unknown): unknown[] {
 
 function flatten(value: unknown, depth = 0): string {
   if (depth > 9 || value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "string" || typeof value === "number") return typeof value === "string" ? Emphasis.plainText(value) : String(value);
   if (Array.isArray(value)) return value.map((v) => flatten(v,depth+1)).filter(Boolean).join(" ");
   if (!record(value)) return "";
-  if (value.type === "math") return flatten(value.latex ?? value.value ?? value.content,depth+1);
+  if (value.type === "math") { const math = value.latex ?? value.value ?? value.content; return typeof math === "string" ? math : ""; }
   if (value.type === "table" && Array.isArray(value.rows)) return flatten(value.rows,depth+1);
   for (const field of ["text","prompt","statement","stem","content","body","question","value","label"]) {
     if (field in value) {

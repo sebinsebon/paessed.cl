@@ -5,8 +5,8 @@ const ts=require('typescript');
 const JSZip=require('jszip');
 require.extensions['.ts']=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText,file);
 const exportsForTest={};
-const code=ts.transpileModule(fs.readFileSync(__dirname+'/../lib/playground-imports.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
-new Function('require','exports',code)(name=>name.includes('local-imports')?{}:name.includes('m1-curriculum')?require('../lib/m1-curriculum.ts'):require(name.replace('@/lib/','../lib/')),exportsForTest);
+const code=ts.transpileModule(fs.readFileSync(__dirname+'/../lib/playground-imports.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
+new Function('require','exports',code)(name=>name.includes('local-imports')?{}:name.includes('m1-curriculum')?require('../lib/m1-curriculum.ts'):require(name.startsWith('./')?'../lib/'+name.slice(2):name.replace('@/lib/','../lib/')),exportsForTest);
 const {convertImportedExamQuestions}=exportsForTest;
 
 test('all TESLA questions retain exact stem, option blocks, labels and verified answers',async()=>{
