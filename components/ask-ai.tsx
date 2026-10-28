@@ -42,7 +42,7 @@ export function AiHelpSettings({ settings, onChange }: SettingsProps) {
         </span>
         <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
           <input type="checkbox" checked={settings.enabled} onChange={(event) => onChange({ ...settings, enabled: event.target.checked })}
-            className="peer sr-only" aria-label="Activar Preguntar a la IA" />
+            className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" aria-label="Activar Preguntar a la IA" />
           <span aria-hidden="true" className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface-3)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--primary)]" />
           <span aria-hidden="true" className="pointer-events-none relative ml-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
         </span>

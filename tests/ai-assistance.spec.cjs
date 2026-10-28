@@ -39,6 +39,7 @@ test("AI help is off by default and can be enabled for both an essay and Playgro
   await page.getByRole("button", { name: "Preguntar a la IA" }).click();
   const playgroundPrompt = page.getByRole("dialog", { name: "Prompt para preguntar a la IA" });
   await playgroundPrompt.getByLabel("¿Qué IA quieres usar?").selectOption("gemini");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("paessed-ai-assistance-v1") ?? "{}").provider)).toBe("gemini");
   await expect(playgroundPrompt.getByLabel("Prompt completo + ejercicio")).toHaveValue(/Enunciado:/);
   await playgroundPrompt.getByRole("button", { name: "Copiar prompt" }).click();
   await playgroundPrompt.getByRole("button", { name: "Abrir Gemini" }).click();
