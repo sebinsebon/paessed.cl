@@ -41,6 +41,7 @@ import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
 import { LocalStorageDashboard } from "@/components/local-storage-dashboard";
 import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
+import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 
 const learningNodes = [
   { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
@@ -566,6 +567,7 @@ export function PlaygroundExperience() {
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
+  const { aiSettings, updateAiSettings } = useAiSettings();
   const settingsRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<string[]>([]);
   const [position, setPosition] = useState(0);
@@ -1186,6 +1188,7 @@ export function PlaygroundExperience() {
                           </button>
                         ))}
                       </div>
+                      <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
                       <div className="mt-4 border-t border-[var(--border)] pt-4">
                         <h3 className="text-[12px] font-extrabold">Filtros de preguntas</h3>
                         <p className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
@@ -1452,6 +1455,15 @@ export function PlaygroundExperience() {
                     >
                       <ChevronLeft size={16} /> Anterior
                     </button>
+                    <AskAiButton key={current.id} settings={aiSettings} onChange={updateAiSettings}
+                      question={{
+                        number: current.number,
+                        stem: current.stemBlocks ?? current.stem,
+                        options: current.options.map((option, index) => ({
+                          label: current.optionLabels?.[index] ?? String.fromCharCode(65 + index),
+                          content: current.optionBlocks?.[index] ?? option,
+                        })),
+                      }} />
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                       {current.options.length === 0 && !isRevealed ? (
                         <button type="button" onClick={() => setRevealed((old)=>({...old,[current.id]:true}))}

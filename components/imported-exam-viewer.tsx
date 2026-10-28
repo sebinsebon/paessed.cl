@@ -13,6 +13,7 @@ import { useDrawingTools } from "@/components/use-drawing-tools";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
+import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 
 const PROGRESS_PREFIX = IMPORTED_EXAM_PROGRESS_PREFIX;
 type SavedImportedProgress = {
@@ -69,6 +70,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
+  const { aiSettings, updateAiSettings } = useAiSettings();
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +134,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
+  const aiQuestion = {
+    number: getQuestionId(current, active),
+    stem: isRecord(current) ? (current.stem ?? current.prompt ?? current.statement ?? current.text ?? current.content ?? current.body) : "",
+    options: currentOptions.map((option, index) => ({
+      label: String.fromCharCode(65 + index),
+      content: option.blocks ?? option.text,
+    })),
+  };
   const referencedImages = useMemo(() => imageReferences(questionVisibleContent(current)), [current]);
   const currentResourceErrors=useMemo(()=>{
     const ids=[...blockAssetIds(isRecord(current)?current.stem:[]),...currentOptions.flatMap(option=>blockAssetIds(option.blocks)),...referencedImages];
@@ -219,7 +229,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
               aria-pressed={drawingEnabled}
               aria-expanded={drawingMenuOpen}
               onClick={() => { toggleDrawing(); setMapOpen(false); setSettingsOpen(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
+              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " +
                 (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
               <Pencil size={18}/>
             </button>
@@ -238,7 +248,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             </button>
             <button type="button" title="Apariencia de la hoja" aria-label="Ajustes de apariencia de la hoja"
               aria-expanded={settingsOpen} onClick={() => { setSettingsOpen((open) => !open); setMapOpen(false); setDrawingEnabled(false); }}
-              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " +
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
                 (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
               <Settings size={18}/>
             </button>
@@ -338,7 +348,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <motion.section key="paper-settings" role="group" aria-label="Apariencia de la hoja"
               initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}
-              className="absolute right-3 top-[calc(100%+9px)] z-40 w-[min(300px,calc(100vw-24px))] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+              className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
                 <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16}/></button>
@@ -355,6 +365,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   {option.name}{paperTheme === option.key && <Check size={15} className="text-[var(--primary)]"/>}
                 </button>
               ))}
+              <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
               <p className="mt-2 text-[10px] leading-4 text-[var(--muted)]">Las respuestas se guardan en este navegador. El solucionario del archivo no se utiliza para corregir durante la sesión.</p>
             </motion.section>
           )}
@@ -381,6 +392,9 @@ export function ImportedExamViewer({ id }: { id: string }) {
                 <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
                   N.º {current ? getQuestionId(current, active) : "—"}
                 </span>
+                <button type="button" onClick={() => { setSettingsOpen(true); setMapOpen(false); setDrawingEnabled(false); }}
+                  className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--pg-border)] px-2 text-[10px] font-bold text-[var(--pg-fg)] sm:hidden"
+                  aria-label="Ajustes de la hoja y ayuda con IA"><Settings size={13}/> Ajustes</button>
                 <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
                   {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
                 </span>
@@ -462,6 +476,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                 <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">
                   {questions.length ? "Pregunta " + (active + 1) + " de " + questions.length : "Sin preguntas"}
                 </span>
+                <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
                 <button type="button" disabled={active >= questions.length - 1 || questions.length === 0} onClick={() => setQuestion(active + 1)}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
                   Siguiente <ChevronRight size={16}/>
