@@ -65,8 +65,8 @@ export function AiHelpSettings({ settings, onChange }: SettingsProps) {
             </div>
           )}
           <p className="text-[10px] leading-4 text-[var(--muted)]">
-            Se copia el enunciado y sus alternativas con las fórmulas originales, y se abre el proveedor.
-            Pega el texto con Ctrl+V (o mantén pulsado en móvil). No se envía automáticamente.
+            Al pulsar el botón verás el prompt completo, con el enunciado, alternativas y fórmulas originales.
+            Podrás copiarlo y abrir tu IA para pegarlo allí. No se envía automáticamente.
             Si hay imágenes, tendrás que adjuntarlas manualmente.
           </p>
         </div>
@@ -95,20 +95,21 @@ async function copyToClipboard(value: string): Promise<boolean> {
 type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean };
 
 export function AskAiButton({ settings, onChange, question, disabled = false }: AskProps) {
-  const [editing, setEditing] = useState(false);
-  const [copyFailed, setCopyFailed] = useState<string | null>(null);
-  const [notice, setNotice] = useState("");
+  const [dialog, setDialog] = useState<"settings" | "prompt" | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
   const dialogId = useId();
+  const promptId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const settingsTriggerRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => { setNotice(""); setCopyFailed(null); }, [question.number]);
+  useEffect(() => { setDialog(null); setCopied(false); setCopyError(false); }, [question.number]);
   useEffect(() => {
-    if (!editing && !copyFailed) return;
+    if (!dialog) return;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialogRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Cerrar"]')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setEditing(false); setCopyFailed(null); }
+      if (event.key === "Escape") setDialog(null);
       if (event.key !== "Tab") return;
       const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
         'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)'
@@ -125,64 +126,88 @@ export function AskAiButton({ settings, onChange, question, disabled = false }: 
       document.removeEventListener("keydown", onKeyDown);
       (previouslyFocused?.isConnected ? previouslyFocused : settingsTriggerRef.current)?.focus();
     };
-  }, [editing, copyFailed]);
+  }, [dialog]);
 
   if (!settings.enabled) return null;
 
   const destination = aiDestination(settings);
-  const ask = () => {
+  const providerName = AI_PROVIDERS.find((provider) => provider.id === settings.provider)?.label ?? "IA";
+  const prompt = dialog === "prompt" ? buildAiQuestionPrompt(question) : "";
+  const previewPrompt = () => {
     if (disabled) return;
-    if (!destination) { setEditing(true); return; }
-    const prompt = buildAiQuestionPrompt(question);
-    // Start copying during the click; open the tab synchronously to avoid popup blockers.
-    const copied = copyToClipboard(prompt);
-    window.open(destination, "_blank", "noopener,noreferrer");
-    void copied.then((success) => {
-      if (success) { setNotice("Prompt copiado. Pégalo en tu IA con Ctrl+V."); setCopyFailed(null); }
-      else { setNotice(""); setCopyFailed(prompt); }
+    setCopied(false);
+    setCopyError(false);
+    setDialog("prompt");
+  };
+  const copyPrompt = () => {
+    void copyToClipboard(prompt).then((success) => {
+      setCopied(success);
+      setCopyError(!success);
     });
+  };
+  const openProvider = () => {
+    if (!destination) { setDialog("settings"); return; }
+    window.open(destination, "_blank", "noopener,noreferrer");
   };
 
   return (
     <>
       <div className="relative inline-flex shrink-0 items-stretch rounded-lg border border-[var(--pg-border,var(--border))] bg-[var(--pg-option,var(--surface))] text-[var(--pg-fg,var(--text))]">
-        <button type="button" disabled={disabled} onClick={ask}
-          title="Copiar el ejercicio y abrir tu IA" aria-label="Preguntar a la IA"
+        <button type="button" disabled={disabled} onClick={previewPrompt}
+          title="Ver el ejercicio y el prompt para copiar" aria-label="Preguntar a la IA"
           className="inline-flex min-h-10 items-center gap-1.5 rounded-l-lg px-2.5 text-[11px] font-bold transition-colors hover:bg-[var(--pg-option-hover,var(--surface-2))] disabled:opacity-40 sm:px-3">
           <Bot size={16} aria-hidden="true" /> <span className="hidden min-[420px]:inline">Preguntar a la IA</span><span className="min-[420px]:hidden">IA</span>
         </button>
-        <button ref={settingsTriggerRef} type="button" onClick={() => setEditing(true)} title="Configurar proveedor de IA"
+        <button ref={settingsTriggerRef} type="button" onClick={() => setDialog("settings")} title="Configurar proveedor de IA"
           aria-label="Configurar proveedor de IA" aria-haspopup="dialog" aria-controls={dialogId}
           className="grid min-h-10 w-8 place-items-center rounded-r-lg border-l border-[var(--pg-border,var(--border))] transition-colors hover:bg-[var(--pg-option-hover,var(--surface-2))]">
           <MoreHorizontal size={16} aria-hidden="true" />
         </button>
       </div>
-      {notice && <span role="status" className="sr-only">{notice}</span>}
-      {typeof document !== "undefined" && (editing || copyFailed) && createPortal(
+      {typeof document !== "undefined" && dialog && createPortal(
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/65 p-4" role="presentation"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) { setEditing(false); setCopyFailed(null); } }}>
-          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label={editing ? "Configurar proveedor de IA" : "Copiar ejercicio manualmente"}
-            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl">
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
+          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label={dialog === "settings" ? "Configurar proveedor de IA" : "Prompt para preguntar a la IA"}
+            className={"max-h-[min(90dvh,850px)] w-full overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6 " + (dialog === "prompt" ? "max-w-2xl" : "max-w-md")}>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[16px] font-extrabold">{editing ? "Preguntar a la IA" : "Copiar el ejercicio"}</h2>
-              <button type="button" onClick={() => { setEditing(false); setCopyFailed(null); }} aria-label="Cerrar"
+              <h2 className="text-[17px] font-extrabold">{dialog === "settings" ? "Configurar IA" : "Preguntar a la IA"}</h2>
+              <button type="button" onClick={() => setDialog(null)} aria-label="Cerrar"
                 className="grid h-9 w-9 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={18}/></button>
             </div>
-            {editing ? (
+            {dialog === "settings" ? (
               <>
                 <AiHelpSettings settings={settings} onChange={onChange}/>
-                <button type="button" onClick={() => setEditing(false)} className="tactile-primary mt-5 min-h-10 w-full rounded-xl px-4 text-[12px] font-bold">
+                <button type="button" onClick={() => setDialog(null)} className="tactile-primary mt-5 min-h-10 w-full rounded-xl px-4 text-[12px] font-bold">
                   <Check size={15} className="mr-1 inline"/> Listo
                 </button>
               </>
             ) : (
               <>
-                <p className="mt-3 text-[12px] leading-5 text-[var(--muted)]">El navegador no permitió copiar automáticamente. Selecciona este texto y pégalo en tu IA.</p>
-                <textarea readOnly value={copyFailed ?? ""} onFocus={(event) => event.currentTarget.select()}
-                  aria-label="Prompt completo" className="mt-3 h-48 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3 text-[11px]" />
-                <button type="button" onClick={() => { if (copyFailed) void copyToClipboard(copyFailed).then((success) => { if (success) { setCopyFailed(null); setNotice("Prompt copiado. Pégalo en tu IA."); } }); }}
-                  className="soft-button mt-3 min-h-10 w-full rounded-xl text-[12px] font-bold"><Copy size={15} className="mr-1 inline"/> Reintentar copiar</button>
-                {destination && <a href={destination} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--primary)]">Abrir proveedor <ExternalLink size={13}/></a>}
+                <p className="mt-3 text-[12px] leading-5 text-[var(--muted)]">
+                  <strong className="text-[var(--text)]">1.</strong> Copia el mensaje completo de abajo. <strong className="text-[var(--text)]">2.</strong> Abre {providerName} y pégalo en su chat.
+                  La IA no recibe el ejercicio hasta que tú lo pegues y lo envíes.
+                </p>
+                <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <label htmlFor={promptId} className="text-[12px] font-extrabold">Prompt completo + ejercicio</label>
+                    <span className="text-[10px] font-semibold text-[var(--muted)]">Puedes seleccionarlo</span>
+                  </div>
+                  <textarea id={promptId} readOnly value={prompt} onFocus={(event) => event.currentTarget.select()}
+                    className="h-[min(43dvh,340px)] min-h-40 w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 font-mono text-[12px] leading-5 text-[var(--text)] outline-offset-2" />
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-[var(--muted)]">Incluye enunciado, alternativas, fórmulas y tablas. Si la pregunta tiene una imagen, adjúntala manualmente en la IA.</p>
+                {copied && <p role="status" className="mt-3 text-[12px] font-bold text-emerald-600">¡Copiado! Ahora abre {providerName} y pega con Ctrl+V.</p>}
+                {copyError && <p role="alert" className="mt-3 text-[12px] font-bold text-amber-600">No se pudo copiar automáticamente. Selecciona el texto y usa Ctrl+C.</p>}
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button type="button" onClick={copyPrompt}
+                    className="soft-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold">
+                    {copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? "Copiado" : "Copiar prompt"}
+                  </button>
+                  <button type="button" onClick={openProvider}
+                    className="tactile-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold">
+                    {destination ? `Abrir ${providerName}` : "Configurar enlace"} <ExternalLink size={16}/>
+                  </button>
+                </div>
               </>
             )}
           </section>

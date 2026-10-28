@@ -22,9 +22,16 @@ test("AI help is off by default and can be enabled for both an essay and Playgro
   await page.getByRole("button", { name: "Cerrar ajustes" }).click();
   await expect(page.getByRole("button", { name: "Preguntar a la IA" })).toBeVisible();
   await page.getByRole("button", { name: "Preguntar a la IA" }).click();
+  const promptDialog = page.getByRole("dialog", { name: "Prompt para preguntar a la IA" });
+  await expect(promptDialog.getByLabel("Prompt completo + ejercicio")).toHaveValue(/Pregunta 1/);
+  await expect(promptDialog.getByLabel("Prompt completo + ejercicio")).toHaveValue(/Alternativas:/);
+  await promptDialog.getByRole("button", { name: "Copiar prompt" }).click();
+  await expect(promptDialog.getByRole("status")).toContainText("Copiado");
+  await promptDialog.getByRole("button", { name: "Abrir ChatGPT" }).click();
   await expect.poll(() => page.evaluate(() => window.__aiOpened)).toBe("https://chatgpt.com/");
   await expect.poll(() => page.evaluate(() => window.__aiPrompt)).toContain("Pregunta 1");
   await expect.poll(() => page.evaluate(() => window.__aiPrompt)).toContain("Alternativas:");
+  await promptDialog.getByRole("button", { name: "Cerrar" }).click();
 
   await page.goto("/app/playground");
   await page.getByRole("button", { name: /Comenzar práctica/ }).click();
@@ -33,6 +40,10 @@ test("AI help is off by default and can be enabled for both an essay and Playgro
   await page.getByRole("dialog", { name: "Configurar proveedor de IA" }).getByLabel("Proveedor de IA").selectOption("gemini");
   await page.getByRole("button", { name: "Listo" }).click();
   await page.getByRole("button", { name: "Preguntar a la IA" }).click();
+  const playgroundPrompt = page.getByRole("dialog", { name: "Prompt para preguntar a la IA" });
+  await expect(playgroundPrompt.getByLabel("Prompt completo + ejercicio")).toHaveValue(/Enunciado:/);
+  await playgroundPrompt.getByRole("button", { name: "Copiar prompt" }).click();
+  await playgroundPrompt.getByRole("button", { name: "Abrir Gemini" }).click();
   await expect.poll(() => page.evaluate(() => window.__aiOpened)).toBe("https://gemini.google.com/app");
   await expect.poll(() => page.evaluate(() => window.__aiPrompt)).toContain("Enunciado:");
 });
@@ -46,6 +57,10 @@ test("an imported exam copies its question without exposing its hidden solution"
   await page.getByRole("link", { name: "Ver en Mis ensayos", exact: true }).click();
   await page.getByRole("link", { name: /Practicar: ENSAYO TESLA/ }).click();
   await page.getByRole("button", { name: "Preguntar a la IA" }).click();
+  const promptDialog = page.getByRole("dialog", { name: "Prompt para preguntar a la IA" });
+  await expect(promptDialog.getByLabel("Prompt completo + ejercicio")).toHaveValue(/Alternativas:/);
+  await promptDialog.getByRole("button", { name: "Copiar prompt" }).click();
+  await promptDialog.getByRole("button", { name: "Abrir Claude" }).click();
   await expect.poll(() => page.evaluate(() => window.__aiOpened)).toBe("https://claude.ai/new");
   const prompt = await page.evaluate(() => window.__aiPrompt);
   expect(prompt).toContain("Alternativas:");
