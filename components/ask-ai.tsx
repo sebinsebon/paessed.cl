@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Bot, Check, Copy, ExternalLink, MoreHorizontal, X } from "lucide-react";
+import { Bot, Check, Copy, ExternalLink, X } from "lucide-react";
 import {
   AI_PROVIDERS, AI_SETTINGS_EVENT, DEFAULT_AI_SETTINGS,
   aiDestination, buildAiQuestionPrompt, readAiSettings, saveAiSettings,
@@ -33,44 +33,21 @@ export function useAiSettings() {
 type SettingsProps = { settings: AiSettings; onChange: (next: AiSettings) => void };
 
 export function AiHelpSettings({ settings, onChange }: SettingsProps) {
-  const providerId = useId();
-  const customId = useId();
   return (
     <section aria-label="Ayuda con inteligencia artificial" className="mt-4 border-t border-[var(--border)] pt-4">
-      <label className="flex cursor-pointer items-start justify-between gap-3">
-        <span>
+      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3 transition-colors hover:border-[var(--primary)]">
+        <span className="min-w-0">
           <span className="block text-[12px] font-extrabold text-[var(--text)]">Preguntar a la IA</span>
-          <span className="mt-1 block text-[11px] leading-4 text-[var(--muted)]">Desactivado por defecto. Muestra un botón en cada pregunta.</span>
+          <span className="mt-1 block text-[11px] leading-4 text-[var(--muted)]">{settings.enabled ? "Disponible en cada pregunta" : "Activar ayuda opcional para cada pregunta"}</span>
         </span>
-        <input type="checkbox" checked={settings.enabled} onChange={(event) => onChange({ ...settings, enabled: event.target.checked })}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]" aria-label="Activar Preguntar a la IA" />
+        <span className="relative inline-flex h-7 w-12 shrink-0 items-center">
+          <input type="checkbox" checked={settings.enabled} onChange={(event) => onChange({ ...settings, enabled: event.target.checked })}
+            className="peer sr-only" aria-label="Activar Preguntar a la IA" />
+          <span aria-hidden="true" className="absolute inset-0 rounded-full border border-[var(--border)] bg-[var(--surface-3)] transition-colors peer-checked:border-[var(--primary)] peer-checked:bg-[var(--primary)] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--primary)]" />
+          <span aria-hidden="true" className="pointer-events-none relative ml-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+        </span>
       </label>
-      {settings.enabled && (
-        <div className="mt-4 space-y-3">
-          <div>
-            <label htmlFor={providerId} className="mb-1.5 block text-[11px] font-bold text-[var(--text)]">Proveedor de IA</label>
-            <select id={providerId} value={settings.provider}
-              onChange={(event) => onChange({ ...settings, provider: event.target.value as AiSettings["provider"] })}
-              className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 text-[12px] font-semibold text-[var(--text)]">
-              {AI_PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
-            </select>
-          </div>
-          {settings.provider === "custom" && (
-            <div>
-              <label htmlFor={customId} className="mb-1.5 block text-[11px] font-bold text-[var(--text)]">Enlace personalizado</label>
-              <input id={customId} type="url" inputMode="url" placeholder="https://mi-ia.example/"
-                value={settings.customUrl} onChange={(event) => onChange({ ...settings, customUrl: event.target.value })}
-                className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-[12px] text-[var(--text)] placeholder:text-[var(--muted)]" />
-              {!aiDestination(settings) && <p role="status" className="mt-1 text-[10px] text-amber-600">Introduce un enlace http:// o https:// válido.</p>}
-            </div>
-          )}
-          <p className="text-[10px] leading-4 text-[var(--muted)]">
-            Al pulsar el botón verás el prompt completo, con el enunciado, alternativas y fórmulas originales.
-            Podrás copiarlo y abrir tu IA para pegarlo allí. No se envía automáticamente.
-            Si hay imágenes, tendrás que adjuntarlas manualmente.
-          </p>
-        </div>
-      )}
+      {settings.enabled && <p className="mt-2 text-[10px] leading-4 text-[var(--muted)]">Elige tu IA al abrir el ejercicio; se recordará tu última elección. Tendrás que copiar y pegar el prompt.</p>}
     </section>
   );
 }
@@ -95,21 +72,23 @@ async function copyToClipboard(value: string): Promise<boolean> {
 type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean };
 
 export function AskAiButton({ settings, onChange, question, disabled = false }: AskProps) {
-  const [dialog, setDialog] = useState<"settings" | "prompt" | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const dialogId = useId();
   const promptId = useId();
+  const providerId = useId();
+  const customId = useId();
   const dialogRef = useRef<HTMLElement>(null);
-  const settingsTriggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => { setDialog(null); setCopied(false); setCopyError(false); }, [question.number]);
+  useEffect(() => { setDialogOpen(false); setCopied(false); setCopyError(false); }, [question.number]);
   useEffect(() => {
-    if (!dialog) return;
+    if (!dialogOpen) return;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialogRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Cerrar"]')?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDialog(null);
+      if (event.key === "Escape") setDialogOpen(false);
       if (event.key !== "Tab") return;
       const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
         'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)'
@@ -124,20 +103,20 @@ export function AskAiButton({ settings, onChange, question, disabled = false }: 
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      (previouslyFocused?.isConnected ? previouslyFocused : settingsTriggerRef.current)?.focus();
+      (previouslyFocused?.isConnected ? previouslyFocused : triggerRef.current)?.focus();
     };
-  }, [dialog]);
+  }, [dialogOpen]);
 
   if (!settings.enabled) return null;
 
   const destination = aiDestination(settings);
   const providerName = AI_PROVIDERS.find((provider) => provider.id === settings.provider)?.label ?? "IA";
-  const prompt = dialog === "prompt" ? buildAiQuestionPrompt(question) : "";
+  const prompt = dialogOpen ? buildAiQuestionPrompt(question) : "";
   const previewPrompt = () => {
     if (disabled) return;
     setCopied(false);
     setCopyError(false);
-    setDialog("prompt");
+    setDialogOpen(true);
   };
   const copyPrompt = () => {
     void copyToClipboard(prompt).then((success) => {
@@ -146,47 +125,55 @@ export function AskAiButton({ settings, onChange, question, disabled = false }: 
     });
   };
   const openProvider = () => {
-    if (!destination) { setDialog("settings"); return; }
+    if (!destination) return;
     window.open(destination, "_blank", "noopener,noreferrer");
   };
 
   return (
     <>
-      <div className="relative inline-flex shrink-0 items-stretch rounded-lg border border-[var(--pg-border,var(--border))] bg-[var(--pg-option,var(--surface))] text-[var(--pg-fg,var(--text))]">
-        <button type="button" disabled={disabled} onClick={previewPrompt}
+      <div className="inline-flex shrink-0">
+        <button ref={triggerRef} type="button" disabled={disabled} onClick={previewPrompt}
           title="Ver el ejercicio y el prompt para copiar" aria-label="Preguntar a la IA"
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-l-lg px-2.5 text-[11px] font-bold transition-colors hover:bg-[var(--pg-option-hover,var(--surface-2))] disabled:opacity-40 sm:px-3">
-          <Bot size={16} aria-hidden="true" /> <span className="hidden min-[420px]:inline">Preguntar a la IA</span><span className="min-[420px]:hidden">IA</span>
-        </button>
-        <button ref={settingsTriggerRef} type="button" onClick={() => setDialog("settings")} title="Configurar proveedor de IA"
-          aria-label="Configurar proveedor de IA" aria-haspopup="dialog" aria-controls={dialogId}
-          className="grid min-h-10 w-8 place-items-center rounded-r-lg border-l border-[var(--pg-border,var(--border))] transition-colors hover:bg-[var(--pg-option-hover,var(--surface-2))]">
-          <MoreHorizontal size={16} aria-hidden="true" />
+          aria-haspopup="dialog" aria-controls={dialogId} aria-expanded={dialogOpen}
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-[var(--pg-border,var(--border))] bg-[var(--pg-option,var(--surface))] px-2.5 text-[11px] font-bold text-[var(--pg-fg,var(--text))] transition-colors hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover,var(--surface-2))] disabled:opacity-40 sm:px-3">
+          <Bot size={15} aria-hidden="true" /> Preguntar a la IA
         </button>
       </div>
-      {typeof document !== "undefined" && dialog && createPortal(
+      {typeof document !== "undefined" && dialogOpen && createPortal(
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/65 p-4" role="presentation"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
-          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label={dialog === "settings" ? "Configurar proveedor de IA" : "Prompt para preguntar a la IA"}
-            className={"max-h-[min(90dvh,850px)] w-full overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6 " + (dialog === "prompt" ? "max-w-2xl" : "max-w-md")}>
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setDialogOpen(false); }}>
+          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label="Prompt para preguntar a la IA"
+            className="max-h-[min(90dvh,850px)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[17px] font-extrabold">{dialog === "settings" ? "Configurar IA" : "Preguntar a la IA"}</h2>
-              <button type="button" onClick={() => setDialog(null)} aria-label="Cerrar"
+              <h2 className="text-[17px] font-extrabold">Preguntar a la IA</h2>
+              <button type="button" onClick={() => setDialogOpen(false)} aria-label="Cerrar"
                 className="grid h-9 w-9 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={18}/></button>
             </div>
-            {dialog === "settings" ? (
-              <>
-                <AiHelpSettings settings={settings} onChange={onChange}/>
-                <button type="button" onClick={() => setDialog(null)} className="tactile-primary mt-5 min-h-10 w-full rounded-xl px-4 text-[12px] font-bold">
-                  <Check size={15} className="mr-1 inline"/> Listo
-                </button>
-              </>
-            ) : (
-              <>
+            <>
                 <p className="mt-3 text-[12px] leading-5 text-[var(--muted)]">
                   <strong className="text-[var(--text)]">1.</strong> Copia el mensaje completo de abajo. <strong className="text-[var(--text)]">2.</strong> Abre {providerName} y pégalo en su chat.
                   La IA no recibe el ejercicio hasta que tú lo pegues y lo envíes.
                 </p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div>
+                    <label htmlFor={providerId} className="mb-1.5 block text-[11px] font-extrabold">¿Qué IA quieres usar?</label>
+                    <select id={providerId} value={settings.provider}
+                      onChange={(event) => onChange({ ...settings, provider: event.target.value as AiSettings["provider"] })}
+                      className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 text-[12px] font-semibold text-[var(--text)]">
+                      {AI_PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.label}</option>)}
+                    </select>
+                  </div>
+                  <p className="pb-1 text-[10px] text-[var(--muted)]">Se guarda tu última elección.</p>
+                </div>
+                {settings.provider === "custom" && (
+                  <div className="mt-3">
+                    <label htmlFor={customId} className="mb-1.5 block text-[11px] font-bold">Enlace personalizado</label>
+                    <input id={customId} type="url" inputMode="url" placeholder="https://mi-ia.example/"
+                      value={settings.customUrl} onChange={(event) => onChange({ ...settings, customUrl: event.target.value })}
+                      className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 text-[12px] text-[var(--text)] placeholder:text-[var(--muted)]" />
+                    {!destination && <p role="status" className="mt-1 text-[11px] text-amber-600">Escribe un enlace http:// o https:// válido.</p>}
+                  </div>
+                )}
                 <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <label htmlFor={promptId} className="text-[12px] font-extrabold">Prompt completo + ejercicio</label>
@@ -203,13 +190,12 @@ export function AskAiButton({ settings, onChange, question, disabled = false }: 
                     className="soft-button inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold">
                     {copied ? <Check size={16}/> : <Copy size={16}/>} {copied ? "Copiado" : "Copiar prompt"}
                   </button>
-                  <button type="button" onClick={openProvider}
-                    className="tactile-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold">
-                    {destination ? `Abrir ${providerName}` : "Configurar enlace"} <ExternalLink size={16}/>
+                  <button type="button" onClick={openProvider} disabled={!destination}
+                    className="tactile-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-bold disabled:cursor-not-allowed disabled:opacity-45">
+                    Abrir {providerName} <ExternalLink size={16}/>
                   </button>
                 </div>
               </>
-            )}
           </section>
         </div>, document.body)}
     </>

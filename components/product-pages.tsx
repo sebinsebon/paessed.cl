@@ -37,7 +37,7 @@ import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1
 import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useDrawingTools } from "@/components/use-drawing-tools";
-import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
+import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
 import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
 import { LocalStorageDashboard } from "@/components/local-storage-dashboard";
 import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
@@ -566,7 +566,7 @@ export function PlaygroundExperience() {
   const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id));
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
-  const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("auto");
+  const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
   const { aiSettings, updateAiSettings } = useAiSettings();
   const settingsRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<string[]>([]);
@@ -744,8 +744,7 @@ export function PlaygroundExperience() {
   };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("paessed-playground-paper-theme");
-    if (savedTheme === "auto" || savedTheme === "light" || savedTheme === "dark") setPaperTheme(savedTheme);
+    setPaperTheme(readQuestionPaperTheme());
   }, []);
 
   useEffect(() => {
@@ -769,7 +768,7 @@ export function PlaygroundExperience() {
 
   const choosePaperTheme = (theme: "auto" | "light" | "dark") => {
     setPaperTheme(theme);
-    localStorage.setItem("paessed-playground-paper-theme", theme);
+    saveQuestionPaperTheme(theme);
     setSettingsOpen(false);
   };
 
@@ -1365,7 +1364,18 @@ export function PlaygroundExperience() {
                     <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year ?? "Sin año"}</span>
                     <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">{current.collection}</span>
                   </div>
-                  <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
+                  <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                    <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{current.axis} · {current.topic}</span>
+                    <AskAiButton key={current.id} settings={aiSettings} onChange={updateAiSettings}
+                      question={{
+                        number: current.number,
+                        stem: current.stemBlocks ?? current.stem,
+                        options: current.options.map((option, index) => ({
+                          label: current.optionLabels?.[index] ?? String.fromCharCode(65 + index),
+                          content: current.optionBlocks?.[index] ?? option,
+                        })),
+                      }} />
+                  </div>
                 </div>
 
                 <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
@@ -1387,11 +1397,11 @@ export function PlaygroundExperience() {
                     </div>
                   )}
                   {current.options.length === 0 && (
-                    <p className="mt-auto text-[12px] text-[var(--pg-muted)]">
+                    <p className="mt-6 text-[12px] text-[var(--pg-muted)]">
                       No se reconocieron alternativas en el archivo importado. Puedes saltar la pregunta.
                     </p>
                   )}
-                  <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
+                  <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
                     {current.options.map((option, index) => {
                       const letter = current.optionLabels?.[index] ?? playgroundAnswerLetters[index];
                       const selected = selectedAnswer === letter;
@@ -1455,15 +1465,6 @@ export function PlaygroundExperience() {
                     >
                       <ChevronLeft size={16} /> Anterior
                     </button>
-                    <AskAiButton key={current.id} settings={aiSettings} onChange={updateAiSettings}
-                      question={{
-                        number: current.number,
-                        stem: current.stemBlocks ?? current.stem,
-                        options: current.options.map((option, index) => ({
-                          label: current.optionLabels?.[index] ?? String.fromCharCode(65 + index),
-                          content: current.optionBlocks?.[index] ?? option,
-                        })),
-                      }} />
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                       {current.options.length === 0 && !isRevealed ? (
                         <button type="button" onClick={() => setRevealed((old)=>({...old,[current.id]:true}))}

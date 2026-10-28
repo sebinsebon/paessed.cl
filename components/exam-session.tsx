@@ -12,7 +12,7 @@ import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useDrawingTools } from "@/components/use-drawing-tools";
-import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
+import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 
 type DemoQuestion = {
@@ -116,8 +116,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   useEffect(() => { saveProgress(); }, [saveProgress]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("paessed-essay-paper-theme");
-    if (stored === "auto" || stored === "light" || stored === "dark") setPaperTheme(stored);
+    setPaperTheme(readQuestionPaperTheme());
   }, []);
 
   useEffect(() => {
@@ -177,7 +176,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   };
   const changePaperTheme = (next: "auto" | "light" | "dark") => {
     setPaperTheme(next);
-    localStorage.setItem("paessed-essay-paper-theme", next);
+    saveQuestionPaperTheme(next);
     setSettingsOpen(false);
   };
 
@@ -374,9 +373,13 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
               {flagged[index] && <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600"><Flag size={12} fill="currentColor" /> Marcada</span>}
             </div>
-            <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
-              {q.domain} · {getM1Unit(q.unitId)?.name}
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
+                {q.domain} · {getM1Unit(q.unitId)?.name}
+              </span>
+              <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
+                question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
+            </div>
           </div>
 
           <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
@@ -384,7 +387,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                 {q.prompt}
               </h2>
-              <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
+              <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
                 {q.options.map((option, optionIndex) => {
                   const active = answers[index] === optionIndex;
                   const letter = String.fromCharCode(65 + optionIndex);
@@ -408,8 +411,6 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
                 <ChevronLeft size={16} /> Anterior
               </button>
               <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">Pregunta {index + 1} de {QUESTIONS.length}</span>
-              <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
-                question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
               <div className="ml-auto flex items-center gap-2">
                 {index < QUESTIONS.length - 1 ? (
                   <button type="button" onClick={() => goToQuestion(index + 1)}

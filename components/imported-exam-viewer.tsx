@@ -11,7 +11,7 @@ import { blockAssetIds, imageReferences } from "@/lib/imported-resources";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useDrawingTools } from "@/components/use-drawing-tools";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
-import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
+import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
 import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 
@@ -125,10 +125,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   }, [id, restored, record, active, answers, bookmarks, strokes]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("paessed-imported-paper-theme");
-      if (saved === "auto" || saved === "light" || saved === "dark") setPaperTheme(saved);
-    } catch {}
+    setPaperTheme(readQuestionPaperTheme());
   }, []);
 
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
@@ -197,7 +194,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   };
   const changeTheme = (theme: "auto" | "light" | "dark") => {
     setPaperTheme(theme);
-    try { localStorage.setItem("paessed-imported-paper-theme", theme); } catch {}
+    saveQuestionPaperTheme(theme);
     setSettingsOpen(false);
   };
   const toggleBookmark = () => {
@@ -404,8 +401,9 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                 <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
+                <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
               </div>
             </div>
 
@@ -437,7 +435,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                       </>
                   )}
                   {currentOptions.length ? (
-                    <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
+                    <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
                       {currentOptions.map((option, index) => {
                         const letter = String.fromCharCode(65 + index);
                         const picked = selectedAnswer === letter;
@@ -453,7 +451,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
                       })}
                     </div>
                   ) : (
-                    <p className="mt-auto max-w-[1060px] rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-[12px] text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
+                    <p className="mt-6 max-w-[1060px] rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-[12px] text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
                       El archivo no tiene alternativas reconocibles para esta pregunta.
                     </p>
                   )}
@@ -476,7 +474,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
                 <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">
                   {questions.length ? "Pregunta " + (active + 1) + " de " + questions.length : "Sin preguntas"}
                 </span>
-                <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
                 <button type="button" disabled={active >= questions.length - 1 || questions.length === 0} onClick={() => setQuestion(active + 1)}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
                   Siguiente <ChevronRight size={16}/>

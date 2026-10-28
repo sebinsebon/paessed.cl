@@ -4,6 +4,7 @@ import {
   DEFAULT_AI_SETTINGS, aiContentText, aiDestination, buildAiQuestionPrompt,
   customAiUrl, parseAiSettings,
 } from "../lib/ai-assistance.ts";
+import { QUESTION_PAPER_THEME_KEY, readQuestionPaperTheme, saveQuestionPaperTheme } from "../lib/question-paper.ts";
 
 describe("AI question handoff", () => {
   it("is opt-in and ignores malformed or unknown settings", () => {
@@ -63,5 +64,28 @@ describe("AI question handoff", () => {
     const prompt = buildAiQuestionPrompt({ number: "7", stem: "Pregunta original", options: [] });
     assert.doesNotMatch(prompt, /Alternativas:/);
     assert.match(prompt, /Pregunta original/);
+  });
+});
+
+describe("shared question paper theme", () => {
+  it("defaults to light and migrates existing essay preferences", () => {
+    const original = globalThis.localStorage;
+    const entries = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => entries.get(key) ?? null,
+      setItem: (key, value) => entries.set(key, value),
+    };
+    try {
+      assert.equal(readQuestionPaperTheme(), "light");
+      entries.set("paessed-playground-paper-theme", "auto");
+      entries.set("paessed-essay-paper-theme", "light");
+      assert.equal(readQuestionPaperTheme(), "light");
+      saveQuestionPaperTheme("dark");
+      assert.equal(entries.get(QUESTION_PAPER_THEME_KEY), "dark");
+      assert.equal(readQuestionPaperTheme(), "dark");
+    } finally {
+      if (original === undefined) delete globalThis.localStorage;
+      else globalThis.localStorage = original;
+    }
   });
 });
