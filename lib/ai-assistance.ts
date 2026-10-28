@@ -1,3 +1,5 @@
+import Emphasis from "./paessed-runtime/block-renderer.js";
+
 export const AI_SETTINGS_KEY = "paessed-ai-assistance-v1";
 export const AI_SETTINGS_EVENT = "paessed-ai-assistance-changed";
 
@@ -80,14 +82,15 @@ export function aiDestination(settings: AiSettings): string | null {
 /** Preserve the source LaTeX and row structure rather than copying KaTeX's rendered DOM. */
 export function aiContentText(value: unknown, depth = 0): string {
   if (depth > 16 || value == null) return "";
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "string" || typeof value === "number") return typeof value === "string" ? Emphasis.plainText(value) : String(value);
   if (Array.isArray(value)) return value.map((item) => aiContentText(item, depth + 1)).join("");
   if (!isRecord(value)) return "";
 
   switch (value.type) {
     case "text": return aiContentText(value.text ?? value.content ?? value.value, depth + 1);
     case "math": {
-      const latex = aiContentText(value.latex ?? value.value, depth + 1);
+      const raw = value.latex ?? value.value;
+      const latex = typeof raw === "string" || typeof raw === "number" ? String(raw) : "";
       return value.display ? `\n\\[${latex}\\]\n` : `\\(${latex}\\)`;
     }
     case "image": return `\n[Imagen del ejercicio${value.alt ? `: ${String(value.alt)}` : ""}. Adjuntar manualmente si es necesaria.]\n`;

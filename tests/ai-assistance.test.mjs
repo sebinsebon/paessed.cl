@@ -7,6 +7,12 @@ import {
 import { QUESTION_PAPER_THEME_KEY, readQuestionPaperTheme, saveQuestionPaperTheme } from "../lib/question-paper.ts";
 
 describe("AI question handoff", () => {
+  it("copies emphasis as readable prose without changing math or invalid literal tags", () => {
+    assert.equal(aiContentText([{type:"text",text:"Una <b>palabra</b> <i>destacada</i> "},{type:"math",latex:"x_{<b>}",display:false}]),"Una palabra destacada \\(x_{<b>}\\)");
+    assert.equal(aiContentText({type:"text",text:"<b>incompleta"}),"<b>incompleta");
+    const prompt=buildAiQuestionPrompt({number:1,stem:[{type:"text",text:"¿Es <b>INCORRECTA</b>?"}],options:[{label:"A",content:[{type:"text",text:"<i>Primera</i>"}]}]});
+    assert.ok(prompt.includes("¿Es INCORRECTA?"));assert.ok(prompt.includes("A) Primera"));assert.ok(!prompt.includes("<b>"));
+  });
   it("is opt-in and ignores malformed or unknown settings", () => {
     assert.deepEqual(parseAiSettings(null), DEFAULT_AI_SETTINGS);
     assert.deepEqual(parseAiSettings({ enabled: "yes", provider: "other", customUrl: 42 }), DEFAULT_AI_SETTINGS);
