@@ -117,27 +117,12 @@ function masteryStyle(state: MasteryState): MasteryCSS {
  */
 function carouselMasteryColor(percentage: number) {
   const pct = Math.max(0, Math.min(100, percentage));
-
-  // Bright mastery family from the dashboard reference:
-  // critical orange → regular gold → strong lime → mastered green.
-  if (pct >= 85) return "#77E637";
-  if (pct >= 75) return "#ACE637";
-  if (pct >= 60) return "#E6B537";
-  if (pct >= 40) return "#E69A37";
-  return "#E67D37";
-}
-
-function carouselMasteryStyle(percentage: number): MasteryCSS {
-  // Only the carousel progress fill uses this palette; the card keeps its axis color.
-  const pct = Math.max(0, Math.min(100, percentage));
-  const gradient =
-    pct >= 85 ? "linear-gradient(90deg, #b6f35c, #64db35)" :
-    pct >= 75 ? "linear-gradient(90deg, #c6ed4b, #83dc39)" :
-    pct >= 60 ? "linear-gradient(90deg, #f3c64a, #c4df40)" :
-    pct >= 40 ? "linear-gradient(90deg, #f6a34a, #ebca42)" :
-    "linear-gradient(90deg, #ed5954, #f3953f)";
-
-  return { "--mastery": carouselMasteryColor(pct), background: gradient };
+  // One solid color per percentage band: red, orange, yellow, lime, green.
+  if (pct >= 85) return "#22c55e";
+  if (pct >= 75) return "#a3e635";
+  if (pct >= 60) return "#eab308";
+  if (pct >= 40) return "#f97316";
+  return "#ef4444";
 }
 
 function MasteryBadge({ state }: { state: MasteryState }) {
@@ -161,6 +146,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
   const axisColor = MASTERY[axis.state].color;
+  const progressColor = carouselMasteryColor(axis.percentage);
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -200,24 +186,17 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
         <motion.div
-          className="progress-fill h-full rounded-full"
+          className="h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${axis.percentage}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={carouselMasteryStyle(axis.percentage)}
+          style={{ backgroundColor: progressColor }}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
         <span className="font-semibold text-[var(--muted)]">
           Estado:{" "}
-          <span
-            style={{
-              ...carouselMasteryStyle(axis.percentage),
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
+          <span style={{ color: progressColor }}>
             {axis.state}
           </span>
         </span>

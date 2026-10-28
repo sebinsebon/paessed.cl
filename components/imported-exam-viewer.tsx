@@ -12,9 +12,9 @@ import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/pla
 import { useDrawingTools } from "@/components/use-drawing-tools";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
-import { getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
+import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 
-const PROGRESS_PREFIX = "paessed-imported-essay-progress-v1-";
+const PROGRESS_PREFIX = IMPORTED_EXAM_PROGRESS_PREFIX;
 type SavedImportedProgress = {
   index: number;
   answers: Record<string, string>;

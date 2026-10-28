@@ -198,6 +198,7 @@ function buildSummary(finalJson: unknown, file: File, packageFiles: string[], fi
     id: crypto.randomUUID(),
     title: inferTitle(finalJson, file.name),
     fileName: file.name,
+    fileSizeBytes: file.size,
     questionCount: questions.length,
     idCount,
     answerCount,
@@ -335,7 +336,7 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
         </div>
       ) : (
         <div className="mb-6 flex items-start gap-3">
-          <Link href="/app/ensayos" className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos"><ArrowLeft size={17} /></Link>
+          <Link href="/app/ensayos?source=local" className="soft-button grid h-10 w-10 shrink-0 place-items-center rounded-xl" aria-label="Volver a Ensayos"><ArrowLeft size={17} /></Link>
           <div>
             <div className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[var(--primary)]">Importador local</div>
             <h1 className="mt-1 text-3xl font-extrabold tracking-[-.03em]">Añade un ensayo a PAESSED</h1>
@@ -443,7 +444,7 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
           {status === "saved" && (onBack ? (
             <button type="button" onClick={onBack} className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</button>
           ) : (
-            <Link href="/app/ensayos" className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</Link>
+            <Link href="/app/ensayos?source=local" className="soft-button inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-xs font-extrabold">Ver en Mis ensayos</Link>
           ))}
 
           <p className="px-1 text-[10px] leading-4 text-[var(--muted-2)]">

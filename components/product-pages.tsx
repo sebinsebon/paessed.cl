@@ -39,6 +39,7 @@ import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/pla
 import { useDrawingTools } from "@/components/use-drawing-tools";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
+import { LocalStorageDashboard } from "@/components/local-storage-dashboard";
 import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
 
 const learningNodes = [
@@ -1540,7 +1541,7 @@ export function ProfileExperience() {
           </div>
 
           <div className="surface rounded-2xl p-5 sm:p-6">
-            <div className="flex items-center gap-2 text-sm font-extrabold"><Settings size={18} className="text-[var(--muted)]" />Preferencias</div>
+            <div className="flex items-center gap-2 text-sm font-extrabold"><Settings size={18} className="text-[var(--muted)]" />Preferencias <span className="text-[10px] font-semibold text-[var(--muted)]">(ejemplo)</span></div>
             <div className="mt-5 divide-y divide-[var(--border)]">
               {[
                 ["Recordatorio de práctica", "19:00"],
@@ -1558,7 +1559,7 @@ export function ProfileExperience() {
 
         <aside className="space-y-4">
           <div className="surface-raised rounded-2xl p-5">
-            <div className="flex items-center gap-2 text-sm font-extrabold"><Trophy size={18} className="text-amber-500" />Resumen</div>
+            <div className="flex items-center gap-2 text-sm font-extrabold"><Trophy size={18} className="text-amber-500" />Resumen <span className="text-[10px] font-semibold text-[var(--muted)]">(ejemplo)</span></div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-2xl bg-[var(--surface-2)] p-4"><div className="text-2xl font-extrabold">12</div><div className="mt-1 text-[10px] font-bold text-[var(--muted)]">días de racha</div></div>
               <div className="rounded-2xl bg-[var(--surface-2)] p-4"><div className="text-2xl font-extrabold">1.240</div><div className="mt-1 text-[10px] font-bold text-[var(--muted)]">XP total</div></div>
@@ -1573,7 +1574,8 @@ export function ProfileExperience() {
           </div>
         </aside>
       </div>
-      
+
+      <LocalStorageDashboard />
     </AppShell>
   );
 }

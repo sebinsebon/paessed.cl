@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
 import {buildPaessedPackage} from "@/lib/paessed-export";
 import {validatePaessed} from "@/lib/paessed-package";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, ArrowDownToLine, Check, ChevronDown, FileJson2, Save, X } from "lucide-react";
+import { AlertCircle, ArrowDownToLine, Archive, Check, ChevronDown, FileJson2, RotateCcw, Save, ShieldAlert, Upload, X } from "lucide-react";
 import {
-  answerCount, applyQuestionPatch, getEditableQuestions, inspectQuestion, isJsonObject,
+  answerCount, applyAdvancedQuestionJson, applyQuestionPatch, getEditableQuestions, inspectQuestion, isJsonObject,
   type QuestionPatch, type QuestionView,
 } from "@/lib/exam-editing";
-import { getImportedExam, saveImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
+import { getImportedExam, saveImportedExam, IMPORTED_EXAM_PROGRESS_PREFIX, type ImportedExamRecord } from "@/lib/local-imports";
+import { createExamBackup, inspectExamBackup, type ExamBackupPreview } from "@/lib/exam-backup";
+
+type EditorTab = "basic" | "advanced" | "backups";
 
 type EditorProps = { examId: string; onClose: () => void; onSaved: () => Promise<void> | void };
 
@@ -61,6 +64,14 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [tab, setTab] = useState<EditorTab>("basic");
+  const [advancedPrompt, setAdvancedPrompt] = useState(false);
+  const [advancedUnlocked, setAdvancedUnlocked] = useState(false);
+  const [advancedText, setAdvancedText] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupPreview, setBackupPreview] = useState<ExamBackupPreview | null>(null);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let current = true;
@@ -68,6 +79,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
       if (!current) return;
       setRecord(result);
       if (result && getEditableQuestions(result.finalJson).length > 0) {
+        setAdvancedText(JSON.stringify(getEditableQuestions(result.finalJson)[0], null, 2) ?? "");
         try { setForm(formFromQuestion(inspectQuestion(result.finalJson, 0))); }
         catch (err) { setError(err instanceof Error ? err.message : "No se pudo leer la primera pregunta."); }
       }
@@ -83,38 +95,47 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
     try { return inspectQuestion(record.finalJson, active); } catch { return null; }
   }, [record, active, questions.length]);
 
-  const dirty = !!form && !!inspected && (
+  const basicDirty = !!form && !!inspected && (
     form.number !== inspected.number ||
     form.stem !== inspected.stem ||
     form.answer !== inspected.answer ||
     form.options.some((value, index) => value !== inspected.options[index]?.text)
   );
+  const originalAdvancedText = questions[active] === undefined ? "" : JSON.stringify(questions[active], null, 2);
+  const advancedDirty = advancedText !== originalAdvancedText;
+  const dirty = basicDirty || advancedDirty;
 
   const dismiss = useCallback(() => {
-    if (saving || exporting) return;
+    if (saving || exporting || backupBusy) return;
     if (dirty && !window.confirm("Hay cambios sin guardar. ¿Descartarlos y cerrar?")) return;
     onClose();
-  }, [dirty, saving, exporting, onClose]);
+  }, [dirty, saving, exporting, backupBusy, onClose]);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); dismiss(); }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (advancedPrompt) setAdvancedPrompt(false);
+        else if (confirmRestore) setConfirmRestore(false);
+        else dismiss();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
       document.removeEventListener("keydown", onKey);
     };
-  }, [dismiss]);
+  }, [dismiss, advancedPrompt, confirmRestore]);
 
   const chooseQuestion = (index: number) => {
-    if (!record || saving || active === index) return;
+    if (!record || saving || backupBusy || active === index) return;
     if (dirty && !window.confirm("Tienes cambios sin guardar. ¿Descartarlos y abrir otra pregunta?")) return;
     try {
       setActive(index);
       setForm(formFromQuestion(inspectQuestion(record.finalJson, index)));
+      setAdvancedText(JSON.stringify(getEditableQuestions(record.finalJson)[index], null, 2) ?? "");
       setError("");
       setNotice("");
     } catch (err) {
@@ -123,13 +144,16 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   };
 
   const save = async () => {
-    if (!record || !form || !dirty || saving) return;
+    if (!record || saving || exporting || backupBusy || tab === "backups") return;
+    if (tab === "advanced" ? !advancedDirty : !form || !basicDirty) return;
     setSaving(true);
     setError("");
     setNotice("");
     try {
-      const updatedJson = applyQuestionPatch(record.finalJson, active, form);
-      if(isJsonObject(updatedJson)&&updatedJson.format==="paessed-benchmark") validatePaessed(updatedJson);
+      const updatedJson = tab === "advanced"
+        ? applyAdvancedQuestionJson(record.finalJson, active, advancedText)
+        : applyQuestionPatch(record.finalJson, active, form!);
+      if (isJsonObject(updatedJson) && updatedJson.format === "paessed-benchmark") validatePaessed(updatedJson);
       const updatedQuestions = getEditableQuestions(updatedJson);
       const next: ImportedExamRecord = {
         ...record,
@@ -137,15 +161,21 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
         summary: {
           ...record.summary,
           questionCount: updatedQuestions.length,
-          idCount: updatedQuestions.filter((item) => isJsonObject(item) && ["id", "question_id", "questionId", "number"].some((key) => typeof item[key] === "string" || typeof item[key] === "number")).length,
+          idCount: updatedQuestions.filter((item) => isJsonObject(item) &&
+            ["id", "question_id", "questionId", "number"].some((key) =>
+              typeof item[key] === "string" || typeof item[key] === "number")).length,
           answerCount: answerCount(updatedJson),
           preview: previewFor(updatedJson),
         },
       };
       await saveImportedExam(next);
       setRecord(next);
-      setForm(formFromQuestion(inspectQuestion(next.finalJson, active)));
-      setNotice("Cambios guardados en este navegador.");
+      setAdvancedText(JSON.stringify(getEditableQuestions(next.finalJson)[active], null, 2) ?? "");
+      try { setForm(formFromQuestion(inspectQuestion(next.finalJson, active))); }
+      catch { setForm(null); }
+      setNotice(tab === "advanced"
+        ? "Contenido avanzado guardado. La pregunta requiere una nueva verificación."
+        : "Cambios guardados en este navegador.");
       await onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el ensayo.");
@@ -155,7 +185,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   };
 
   const download = async () => {
-    if (!record || dirty || saving || exporting) return;
+    if (!record || dirty || saving || exporting || backupBusy) return;
     setExporting(true);
     setError("");
     try {
@@ -165,6 +195,103 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
       setError(err instanceof Error ? err.message : "No se pudo exportar el paquete.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const switchTab = (next: EditorTab) => {
+    if (saving || exporting || backupBusy || next === tab) return;
+    if (dirty && !window.confirm("Hay cambios sin guardar. ¿Descartarlos y cambiar de sección?")) return;
+    if (record && questions[active] !== undefined) {
+      setAdvancedText(JSON.stringify(questions[active], null, 2) ?? "");
+      try { setForm(formFromQuestion(inspectQuestion(record.finalJson, active))); }
+      catch { setForm(null); }
+    }
+    setError("");
+    setNotice("");
+    setConfirmRestore(false);
+    if (next === "advanced" && !advancedUnlocked) {
+      setAdvancedPrompt(true);
+      return;
+    }
+    setAdvancedPrompt(false);
+    setTab(next);
+  };
+
+  const downloadBackup = async (): Promise<boolean> => {
+    if (!record || saving || exporting || backupBusy) return false;
+    setBackupBusy(true);
+    setError("");
+    try {
+      const blob = await createExamBackup(record);
+      const safeName = record.summary.title.replace(/[^a-zA-Z0-9-_]+/g, "-").slice(0, 56) || "ensayo";
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = safeName + "-respaldo-" + new Date().toISOString().slice(0, 10) + ".zip";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setNotice("Respaldo descargado. Incluye las preguntas, los recursos y el progreso guardado.");
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el respaldo.");
+      return false;
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const enterAdvanced = async (withBackup: boolean) => {
+    if (withBackup && !(await downloadBackup())) return;
+    setAdvancedUnlocked(true);
+    setAdvancedPrompt(false);
+    setTab("advanced");
+    setError("");
+  };
+
+  const readBackup = async (file?: File) => {
+    if (!file || backupBusy || !record) return;
+    setBackupBusy(true);
+    setError("");
+    setNotice("");
+    setBackupPreview(null);
+    setConfirmRestore(false);
+    try {
+      const result = await inspectExamBackup(file, examId);
+      setBackupPreview(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo abrir el respaldo.");
+    } finally {
+      setBackupBusy(false);
+      if (backupInputRef.current) backupInputRef.current.value = "";
+    }
+  };
+
+  const restoreBackup = async () => {
+    if (!record || !backupPreview || backupBusy || saving) return;
+    setBackupBusy(true);
+    setError("");
+    try {
+      const restored = backupPreview.record;
+      await saveImportedExam(restored);
+      const key = IMPORTED_EXAM_PROGRESS_PREFIX + examId;
+      if (backupPreview.progress === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, backupPreview.progress);
+      setRecord(restored);
+      setActive(0);
+      setAdvancedText(JSON.stringify(getEditableQuestions(restored.finalJson)[0], null, 2) ?? "");
+      try { setForm(formFromQuestion(inspectQuestion(restored.finalJson, 0))); }
+      catch { setForm(null); }
+      setBackupPreview(null);
+      setConfirmRestore(false);
+      setNotice("Respaldo restaurado. Se recuperaron el contenido y el progreso de esta copia.");
+      await onSaved();
+    } catch (err) {
+      setError((err instanceof Error ? err.message : "No se pudo restaurar el respaldo.") +
+        " Comprueba el estado actual antes de volver a intentarlo.");
+    } finally {
+      setBackupBusy(false);
     }
   };
 
@@ -204,6 +331,25 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
             </button>
           </header>
 
+          {record && (
+            <nav aria-label="Secciones de ajustes del ensayo" className="flex shrink-0 flex-wrap gap-1 border-b border-[var(--border)] bg-[var(--surface-2)]/30 px-4 py-2 sm:px-6">
+              {([
+                ["basic", "Edición normal"],
+                ["advanced", "Modo avanzado"],
+                ["backups", "Respaldos"],
+              ] as const).map(([id, label]) => (
+                <button key={id} type="button" onClick={() => switchTab(id)}
+                  aria-current={tab === id && !advancedPrompt ? "page" : undefined}
+                  className={"rounded-lg px-3 py-2 text-[12px] font-extrabold transition-colors " +
+                    (tab === id && !advancedPrompt
+                      ? "bg-[var(--surface)] text-[var(--primary)] shadow-[var(--shadow-1)]"
+                      : "text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]")}>
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
+
           {loading ? (
             <div className="p-8 text-sm text-[var(--muted)]">Cargando preguntas…</div>
           ) : !record ? (
@@ -235,7 +381,127 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
               </aside>
 
               <div className="min-h-0 min-w-0 space-y-5 p-5 md:overflow-y-auto sm:p-6">
-                {questions.length === 0 ? (
+                {advancedPrompt ? (
+                  <section role="group" aria-labelledby="advanced-confirm-title" className="rounded-2xl border border-amber-500/35 bg-amber-500/10 p-5">
+                    <div className="mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400"><ShieldAlert size={20}/><span className="text-[11px] font-extrabold uppercase tracking-wider">Advertencia</span></div>
+                    <h3 id="advanced-confirm-title" className="text-[18px] font-extrabold">¿Activar el modo avanzado?</h3>
+                    <p className="mt-2 text-[12px] leading-6 text-[var(--muted)]">
+                      Podrás modificar directamente los bloques JSON de las preguntas, incluidas fórmulas, imágenes, alternativas y respuestas estructuradas.
+                      Un cambio incorrecto puede inutilizar el ensayo. Las preguntas editadas perderán su verificación Gold hasta revisarlas.
+                    </p>
+                    <p className="mt-3 text-[12px] font-bold">¿Quieres descargar un respaldo antes de continuar?</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button type="button" disabled={backupBusy} onClick={() => { void enterAdvanced(true); }}
+                        className="tactile-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:opacity-50">
+                        <Archive size={16}/> {backupBusy ? "Preparando…" : "Respaldar y continuar"}
+                      </button>
+                      <button type="button" disabled={backupBusy} onClick={() => { void enterAdvanced(false); }}
+                        className="soft-button inline-flex min-h-10 items-center rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
+                        Continuar sin respaldo
+                      </button>
+                      <button type="button" onClick={() => setAdvancedPrompt(false)}
+                        className="rounded-xl px-3 text-[12px] font-bold text-[var(--muted)]">Cancelar</button>
+                    </div>
+                  </section>
+                ) : tab === "backups" ? (
+                  <section aria-label="Respaldos de este ensayo" className="space-y-4">
+                    <div>
+                      <h3 className="text-[19px] font-extrabold">Respaldos del ensayo</h3>
+                      <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                        Guarda una copia con preguntas, respuestas, recursos originales y progreso local.
+                        Puedes restaurarla después en este mismo ensayo.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)]/60 p-4">
+                      <div className="flex items-start gap-3">
+                        <Archive size={20} className="mt-0.5 shrink-0 text-[var(--primary)]"/>
+                        <div>
+                          <p className="text-[13px] font-extrabold">Crear respaldo</p>
+                          <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
+                            Descarga un archivo ZIP recuperable sin modificar el ensayo actual.
+                          </p>
+                        </div>
+                      </div>
+                      <button type="button" disabled={backupBusy || saving || exporting} onClick={() => { void downloadBackup(); }}
+                        className="soft-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
+                        <ArrowDownToLine size={16}/> {backupBusy ? "Preparando…" : "Descargar respaldo .zip"}
+                      </button>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)]/60 p-4">
+                      <div className="flex items-start gap-3">
+                        <RotateCcw size={20} className="mt-0.5 shrink-0 text-[var(--primary)]"/>
+                        <div>
+                          <p className="text-[13px] font-extrabold">Restaurar respaldo</p>
+                          <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">
+                            Elige una copia creada para este ensayo. Revisaremos el archivo antes de sobrescribir cualquier dato.
+                          </p>
+                        </div>
+                      </div>
+                      <input ref={backupInputRef} type="file" accept=".zip,application/zip" className="sr-only"
+                        aria-label="Seleccionar respaldo de este ensayo"
+                        onChange={(event) => { void readBackup(event.target.files?.[0]); }}/>
+                      <button type="button" disabled={backupBusy} onClick={() => backupInputRef.current?.click()}
+                        className="soft-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
+                        <Upload size={16}/> {backupBusy ? "Verificando…" : "Seleccionar copia ZIP"}
+                      </button>
+                      {backupPreview && (
+                        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                          <p className="break-words text-[12px] font-extrabold">{backupPreview.name}</p>
+                          <p className="mt-1 text-[11px] text-[var(--muted)]">
+                            Respaldo del {new Date(backupPreview.createdAt).toLocaleString("es-CL")} ·
+                            {" "}{backupPreview.record.summary.questionCount} preguntas
+                          </p>
+                          {confirmRestore ? (
+                            <div role="alertdialog" aria-labelledby="restore-exam-backup-title" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3">
+                              <h4 id="restore-exam-backup-title" className="text-[12px] font-extrabold">¿Sobrescribir este ensayo?</h4>
+                              <p className="mt-1 text-[11px] leading-5">
+                                Se reemplazarán preguntas, recursos y progreso local con los del respaldo. Esta acción no se puede deshacer sin otra copia.
+                              </p>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button type="button" disabled={backupBusy} onClick={() => { void restoreBackup(); }}
+                                  className="min-h-10 rounded-lg bg-rose-600 px-3 text-[11px] font-extrabold text-white disabled:opacity-50">
+                                  Confirmar restauración
+                                </button>
+                                <button type="button" onClick={() => setConfirmRestore(false)}
+                                  className="soft-button min-h-10 rounded-lg px-3 text-[11px] font-bold">Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => setConfirmRestore(true)}
+                              className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg border border-rose-500/30 px-3 text-[11px] font-extrabold text-rose-600 dark:text-rose-400">
+                              <RotateCcw size={14}/> Restaurar esta copia
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-5 text-[var(--muted)]">
+                      Esta copia es exclusiva del ensayo. Los respaldos generales de todas las categorías están en Perfil → Almacenamiento local.
+                    </p>
+                  </section>
+                ) : tab === "advanced" ? (
+                  <section className="space-y-4">
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] leading-5 text-[var(--text)]">
+                      <div className="mb-1 flex items-center gap-2 font-extrabold"><ShieldAlert size={15} className="text-amber-500"/> Edición avanzada bajo tu responsabilidad</div>
+                      Edita únicamente una pregunta por vez. El JSON debe seguir siendo válido y respetar el contrato del paquete.
+                      La verificación del contenido editado quedará pendiente.
+                    </div>
+                    <div>
+                      <h3 className="text-[18px] font-extrabold">JSON de la pregunta {active + 1}</h3>
+                      <p className="mt-1 text-[12px] leading-5 text-[var(--muted)]">
+                        Aquí puedes modificar bloques de matemática, imágenes, alternativas y respuestas que el editor normal protege.
+                        El ID interno de la pregunta no se puede cambiar.
+                      </p>
+                    </div>
+                    <div>
+                      <label htmlFor="exam-advanced-json" className="mb-2 block text-[12px] font-bold">Contenido estructurado (JSON)</label>
+                      <textarea id="exam-advanced-json" spellCheck={false} value={advancedText} rows={18}
+                        onChange={(event) => { setAdvancedText(event.target.value); setNotice(""); }}
+                        className="w-full min-h-[350px] resize-y rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-3 font-mono text-[11px] leading-5 text-[var(--text)] outline-offset-2 focus:border-[var(--primary)] focus:outline-[var(--primary)]"
+                      />
+                    </div>
+                  </section>
+                ) : questions.length === 0 ? (
                   <p className="text-sm text-[var(--muted)]">Este archivo no contiene preguntas reconocibles.</p>
                 ) : !inspected || !form ? (
                   <p className="text-sm text-[var(--muted)]">Esta pregunta no tiene una estructura compatible con el editor visual.</p>
@@ -324,14 +590,14 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
           )}
 
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:px-6">
-            <button type="button" disabled={!record || dirty || saving || exporting} onClick={() => { void download(); }} className="soft-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" disabled={!record || dirty || saving || exporting || backupBusy} onClick={() => { void download(); }} className="soft-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-40">
               <ArrowDownToLine size={15} /> {exporting ? "Exportando..." : "Descargar .paessed"}
             </button>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={dismiss} className="rounded-xl px-3.5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-[var(--surface-2)]">
+              <button type="button" onClick={dismiss} disabled={saving || exporting || backupBusy} className="rounded-xl px-3.5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-[var(--surface-2)] disabled:opacity-40">
                 Cerrar
               </button>
-              <button type="button" onClick={() => { void save(); }} disabled={!dirty || saving} className="tactile-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
+              <button type="button" onClick={() => { void save(); }} disabled={tab === "backups" || advancedPrompt || !(tab === "advanced" ? advancedDirty : basicDirty) || saving || exporting || backupBusy} className="tactile-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
                 <Save size={15} />{saving ? "Guardando..." : "Guardar cambios"}
               </button>
             </div>
