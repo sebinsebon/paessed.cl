@@ -1,3 +1,4 @@
+import Emphasis from "./paessed-runtime/block-renderer.js";
 type RecordLike = Record<string, unknown>;
 
 /** Exclude answer, explanation and review metadata from legacy image discovery. */
@@ -45,7 +46,7 @@ export function getQuestionId(question: unknown, index: number): string {
 
 function flatten(value: unknown, depth = 0): string {
   if (depth > 7 || value === null || value === undefined) return "";
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "string" || typeof value === "number") return typeof value === "string" ? Emphasis.plainText(value) : String(value);
   if (Array.isArray(value)) return value.map((item) => flatten(item, depth + 1)).filter(Boolean).join(" ");
   if (!isRecord(value)) return "";
 
@@ -80,10 +81,10 @@ export function getOptions(question: unknown): Array<{ key: string; text: string
   const candidate = question.options ?? question.alternatives ?? question.choices ?? question.answers;
   if (!Array.isArray(candidate)) return [];
   return candidate.map((option, index) => {
-    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: String(option) };
+    if (typeof option === "string" || typeof option === "number") return { key: String.fromCharCode(65 + index), text: typeof option === "string" ? Emphasis.plainText(option) : String(option) };
     if (isRecord(option)) {
       const key = option.label ?? option.key ?? option.id ?? String.fromCharCode(65 + index);
-      const text = flatten(option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
+      const text = flatten(option.blocks ?? option.content ?? option.text ?? option.value).replace(/\s+/g, " ").trim();
       return { key: String(key), text: text || "Alternativa sin texto reconocible.", blocks: Array.isArray(option.blocks) ? option.blocks : undefined };
     }
     return { key: String.fromCharCode(65 + index), text: "Alternativa sin texto reconocible." };
