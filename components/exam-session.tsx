@@ -12,7 +12,8 @@ import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress
 import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useDrawingTools } from "@/components/use-drawing-tools";
-import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
+import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
+import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 
 type DemoQuestion = {
   domain: string;
@@ -67,6 +68,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
+  const { aiSettings, updateAiSettings } = useAiSettings();
   const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
   const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
   const [drawingColor, setDrawingColor] = useState("#2563eb");
@@ -114,8 +116,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   useEffect(() => { saveProgress(); }, [saveProgress]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("paessed-essay-paper-theme");
-    if (stored === "auto" || stored === "light" || stored === "dark") setPaperTheme(stored);
+    setPaperTheme(readQuestionPaperTheme());
   }, []);
 
   useEffect(() => {
@@ -175,7 +176,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   };
   const changePaperTheme = (next: "auto" | "light" | "dark") => {
     setPaperTheme(next);
-    localStorage.setItem("paessed-essay-paper-theme", next);
+    saveQuestionPaperTheme(next);
     setSettingsOpen(false);
   };
 
@@ -339,7 +340,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           </section>
         )}
         {settingsOpen && (
-          <section role="group" aria-label="Apariencia de la hoja" className="absolute right-3 top-[calc(100%+9px)] z-40 w-[min(300px,calc(100vw-24px))] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+          <section role="group" aria-label="Apariencia de la hoja" className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
@@ -356,6 +357,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
                 {paperTheme === item.value && <Check size={15} className="text-[var(--primary)]" />}
               </button>
             ))}
+            <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
           </section>
         )}
       </header>
@@ -365,12 +367,19 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {q.number}</span>
+              <button type="button" onClick={() => { setSettingsOpen(true); setPaletteOpen(false); setDrawingEnabled(false); }}
+                className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--pg-border)] px-2 text-[10px] font-bold text-[var(--pg-fg)] sm:hidden"
+                aria-label="Ajustes de la hoja y ayuda con IA"><Settings size={13}/> Ajustes</button>
               <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
               {flagged[index] && <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600"><Flag size={12} fill="currentColor" /> Marcada</span>}
             </div>
-            <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
-              {q.domain} · {getM1Unit(q.unitId)?.name}
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
+                {q.domain} · {getM1Unit(q.unitId)?.name}
+              </span>
+              <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
+                question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
+            </div>
           </div>
 
           <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
@@ -378,7 +387,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
                 {q.prompt}
               </h2>
-              <div role="group" aria-label="Alternativas de respuesta" className="mt-auto flex max-w-[1060px] flex-col items-start gap-1.5 pt-4 sm:pt-6">
+              <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
                 {q.options.map((option, optionIndex) => {
                   const active = answers[index] === optionIndex;
                   const letter = String.fromCharCode(65 + optionIndex);

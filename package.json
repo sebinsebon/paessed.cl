@@ -13,6 +13,8 @@
     "test:emphasis-ui": "playwright test --config tests/inline-emphasis.config.cjs",
     "test:resources": "node --test tests/imported-resources.cjs",
     "test:tesla-p41": "node --test tests/tesla-p41-candidate.cjs",
+    "test:ai-unit": "node --experimental-strip-types --test tests/ai-assistance.test.mjs",
+    "test:ai-ui": "playwright test --config tests/ai-assistance.config.cjs",
     "test:renderer-visual": "playwright test --config tests/paessed-visual.config.cjs",
     "start": "next start"
   },
