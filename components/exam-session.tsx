@@ -186,12 +186,12 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
       aria-label="Ensayo M1 · 65 preguntas"
       aria-busy={!restored}
     >
-      <header className="relative z-30 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+      <header style={paperStyle} className="relative z-30 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]">
+        <div className="mx-auto flex min-h-[48px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
           <Link
             href="/app/ensayos"
             onClick={saveProgress}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]"
             aria-label="Volver a Ensayos"
           >
             <ChevronLeft size={18} />
@@ -204,7 +204,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               <span><span className="hidden sm:inline">Matemática </span>M1</span>
               <span className="text-amber-700 dark:text-amber-400">Ensayos</span>
             </p>
-            <p className="truncate text-[10px] font-medium text-[var(--muted)]">
+            <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
               {sourceId ? (
                 <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
                   <span className="inline-block font-semibold">{sourceTitle}</span>
@@ -222,7 +222,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               aria-pressed={drawingEnabled}
               aria-expanded={drawingMenuOpen}
               onClick={() => { toggleDrawing(); setPaletteOpen(false); setSettingsOpen(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
             >
               <Pencil size={18} />
             </button>
@@ -232,7 +232,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               aria-label={flagged[index] ? "Desmarcar pregunta para revisar" : "Marcar pregunta para revisar"}
               title={flagged[index] ? "Quitar marca de revisión" : "Marcar para revisar"}
               aria-pressed={flagged[index]}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (flagged[index] ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (flagged[index] ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
             >
               <Flag size={18} fill={flagged[index] ? "currentColor" : "none"} />
             </button>
@@ -242,7 +242,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               title="Mapa de preguntas"
               aria-expanded={paletteOpen}
               onClick={() => { setPaletteOpen((previous) => !previous); setSettingsOpen(false); setDrawingEnabled(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (paletteOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (paletteOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
             >
               <Grid3X3 size={18} />
             </button>
@@ -252,17 +252,17 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               title="Ajustes de la hoja"
               aria-expanded={settingsOpen}
               onClick={() => { setSettingsOpen((previous) => !previous); setPaletteOpen(false); setDrawingEnabled(false); }}
-              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}
+              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
             >
               <Settings size={18} />
             </button>
             <div
               role="timer"
               aria-label="Tiempo restante del ensayo"
-              className="ml-1 inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-2.5 text-[11px] font-extrabold tabular-nums sm:px-3"
+              className="ml-1 inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] px-2.5 text-[11px] font-extrabold tabular-nums sm:px-3"
             >
               <Clock3 size={14} className={seconds < 600 ? "text-rose-500" : "text-[var(--primary)]"} />
-              <span className={seconds < 600 ? "text-rose-500" : "text-[var(--text)]"}>{formatTime(seconds)}</span>
+              <span className={seconds < 600 ? "text-rose-500" : "text-[var(--pg-fg)]"}>{formatTime(seconds)}</span>
             </div>
           </div>
         </div>
@@ -272,7 +272,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
         </div>
 
         {drawingMenuOpen && (
-          <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
+          <div className="text-[var(--text)] absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
             <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar" aria-pressed={drawingTool === "pen"}
               className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
               <Pencil size={16} />
@@ -303,7 +303,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           <button type="button" aria-label="Cerrar panel" className="fixed inset-0 z-30 cursor-default" onClick={() => { setPaletteOpen(false); setSettingsOpen(false); }} />
         )}
         {paletteOpen && (
-          <section role="dialog" aria-modal="false" aria-label="Mapa del ensayo" className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+          <section role="dialog" aria-modal="false" aria-label="Mapa del ensayo" className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[13px] font-extrabold">Mapa de preguntas</h2>
               <button type="button" onClick={() => setPaletteOpen(false)} aria-label="Cerrar mapa" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
@@ -340,7 +340,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           </section>
         )}
         {settingsOpen && (
-          <section role="group" aria-label="Apariencia de la hoja" className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+          <section role="group" aria-label="Apariencia de la hoja" className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
               <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
@@ -362,9 +362,9 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
         )}
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta del ensayo">
-        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 pt-0 sm:p-4 sm:pt-0" aria-label="Pregunta del ensayo">
+        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-1.5 sm:px-7 sm:py-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {q.number}</span>
               <button type="button" onClick={() => { setSettingsOpen(true); setPaletteOpen(false); setDrawingEnabled(false); }}
