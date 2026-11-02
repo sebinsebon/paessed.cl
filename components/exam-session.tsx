@@ -187,7 +187,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
       aria-busy={!restored}
     >
       <header style={paperStyle} className="relative z-30 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]">
-        <div className="mx-auto flex min-h-[48px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+        <div className="mx-auto flex min-h-[52px] w-full max-w-[1460px] flex-wrap items-center gap-1.5 px-3 py-1.5 md:flex-nowrap md:gap-3 md:px-5">
           <Link
             href="/app/ensayos"
             onClick={saveProgress}
@@ -199,22 +199,26 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
 
-          <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
-            <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
-              <span><span className="hidden sm:inline">Matemática </span>M1</span>
-              <span className="text-amber-700 dark:text-amber-400">Ensayos</span>
-            </p>
-            <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
-              {sourceId ? (
-                <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
-                  <span className="inline-block font-semibold">{sourceTitle}</span>
-                </ViewTransition>
-              ) : <span>Ensayo de práctica</span>}
-              {" · "}{answered}/{QUESTIONS.length} respondidas
-            </p>
-          </div>
+          <div className="order-3 min-w-0 w-full rounded-lg px-1 py-0.5 md:order-none md:w-auto md:flex-1 md:px-2">
+             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+               <span className="shrink-0 text-[11px] font-extrabold"><span className="hidden sm:inline">Matemática </span>M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
+               <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-1.5 py-0.5 text-[10px] font-bold">N.º {q.number}</span>
+               <span className="hidden truncate rounded-md border border-[var(--pg-border)] px-1.5 py-0.5 text-[10px] text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
+               {flagged[index] && <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">Marcada</span>}
+             </div>
+             <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
+               {sourceId ? (
+                 <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
+                   <span className="inline-block font-semibold">{sourceTitle}</span>
+                 </ViewTransition>
+               ) : <span>Ensayo de práctica</span>}
+               {" · "}{answered}/{QUESTIONS.length} respondidas · {q.domain} · {getM1Unit(q.unitId)?.name}
+             </p>
+           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+             <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
+               question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
             <button
               type="button"
               aria-label={drawingButtonLabel}
@@ -252,7 +256,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
               title="Ajustes de la hoja"
               aria-expanded={settingsOpen}
               onClick={() => { setSettingsOpen((previous) => !previous); setPaletteOpen(false); setDrawingEnabled(false); }}
-              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
+              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
             >
               <Settings size={18} />
             </button>
@@ -364,24 +368,6 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 pt-0 sm:p-4 sm:pt-0" aria-label="Pregunta del ensayo">
         <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-1.5 sm:px-7 sm:py-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {q.number}</span>
-              <button type="button" onClick={() => { setSettingsOpen(true); setPaletteOpen(false); setDrawingEnabled(false); }}
-                className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--pg-border)] px-2 text-[10px] font-bold text-[var(--pg-fg)] sm:hidden"
-                aria-label="Ajustes de la hoja y ayuda con IA"><Settings size={13}/> Ajustes</button>
-              <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
-              {flagged[index] && <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600"><Flag size={12} fill="currentColor" /> Marcada</span>}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-              <span className="max-w-full truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">
-                {q.domain} · {getM1Unit(q.unitId)?.name}
-              </span>
-              <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
-                question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
-            </div>
-          </div>
-
           <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
             <div className="relative flex min-h-full flex-col">
               <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
