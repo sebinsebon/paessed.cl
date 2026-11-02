@@ -189,8 +189,8 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
       aria-busy={!restored}
     >
       <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:px-7">
-          <div className="flex min-w-0 items-center gap-1.5">
+        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <Link
             href="/app/ensayos"
             onClick={saveProgress}
@@ -201,14 +201,14 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
             <span className="hidden sm:inline">Volver a ensayos</span>
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
-            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold">N.º {q.number}</span>
+            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {q.number}</span>
+            <QuestionTopicTags axis={q.domain} topic={getM1Unit(q.unitId)?.name} />
             {flagged[index] && <span className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600">Marcada</span>}
           </div>
 
           <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[13px] font-extrabold">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[16px] font-extrabold tracking-tight sm:text-[19px]">
               <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
-              <QuestionTopicTags axis={q.domain} topic={getM1Unit(q.unitId)?.name} />
             </div>
             <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
               {sourceId ? (
