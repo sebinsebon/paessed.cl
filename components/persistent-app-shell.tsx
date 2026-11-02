@@ -119,6 +119,7 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
         {!standaloneResult && (!immersiveNav || immersiveToggle.current) && (
           <SidebarToggle
             collapsed={visuallyCollapsed}
+            immersive={immersiveNav}
             onToggle={immersiveNav
               ? () => immersiveToggle.current?.()
               : toggleSidebar}
