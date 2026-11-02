@@ -1095,7 +1095,7 @@ export function PlaygroundExperience() {
             className="relative z-20 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]"
             transition={{ duration: 0.25 }}
           >
-            <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+            <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
               <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
               <button
                 type="button"
@@ -1113,10 +1113,10 @@ export function PlaygroundExperience() {
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
                 className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto"
               >
-                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[16px] font-extrabold tracking-tight sm:text-[19px]">
+                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[15px] font-extrabold tracking-tight sm:text-[17px]">
                   <span className="whitespace-nowrap">Matemática M1 <span className="text-[var(--secondary)]">Playground</span></span>
                 </div>
-                <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
+                <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
                   {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}{current ? ` · ${current.collection}` : ""}
                 </p>
                 {queuedFilters && <p className="truncate text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
