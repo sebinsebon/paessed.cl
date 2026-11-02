@@ -262,7 +262,9 @@ export function SidebarToggle({
             onMouseLeave={() => setHovered(false)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={collapseSidebar}
-            className="fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"
+            className={immersive
+              ? "fixed left-[218px] top-0 z-[65] hidden h-[68px] w-[92px] cursor-pointer select-none outline-none lg:block"
+              : "fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"}
             aria-hidden="true"
           />
 
@@ -270,19 +272,19 @@ export function SidebarToggle({
             initial={false}
             animate={{ scaleY: hovered ? 1 : 0 }}
             transition={{ duration: .16, ease: [.22, 1, .36, 1] }}
-            className={"pointer-events-none fixed left-[263px] top-1/2 z-[55] hidden w-[2px] origin-center -translate-y-1/2 bg-[var(--surface)] lg:block " + (immersive ? "h-11" : "h-[68px]")}
+            className={"pointer-events-none fixed left-[263px] z-[55] hidden h-[68px] w-[2px] origin-center bg-[var(--surface)] lg:block " + (immersive ? "top-0" : "top-1/2 -translate-y-1/2")}
             aria-hidden="true"
           />
 
           <motion.div
             initial={false}
             animate={{
-              x: hovered ? 0 : -30,
+              x: hovered || immersive ? 0 : -30,
               boxShadow: hovered ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
             }}
             transition={{ type: "spring", stiffness: 380, damping: 32 }}
             style={{ left: 263 }}
-            className={"pointer-events-none fixed top-1/2 z-40 hidden w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex " + (immersive ? "h-11" : "h-[68px]")}
+            className={"pointer-events-none fixed z-40 hidden h-[68px] w-[26px] items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex " + (immersive ? "top-0" : "top-1/2 -translate-y-1/2")}
             aria-hidden="true"
           >
             <ChevronLeft size={16} strokeWidth={2.4} />
@@ -296,7 +298,9 @@ export function SidebarToggle({
             <div
               onMouseDown={(event) => event.preventDefault()}
               onClick={expandSidebar}
-              className="fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"
+              className={immersive
+                ? "fixed left-0 top-0 z-[65] hidden h-[68px] w-[56px] cursor-pointer select-none outline-none lg:block"
+                : "fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"}
               aria-hidden="true"
             />
 
@@ -306,7 +310,7 @@ export function SidebarToggle({
               animate={{ x: 0 }}
               exit={{ x: -26 }}
               transition={{ type: "spring", stiffness: 360, damping: 30 }}
-              className={"pointer-events-none fixed left-[-6px] top-1/2 z-40 hidden w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex " + (immersive ? "h-11" : "h-[68px]")}
+              className={"pointer-events-none fixed left-[-6px] z-40 hidden h-[68px] w-[26px] items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex " + (immersive ? "top-0" : "top-1/2 -translate-y-1/2")}
               aria-hidden="true"
             >
               <ChevronRight size={16} strokeWidth={2.4} />
