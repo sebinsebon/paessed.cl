@@ -189,7 +189,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
       aria-busy={!restored}
     >
       <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+        <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
           <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <Link
             href="/app/ensayos"
@@ -207,10 +207,10 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           </div>
 
           <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[16px] font-extrabold tracking-tight sm:text-[19px]">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[15px] font-extrabold tracking-tight sm:text-[17px]">
               <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
             </div>
-            <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
+            <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
               {sourceId ? (
                 <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
                   <span className="inline-block font-semibold">{sourceTitle}</span>
@@ -275,8 +275,8 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           </div>
         </div>
 
-        <div role="progressbar" aria-label="Avance por el ensayo" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1} className="h-0.5 bg-[var(--surface-3)]">
-          <div className="h-full bg-[var(--primary)] transition-[width] duration-200" style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
+        <div role="progressbar" aria-label="Avance por el ensayo" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1} className={"h-[3px] overflow-hidden " + (paperTheme === "light" ? "bg-slate-200" : paperTheme === "dark" ? "bg-slate-700" : "bg-slate-200 dark:bg-slate-700")}>
+          <div className={"h-full transition-[width] duration-200 " + (paperTheme === "light" ? "bg-slate-400" : paperTheme === "dark" ? "bg-[var(--primary)]" : "bg-slate-400 dark:bg-[var(--primary)]")} style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
         </div>
 
         {drawingMenuOpen && (
