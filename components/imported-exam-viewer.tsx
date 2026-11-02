@@ -205,22 +205,22 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const body = (
     <div style={paperStyle} className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
       <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:px-7">
-          <div className="flex min-w-0 items-center gap-1.5">
+        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <Link href="/app/ensayos" aria-label="Volver a Ensayos"
             className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]">
             <ChevronLeft size={18} />
             <span className="hidden sm:inline">Volver a ensayos</span>
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
-            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold">N.º {current ? getQuestionId(current, active) : "—"}</span>
+            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {current ? getQuestionId(current, active) : "—"}</span>
+            {isRecord(current) && isRecord(current.curriculum) && (
+              <QuestionTopicTags axis={String(current.curriculum.eje ?? "")} topic={String(current.curriculum.subeje ?? "")} />
+            )}
           </div>
           <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[13px] font-extrabold">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[16px] font-extrabold tracking-tight sm:text-[19px]">
               <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
-              {isRecord(current) && isRecord(current.curriculum) && (
-                <QuestionTopicTags axis={String(current.curriculum.eje ?? "")} topic={String(current.curriculum.subeje ?? "")} />
-              )}
             </div>
             <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
               {record?.summary.title ?? "Ensayo importado"}{record ? ` · ${answered}/${questions.length} respondidas · ${active + 1} de ${questions.length} preguntas` : ""}
