@@ -262,10 +262,10 @@ export function SidebarToggle({
         aria-label={collapsed ? "Abrir menú lateral" : "Cerrar menú lateral"}
         onClick={collapsed ? expandSidebar : collapseSidebar}
         disabled={collapsed ? !collapsedReady : !expandedReady}
-        style={{ left: collapsed ? 12 : 276 }}
-        className="fixed top-4 z-[75] hidden h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-[0_1px_3px_rgba(15,23,42,.08)] transition-[left,background-color,color] duration-[240ms] hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:opacity-60 lg:flex"
+        style={{ left: collapsed ? 0 : 264 }}
+        className="fixed top-3 z-[75] hidden h-11 w-8 items-center justify-center rounded-r-xl border border-l-0 border-slate-700 bg-slate-900 text-white shadow-[2px_0_9px_rgba(15,23,42,.18)] transition-[left,background-color] duration-[240ms] hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:opacity-80 lg:flex"
       >
-        {collapsed ? <ChevronRight size={17} strokeWidth={2.2} /> : <ChevronLeft size={17} strokeWidth={2.2} />}
+        {collapsed ? <ChevronRight size={19} strokeWidth={2.5} /> : <ChevronLeft size={19} strokeWidth={2.5} />}
       </button>
     );
   }
