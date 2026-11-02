@@ -207,7 +207,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
           </div>
 
           <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[15px] font-extrabold tracking-tight sm:text-[17px]">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
               <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
             </div>
             <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
@@ -276,7 +276,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
         </div>
 
         <div role="progressbar" aria-label="Avance por el ensayo" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1} className={"h-[3px] overflow-hidden " + (paperTheme === "light" ? "bg-slate-200" : paperTheme === "dark" ? "bg-slate-700" : "bg-slate-200 dark:bg-slate-700")}>
-          <div className={"h-full transition-[width] duration-200 " + (paperTheme === "light" ? "bg-slate-400" : paperTheme === "dark" ? "bg-[var(--primary)]" : "bg-slate-400 dark:bg-[var(--primary)]")} style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
+          <div className="h-full bg-[var(--primary)] transition-[width] duration-200" style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
         </div>
 
         {drawingMenuOpen && (
