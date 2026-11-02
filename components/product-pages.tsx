@@ -800,13 +800,17 @@ export function PlaygroundExperience() {
   useEffect(() => {
     if (!isPracticing) return;
     const priorOverflow = document.body.style.overflow;
+    const priorScrollbarGutter = document.documentElement.style.scrollbarGutter;
     document.body.style.overflow = "hidden";
+    // Full-screen practice should not retain the dark scrollbar gutter from the app shell.
+    document.documentElement.style.scrollbarGutter = "auto";
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !settingsOpen) setIsPracticing(false);
     };
     window.addEventListener("keydown", onEscape);
     return () => {
       document.body.style.overflow = priorOverflow;
+      document.documentElement.style.scrollbarGutter = priorScrollbarGutter;
       window.removeEventListener("keydown", onEscape);
     };
   }, [isPracticing, settingsOpen]);
@@ -1113,7 +1117,7 @@ export function PlaygroundExperience() {
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
                 className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto"
               >
-                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[15px] font-extrabold tracking-tight sm:text-[17px]">
+                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
                   <span className="whitespace-nowrap">Matemática M1 <span className="text-[var(--secondary)]">Playground</span></span>
                 </div>
                 <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
