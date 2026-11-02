@@ -14,6 +14,7 @@ import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/pla
 import { useDrawingTools } from "@/components/use-drawing-tools";
 import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
+import { QuestionTopicTags } from "@/components/question-topic-tags";
 
 type DemoQuestion = {
   domain: string;
@@ -182,12 +183,14 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
 
   return (
     <div
-      className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)] transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]"
+      style={paperStyle}
+      className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)] transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]"
       aria-label="Ensayo M1 · 65 preguntas"
       aria-busy={!restored}
     >
-      <header style={paperStyle} className="relative z-30 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]">
-        <div className="mx-auto flex min-h-[52px] w-full max-w-[1460px] flex-wrap items-center gap-1.5 px-3 py-1.5 md:flex-nowrap md:gap-3 md:px-5">
+      <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+        <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:px-7">
+          <div className="flex min-w-0 items-center gap-1.5">
           <Link
             href="/app/ensayos"
             onClick={saveProgress}
@@ -198,25 +201,26 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
             <span className="hidden sm:inline">Volver a ensayos</span>
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
+            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold">N.º {q.number}</span>
+            {flagged[index] && <span className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600">Marcada</span>}
+          </div>
 
-          <div className="order-3 min-w-0 w-full rounded-lg px-1 py-0.5 md:order-none md:w-auto md:flex-1 md:px-2">
-             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
-               <span className="shrink-0 text-[11px] font-extrabold"><span className="hidden sm:inline">Matemática </span>M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
-               <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-1.5 py-0.5 text-[10px] font-bold">N.º {q.number}</span>
-               <span className="hidden truncate rounded-md border border-[var(--pg-border)] px-1.5 py-0.5 text-[10px] text-[var(--pg-muted)] sm:inline">Ensayo de práctica</span>
-               {flagged[index] && <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-600">Marcada</span>}
-             </div>
-             <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
-               {sourceId ? (
-                 <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
-                   <span className="inline-block font-semibold">{sourceTitle}</span>
-                 </ViewTransition>
-               ) : <span>Ensayo de práctica</span>}
-               {" · "}{answered}/{QUESTIONS.length} respondidas · {q.domain} · {getM1Unit(q.unitId)?.name}
-             </p>
-           </div>
+          <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[13px] font-extrabold">
+              <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
+              <QuestionTopicTags axis={q.domain} topic={getM1Unit(q.unitId)?.name} />
+            </div>
+            <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
+              {sourceId ? (
+                <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
+                  <span className="inline-block font-semibold">{sourceTitle}</span>
+                </ViewTransition>
+              ) : <span>Ensayo de práctica</span>}
+              {" · "}{answered}/{QUESTIONS.length} respondidas
+            </p>
+          </div>
 
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
              <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
                question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
             <button
@@ -366,8 +370,8 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
         )}
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 pt-0 sm:p-4 sm:pt-0" aria-label="Pregunta del ensayo">
-        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+      <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta del ensayo">
+        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
           <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
             <div className="relative flex min-h-full flex-col">
               <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
