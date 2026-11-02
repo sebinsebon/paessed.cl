@@ -116,7 +116,7 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
           }}
         />
         {!standaloneResult && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />}
-        {!standaloneResult && (!immersiveNav || immersiveToggle.current) && (
+        {!standaloneResult && (
           <SidebarToggle
             collapsed={visuallyCollapsed}
             immersive={immersiveNav}
