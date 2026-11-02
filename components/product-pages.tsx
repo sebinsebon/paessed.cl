@@ -42,6 +42,7 @@ import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picke
 import { LocalStorageDashboard } from "@/components/local-storage-dashboard";
 import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
+import { QuestionTopicTags } from "@/components/question-topic-tags";
 
 const learningNodes = [
   { title: "Conjunto de los números enteros y racionales", subtitle: "Repaso rápido", state: "done", xp: "+20 XP" },
@@ -1084,16 +1085,18 @@ export function PlaygroundExperience() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]"
+          style={paperStyle}
+          className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]"
           aria-label="Modo práctica de Playground"
         >
           <motion.header
             layout
             style={paperStyle}
-            className="relative z-20 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]"
+            className="relative z-20 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]"
             transition={{ duration: 0.25 }}
           >
-            <div className="mx-auto flex min-h-[52px] w-full max-w-[1460px] flex-wrap items-center gap-1.5 px-3 py-1.5 md:flex-nowrap md:gap-3 md:px-5">
+            <div className="mx-auto flex min-h-[60px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:px-7">
+              <div className="flex min-w-0 items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => { setPendingAction(null); setSettingsOpen(false); setIsPracticing(false); }}
@@ -1101,28 +1104,25 @@ export function PlaygroundExperience() {
               >
                 <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
               </button>
+                {current && <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold">N.º {current.number}</span>}
+                {current && <span className="hidden shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold sm:inline">{current.year ?? "Sin año"}</span>}
+              </div>
               <motion.div
                 layoutId="playground-config"
                 transition={{ type: "spring", stiffness: 280, damping: 35 }}
-                className="order-3 min-w-0 w-full rounded-lg px-1 py-0.5 md:order-none md:w-auto md:flex-1 md:px-2"
+                className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto"
               >
-                <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
-                  <span className="shrink-0 text-[11px] font-extrabold">Matemática M1 <span className="text-[var(--secondary)]">Playground</span></span>
-                  {current && (
-                    <>
-                      <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-1.5 py-0.5 text-[10px] font-bold">N.º {current.number}</span>
-                      <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-1.5 py-0.5 text-[10px] font-bold">{current.year ?? "Sin año"}</span>
-                      <span className="hidden truncate rounded-md border border-[var(--pg-border)] px-1.5 py-0.5 text-[10px] text-[var(--pg-muted)] sm:inline">{current.collection}</span>
-                    </>
-                  )}
+                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[13px] font-extrabold">
+                  <span className="whitespace-nowrap">Matemática M1 <span className="text-[var(--secondary)]">Playground</span></span>
+                  {current && <QuestionTopicTags axis={current.axis} topic={current.topic} />}
                 </div>
-                <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
-                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}{current ? ` · ${current.axis} · ${current.topic}` : ""}
+                <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
+                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}{current ? ` · ${current.collection}` : ""}
                 </p>
                 {queuedFilters && <p className="truncate text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
               </motion.div>
 
-              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
                 {current && <AskAiButton key={current.id} settings={aiSettings} onChange={updateAiSettings}
                   question={{
                     number: current.number,
@@ -1374,9 +1374,9 @@ export function PlaygroundExperience() {
             {filterNotice && <p role="status" className="px-4 pb-2 text-right text-[11px] text-amber-600">{filterNotice}</p>}
           </motion.header>
 
-          <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 pt-0 sm:p-4 sm:pt-0" aria-label="Pregunta de práctica">
+          <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta de práctica">
             {current ? (
-              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
                 <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
                   <div className="relative flex min-h-full flex-col">
                   {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
