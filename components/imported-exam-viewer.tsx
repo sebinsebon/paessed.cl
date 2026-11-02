@@ -204,23 +204,30 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const body = (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
       <header style={paperStyle} className="relative z-30 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]">
-        <div className="mx-auto flex min-h-[48px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+        <div className="mx-auto flex min-h-[52px] w-full max-w-[1460px] flex-wrap items-center gap-1.5 px-3 py-1.5 md:flex-nowrap md:gap-3 md:px-5">
           <Link href="/app/ensayos" aria-label="Volver a Ensayos"
             className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]">
             <ChevronLeft size={18} />
             <span className="hidden sm:inline">Volver a ensayos</span>
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
-          <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
-            <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
-              <span><span className="hidden sm:inline">Matemática </span>M1</span>
-              <span className="text-amber-700 dark:text-amber-400">Ensayos</span>
-            </p>
-            <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
-              {record?.summary.title ?? "Ensayo importado"}{record ? " · " + answered + "/" + questions.length + " respondidas" : ""}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="order-3 min-w-0 w-full rounded-lg px-1 py-0.5 md:order-none md:w-auto md:flex-1 md:px-2">
+             <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">
+               <span className="shrink-0 text-[11px] font-extrabold"><span className="hidden sm:inline">Matemática </span>M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
+               <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-1.5 py-0.5 text-[10px] font-bold">N.º {current ? getQuestionId(current, active) : "—"}</span>
+               {record && <span className="hidden truncate rounded-md border border-[var(--pg-border)] px-1.5 py-0.5 text-[10px] text-[var(--pg-muted)] sm:inline">
+                 {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
+               </span>}
+             </div>
+             <p className="truncate text-[10px] font-medium text-[var(--pg-muted)]">
+               {record?.summary.title ?? "Ensayo importado"}{record ? ` · ${answered}/${questions.length} respondidas · ${active + 1} de ${questions.length} preguntas` : ""}
+               {isRecord(current) && isRecord(current.curriculum) && (
+                 <> · {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}</>
+               )}
+             </p>
+           </div>
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1">
+             <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
             <button type="button" title="Herramienta de lápiz"
               aria-label={drawingButtonLabel}
               aria-pressed={drawingEnabled}
@@ -384,29 +391,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
           </div>
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-1.5 sm:px-7 sm:py-2">
-              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-                <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
-                  N.º {current ? getQuestionId(current, active) : "—"}
-                </span>
-                <button type="button" onClick={() => { setSettingsOpen(true); setMapOpen(false); setDrawingEnabled(false); }}
-                  className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--pg-border)] px-2 text-[10px] font-bold text-[var(--pg-fg)] sm:hidden"
-                  aria-label="Ajustes de la hoja y ayuda con IA"><Settings size={13}/> Ajustes</button>
-                <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
-                  {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
-                </span>
-                {isRecord(current) && isRecord(current.curriculum) && (
-                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
-                    {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-                <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
-                <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
-              </div>
-            </div>
-
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
               {current ? (
                 <div className="relative flex min-h-full flex-col">
