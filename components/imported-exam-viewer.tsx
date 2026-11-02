@@ -75,6 +75,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Avoid exposing the app's dark scrollbar gutter beside the full-screen paper.
+  useEffect(() => {
+    const previousGutter = document.documentElement.style.scrollbarGutter;
+    document.documentElement.style.scrollbarGutter = "auto";
+    return () => { document.documentElement.style.scrollbarGutter = previousGutter; };
+  }, []);
+
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
