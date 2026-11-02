@@ -59,6 +59,13 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
     setImmersiveView(true, sidebarVisible);
     return () => setImmersiveView(false, false);
   }, [setImmersiveView, sidebarVisible]);
+  // Avoid exposing the app's dark scrollbar gutter beside the full-screen paper.
+  useEffect(() => {
+    const previousGutter = document.documentElement.style.scrollbarGutter;
+    document.documentElement.style.scrollbarGutter = "auto";
+    return () => { document.documentElement.style.scrollbarGutter = previousGutter; };
+  }, []);
+
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Array<number | null>>(() => Array(QUESTIONS.length).fill(null));
   const [flagged, setFlagged] = useState<boolean[]>(() => Array(QUESTIONS.length).fill(false));
