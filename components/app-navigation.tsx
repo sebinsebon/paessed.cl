@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { sileo } from "sileo";
 import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Gamepad2, Home, Play, Route, Sun, Moon, Target, Trophy, UserRound, X } from "lucide-react";
 import { DEMO_EXAM_EVENT, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
@@ -221,22 +221,28 @@ export function SidebarToggle({
   const [hovered, setHovered] = useState(false);
   const [expandedReady, setExpandedReady] = useState(!collapsed);
   const [collapsedReady, setCollapsedReady] = useState(collapsed);
+  const [viewportHeight, setViewportHeight] = useState(0);
   const previousCollapsed = useRef(collapsed);
 
+  // Numeric positions let the very same tab travel smoothly from the center
+  // of the sidebar to the top of the question header.
+  useLayoutEffect(() => {
+    const update = () => setViewportHeight(window.innerHeight);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   useEffect(() => {
-    // Don't introduce a 380ms blank state every time navigation remounts the shell.
     if (previousCollapsed.current === collapsed) return;
     previousCollapsed.current = collapsed;
-
     setHovered(false);
     setExpandedReady(false);
     setCollapsedReady(false);
-    // Match the sidebar spring closely, without delaying interaction.
     const timer = window.setTimeout(() => {
       if (collapsed) setCollapsedReady(true);
       else setExpandedReady(true);
     }, 220);
-
     return () => window.clearTimeout(timer);
   }, [collapsed]);
 
@@ -253,84 +259,55 @@ export function SidebarToggle({
     onToggle();
   };
 
-  // Immersive question views have a dedicated, keyboard-accessible toolbar button.
-  if (immersive) {
-    return (
-      <button
-        type="button"
-        title={collapsed ? "Abrir menú lateral" : "Cerrar menú lateral"}
-        aria-label={collapsed ? "Abrir menú lateral" : "Cerrar menú lateral"}
-        onClick={collapsed ? expandSidebar : collapseSidebar}
-        disabled={collapsed ? !collapsedReady : !expandedReady}
-        style={{ left: collapsed ? 0 : 264 }}
-        className="fixed top-3 z-[75] hidden h-11 w-8 items-center justify-center rounded-r-xl border border-l-0 border-slate-700 bg-slate-900 text-white shadow-[2px_0_9px_rgba(15,23,42,.18)] transition-[left,background-color] duration-[240ms] hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:opacity-80 lg:flex"
-      >
-        {collapsed ? <ChevronRight size={19} strokeWidth={2.5} /> : <ChevronLeft size={19} strokeWidth={2.5} />}
-      </button>
-    );
-  }
+  const middleTop = Math.max(0, (viewportHeight - 68) / 2);
 
   return (
     <>
       {expandedReady && !collapsed && (
-        <>
-          <div
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={collapseSidebar}
-            className="fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"
-            aria-hidden="true"
-          />
-
-          <motion.div
-            initial={false}
-            animate={{ scaleY: hovered ? 1 : 0 }}
-            transition={{ duration: .16, ease: [.22, 1, .36, 1] }}
-            className="pointer-events-none fixed left-[263px] top-1/2 z-[55] hidden h-[68px] w-[2px] origin-center -translate-y-1/2 bg-[var(--surface)] lg:block"
-            aria-hidden="true"
-          />
-
-          <motion.div
-            initial={false}
-            animate={{
-              x: hovered ? 0 : -30,
-              boxShadow: hovered ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
-            }}
-            transition={{ type: "spring", stiffness: 380, damping: 32 }}
-            style={{ left: 263 }}
-            className="pointer-events-none fixed top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex"
-            aria-hidden="true"
-          >
-            <ChevronLeft size={16} strokeWidth={2.4} />
-          </motion.div>
-        </>
+        <div
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={collapseSidebar}
+          className={immersive
+            ? "fixed left-[218px] top-0 z-[65] hidden h-[60px] w-[92px] cursor-pointer select-none outline-none lg:block"
+            : "fixed inset-y-0 left-[218px] z-[65] hidden w-[92px] cursor-pointer select-none outline-none lg:block"}
+          aria-hidden="true"
+        />
+      )}
+      {collapsedReady && collapsed && (
+        <div
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={expandSidebar}
+          className={immersive
+            ? "fixed left-0 top-0 z-[65] hidden h-[60px] w-[42px] cursor-pointer select-none outline-none lg:block"
+            : "fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"}
+          aria-hidden="true"
+        />
       )}
 
-      <AnimatePresence initial={false}>
-        {collapsedReady && collapsed && (
-          <>
-            <div
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={expandSidebar}
-              className="fixed inset-y-0 left-0 z-[65] hidden w-[56px] cursor-pointer select-none outline-none lg:block"
-              aria-hidden="true"
-            />
-
-            <motion.div
-              key="sidebar-collapsed-handle"
-              initial={{ x: -26 }}
-              animate={{ x: 0 }}
-              exit={{ x: -26 }}
-              transition={{ type: "spring", stiffness: 360, damping: 30 }}
-              className="pointer-events-none fixed left-[-6px] top-1/2 z-40 hidden h-[68px] w-[26px] -translate-y-1/2 items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] shadow-[3px_0_10px_rgba(15,23,42,.07)] lg:flex"
-              aria-hidden="true"
-            >
-              <ChevronRight size={16} strokeWidth={2.4} />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {viewportHeight > 0 && (
+        <motion.div
+          initial={false}
+          animate={{
+            left: collapsed ? -6 : 263,
+            top: immersive ? 12 : middleTop,
+            height: immersive ? 44 : 68,
+            x: collapsed || hovered || immersive ? 0 : -30,
+            boxShadow: collapsed || hovered ? "3px 0 10px rgba(15,23,42,.07)" : "0 0 0 rgba(15,23,42,0)",
+          }}
+          transition={{ type: "spring", stiffness: 250, damping: 29, mass: .9 }}
+          className="pointer-events-none fixed z-40 hidden w-[26px] items-center justify-center rounded-r-[16px] border border-l-0 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] lg:flex"
+          aria-hidden="true"
+        >
+          <motion.div
+            animate={{ rotate: collapsed ? 0 : 180 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+          >
+            <ChevronRight size={16} strokeWidth={2.4} />
+          </motion.div>
+        </motion.div>
+      )}
     </>
   );
 }
