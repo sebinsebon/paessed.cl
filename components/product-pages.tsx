@@ -1089,14 +1089,15 @@ export function PlaygroundExperience() {
         >
           <motion.header
             layout
-            className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]"
+            style={paperStyle}
+            className="relative z-20 mx-auto mt-2 w-[calc(100%_-_16px)] max-w-[1428px] shrink-0 rounded-t-[12px] border border-b-0 border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] sm:mt-4 sm:w-[calc(100%_-_32px)]"
             transition={{ duration: 0.25 }}
           >
-            <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+            <div className="mx-auto flex min-h-[48px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
               <button
                 type="button"
                 onClick={() => { setPendingAction(null); setSettingsOpen(false); setIsPracticing(false); }}
-                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]"
               >
                 <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
               </button>
@@ -1106,7 +1107,7 @@ export function PlaygroundExperience() {
                 className="min-w-0 flex-1 rounded-lg px-2 py-1.5 sm:px-3"
               >
                 <p className="flex items-center justify-center gap-2 truncate text-center text-[12px] font-extrabold"><span>Matemática M1</span><span className="text-[var(--secondary)]">Playground</span></p>
-                <p className="truncate text-center text-[10px] font-medium text-[var(--muted)]">
+                <p className="truncate text-center text-[10px] font-medium text-[var(--pg-muted)]">
                   {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}
                 </p>
                 {queuedFilters && <p className="truncate text-center text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
@@ -1121,7 +1122,7 @@ export function PlaygroundExperience() {
                   title={drawingButtonLabel}
                   onClick={() => { setSettingsOpen(false); toggleDrawing(); }}
                   className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                    (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+                    (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
                 >
                   <Pencil size={18} aria-hidden="true" />
                 </button>
@@ -1133,7 +1134,7 @@ export function PlaygroundExperience() {
                 aria-pressed={currentSaved}
                 title={currentSaved ? "Pregunta guardada · Quitar" : "Guardar pregunta"}
                 className={"grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors disabled:opacity-40 " +
-                  (currentSaved ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+                  (currentSaved ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
               >
                 <Bookmark size={19} fill={currentSaved ? "currentColor" : "none"} aria-hidden="true" />
               </button>
@@ -1145,7 +1146,7 @@ export function PlaygroundExperience() {
                   aria-controls="playground-paper-settings"
                   onClick={openPracticeSettings}
                   className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                    (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")}
+                    (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
                 >
                   <Settings size={19} aria-hidden="true" />
                 </button>
@@ -1160,7 +1161,7 @@ export function PlaygroundExperience() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="surface-raised absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(80dvh,680px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
+                      className="surface-raised text-[var(--text)] absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(80dvh,680px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
                     >
                       <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
                       <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
@@ -1355,10 +1356,10 @@ export function PlaygroundExperience() {
             {filterNotice && <p role="status" className="px-4 pb-2 text-right text-[11px] text-amber-600">{filterNotice}</p>}
           </motion.header>
 
-          <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta de práctica">
+          <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 pt-0 sm:p-4 sm:pt-0" aria-label="Pregunta de práctica">
             {current ? (
-              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
+              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-1.5 sm:px-7 sm:py-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">N.º {current.number}</span>
                     <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">{current.year ?? "Sin año"}</span>
