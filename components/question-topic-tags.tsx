@@ -33,19 +33,12 @@ export function QuestionTopicTags({ axis, topic }: { axis?: string | null; topic
   };
 
   return (
-    <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-[10px] font-bold sm:text-[11px]">
-      {axisLabel && (
-        <>
-          <span aria-hidden="true" className="text-[var(--pg-muted)]">·</span>
-          <span className="max-w-[155px] truncate rounded-md border px-2 py-1 sm:max-w-[210px]" style={style} title={axisLabel}>{axisLabel}</span>
-        </>
-      )}
-      {topicLabel && (
-        <>
-          <span aria-hidden="true" className="text-[var(--pg-muted)]">·</span>
-          <span className="max-w-[155px] truncate rounded-md border px-2 py-1 sm:max-w-[250px]" style={style} title={topicLabel}>{topicLabel}</span>
-        </>
-      )}
+    <span
+      className="inline-flex min-w-0 max-w-[230px] items-center rounded-md border px-2 py-1 text-[10px] font-bold leading-4 sm:max-w-[330px]"
+      style={style}
+      title={[axisLabel, topicLabel].filter(Boolean).join(" · ")}
+    >
+      <span className="truncate">{axisLabel}{axisLabel && topicLabel ? " · " : ""}{topicLabel}</span>
     </span>
   );
 }
