@@ -14,6 +14,7 @@ import { useImportedResourceUrls } from "@/components/use-imported-resource-urls
 import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
 import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
+import { QuestionTopicTags } from "@/components/question-topic-tags";
 
 const PROGRESS_PREFIX = IMPORTED_EXAM_PROGRESS_PREFIX;
 type SavedImportedProgress = {
@@ -73,6 +74,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const { aiSettings, updateAiSettings } = useAiSettings();
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Avoid exposing the app's dark scrollbar gutter beside the full-screen paper.
+  useEffect(() => {
+    const previousGutter = document.documentElement.style.scrollbarGutter;
+    document.documentElement.style.scrollbarGutter = "auto";
+    return () => { document.documentElement.style.scrollbarGutter = previousGutter; };
+  }, []);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -202,62 +211,68 @@ export function ImportedExamViewer({ id }: { id: string }) {
   };
 
   const body = (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--canvas)] text-[var(--text)]">
-      <header className="relative z-30 shrink-0 border-b border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto flex min-h-[58px] w-full max-w-[1460px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
+    <div style={paperStyle} className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+      <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
+        <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
           <Link href="/app/ensayos" aria-label="Volver a Ensayos"
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]">
+            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]">
             <ChevronLeft size={18} />
             <span className="hidden sm:inline">Volver a ensayos</span>
             <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
           </Link>
-          <div className="min-w-0 flex-1 rounded-lg px-1 py-1.5 text-center sm:px-3">
-            <p className="flex items-center justify-center gap-2 text-[12px] font-extrabold">
-              <span><span className="hidden sm:inline">Matemática </span>M1</span>
-              <span className="text-amber-700 dark:text-amber-400">Ensayos</span>
-            </p>
-            <p className="truncate text-[10px] font-medium text-[var(--muted)]">
-              {record?.summary.title ?? "Ensayo importado"}{record ? " · " + answered + "/" + questions.length + " respondidas" : ""}
+            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {current ? getQuestionId(current, active) : "—"}</span>
+            {isRecord(current) && isRecord(current.curriculum) && (
+              <QuestionTopicTags axis={String(current.curriculum.eje ?? "")} topic={String(current.curriculum.subeje ?? "")} />
+            )}
+          </div>
+          <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
+            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
+              <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
+            </div>
+            <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
+              {record?.summary.title ?? "Ensayo importado"}{record ? ` · ${answered}/${questions.length} respondidas · ${active + 1} de ${questions.length} preguntas` : ""}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
+             <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
             <button type="button" title="Herramienta de lápiz"
               aria-label={drawingButtonLabel}
               aria-pressed={drawingEnabled}
               aria-expanded={drawingMenuOpen}
               onClick={() => { toggleDrawing(); setMapOpen(false); setSettingsOpen(false); }}
               className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " +
-                (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
+                (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
               <Pencil size={18}/>
             </button>
             <button type="button" onClick={toggleBookmark} disabled={!current}
               aria-label={marked ? "Quitar marca de pregunta" : "Marcar pregunta"}
               aria-pressed={marked} title={marked ? "Quitar marca" : "Marcar para revisar"}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors disabled:opacity-40 " +
-                (marked ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
+                (marked ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
               <Bookmark size={18} fill={marked ? "currentColor" : "none"} />
             </button>
             <button type="button" title="Mapa de preguntas" aria-label="Abrir mapa de preguntas"
               aria-expanded={mapOpen} onClick={() => { setMapOpen((open) => !open); setSettingsOpen(false); setDrawingEnabled(false); }}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                (mapOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
+                (mapOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
               <Grid3X3 size={18}/>
             </button>
             <button type="button" title="Apariencia de la hoja" aria-label="Ajustes de apariencia de la hoja"
               aria-expanded={settingsOpen} onClick={() => { setSettingsOpen((open) => !open); setMapOpen(false); setDrawingEnabled(false); }}
               className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]")}>
+                (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
               <Settings size={18}/>
             </button>
           </div>
         </div>
-        <div className="h-0.5 bg-[var(--surface-3)]">
+        <div className={"h-[3px] overflow-hidden " + (paperTheme === "light" ? "bg-slate-200" : paperTheme === "dark" ? "bg-slate-700" : "bg-slate-200 dark:bg-slate-700")}>
           <div className="h-full bg-[var(--primary)] transition-[width] duration-200"
             style={{ width: questions.length ? ((active + 1) / questions.length) * 100 + "%" : "0%" }} />
         </div>
 
         {drawingMenuOpen && (
-          <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
+          <div className="text-[var(--text)] absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
             <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar"
               aria-pressed={drawingTool === "pen"} className={"grid h-8 w-8 place-items-center rounded-lg " +
                 (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
@@ -301,7 +316,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <motion.section key="question-map" role="dialog" aria-label="Mapa del ensayo importado"
               initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.99 }} transition={{ duration: 0.18 }}
-              className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+              className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-[13px] font-extrabold">Mapa de preguntas</h2>
                 <button type="button" onClick={() => setMapOpen(false)} aria-label="Cerrar mapa" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16}/></button>
@@ -345,7 +360,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             <motion.section key="paper-settings" role="group" aria-label="Apariencia de la hoja"
               initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}
-              className="absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
+              className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
                 <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16}/></button>
@@ -369,7 +384,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
         </AnimatePresence>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-[1460px] flex-1 flex-col p-2 sm:p-4" aria-label="Pregunta del ensayo importado">
+      <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta del ensayo importado">
         {loading ? (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--muted)]" role="status">
             Abriendo ensayo importado…
@@ -383,30 +398,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             </Link>
           </div>
         ) : (
-          <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden rounded-[12px] border border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--pg-border)] px-4 py-2 sm:px-7 sm:py-2.5">
-              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
-                <span className="rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[11px] font-bold text-[var(--pg-fg)]">
-                  N.º {current ? getQuestionId(current, active) : "—"}
-                </span>
-                <button type="button" onClick={() => { setSettingsOpen(true); setMapOpen(false); setDrawingEnabled(false); }}
-                  className="inline-flex min-h-8 items-center gap-1 rounded-md border border-[var(--pg-border)] px-2 text-[10px] font-bold text-[var(--pg-fg)] sm:hidden"
-                  aria-label="Ajustes de la hoja y ayuda con IA"><Settings size={13}/> Ajustes</button>
-                <span className="hidden rounded-md border border-[var(--pg-border)] px-2 py-1 text-[11px] font-medium text-[var(--pg-muted)] sm:inline">
-                  {record.summary.sourceKind === "paessed" ? "Paquete .paessed" : "Ensayo importado"}
-                </span>
-                {isRecord(current) && isRecord(current.curriculum) && (
-                  <span className="min-w-0 max-w-full text-[11px] font-medium text-[var(--pg-muted)]">
-                    {String(current.curriculum.eje ?? "Clasificación pendiente")} · {String(current.curriculum.subeje ?? "")} · Temario: {String(current.curriculum.en_temario ?? "dudoso")}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-                <span className="truncate text-right text-[11px] font-medium text-[var(--pg-muted)]">{active + 1} de {questions.length} preguntas</span>
-                <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
-              </div>
-            </div>
-
+          <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
               {current ? (
                 <div className="relative flex min-h-full flex-col">
