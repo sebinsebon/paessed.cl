@@ -125,6 +125,17 @@ function carouselMasteryColor(percentage: number) {
   return "#ef4444";
 }
 
+
+/** Restores the original carousel gradient on the progress bar only. */
+function carouselProgressGradient(percentage: number) {
+  const pct = Math.max(0, Math.min(100, percentage));
+  if (pct >= 85) return "linear-gradient(90deg, #b6f35c, #64db35)";
+  if (pct >= 75) return "linear-gradient(90deg, #c6ed4b, #83dc39)";
+  if (pct >= 60) return "linear-gradient(90deg, #f3c64a, #c4df40)";
+  if (pct >= 40) return "linear-gradient(90deg, #f6a34a, #ebca42)";
+  return "linear-gradient(90deg, #ed5954, #f3953f)";
+}
+
 function MasteryBadge({ state }: { state: MasteryState }) {
   const item = MASTERY[state];
   return (
@@ -186,11 +197,11 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full progress-track">
         <motion.div
-          className="h-full rounded-full"
+          className="progress-fill h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${axis.percentage}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={{ backgroundColor: progressColor }}
+          style={{ background: carouselProgressGradient(axis.percentage) }}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
