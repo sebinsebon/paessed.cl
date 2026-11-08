@@ -9,6 +9,7 @@ import { getM1UnitsForAxis, type M1AxisId, type M1UnitId } from "@/lib/m1-curric
 
 import {
   AnimatePresence,
+  MotionConfig,
   motion,
   useAnimationFrame,
   useMotionValue,
@@ -163,8 +164,8 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       onClick={() => onOpen(axis)}
       tabIndex={duplicate ? -1 : undefined}
       whileHover={mobile ? undefined : { scale: 1.012 }}
-      whileTap={{ scale: .992 }}
-      transition={{ type: "spring", stiffness: 420, damping: 30 }}
+      whileTap={{ scale: .98 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
       className={`${mobile ? "min-w-[84vw] sm:min-w-[370px]" : "domain-card-width"} mastery-card rounded-2xl p-3.5 text-left`}
       data-critical={critical}
       style={masteryStyle(axis.state)}
@@ -206,7 +207,6 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
         <span className="font-semibold text-[var(--muted)]">
-          Estado:{" "}
           <span style={{ color: progressColor }}>
             {axis.state}
           </span>
@@ -370,7 +370,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
             initial={{ opacity: 0, scale: .92, y: 22 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: .94, y: 14 }}
-            transition={{ type: "spring", stiffness: 360, damping: 30 }}
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
             className="surface-raised fixed left-1/2 top-1/2 z-[100] max-h-[calc(100dvh-32px)] w-[calc(100%-28px)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[22px] p-5 sm:p-6"
             style={masteryStyle(axis.state)}
           >
@@ -453,16 +453,9 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
     >
       <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
         <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
-          <BookOpen
-            aria-hidden="true"
-            size={160}
-            strokeWidth={1.6}
-            className="pointer-events-none absolute -left-1 -top-3 z-0 h-36 w-36 rotate-[-10deg] text-[var(--primary)] opacity-[.07] sm:h-40 sm:w-40"
-          />
           <div className="relative z-10">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Aprender</p>
-              <p className="mt-1 text-[13px] font-semibold text-[var(--muted)]">Tu recorrido por Matemática M1</p>
+              <p className="text-sm font-semibold text-[var(--muted)]">Aprender</p>
             </div>
             <h2 className="mt-6 max-w-[470px] text-[24px] font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[25px]">
               Aprende siguiendo una ruta personalizada
@@ -472,28 +465,26 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
             </p>
           </div>
 
-          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .985 }} className="relative z-10 mt-8 self-start">
+          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .98 }} className="relative z-10 mt-8 self-start">
             <Link
               href="/app/aprender"
               className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[13px] font-extrabold"
             >
               <Play size={17} fill="currentColor" />
-              EMPEZAR
+              Empezar
             </Link>
           </motion.div>
         </div>
 
-        <div className="flex h-full w-full flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-5 lg:min-h-[306px]"> 
+        <div className="flex h-full w-full flex-col justify-between rounded-2xl bg-[var(--surface-2)] p-5 lg:min-h-[260px]">
           <div>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] font-extrabold uppercase tracking-[.11em] text-[var(--muted)]">Tu ruta de aprendizaje</p>
             <Route size={19} className="shrink-0 text-[var(--primary)]" strokeWidth={2} />
           </div>
 
-          <div className="mt-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-4">
-            <p className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[var(--primary)]">Siguiente parada</p>
+          <div className="mt-2 py-2">
+            <p className="text-xs font-semibold text-[var(--nav-active-text)]">Tu próxima lección</p>
             <p className="mt-1.5 text-base font-extrabold leading-6 text-[var(--text)]">Álgebra y Funciones</p>
-            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Aprende y practica a tu ritmo</p>
           </div>
 
           </div>
@@ -508,9 +499,6 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
             <span className="h-2 rounded-full bg-[var(--border-strong)]" />
             <span className="h-2 rounded-full bg-[var(--border-strong)]" />
           </div>
-          <p className="mt-4 text-xs leading-5 text-[var(--muted)]">
-            Un paso a la vez, sin perder de vista lo que viene.
-          </p>
           </div>
         </div>
       </div>
@@ -521,26 +509,20 @@ function DailyMission({ tourFocus }: { tourFocus: boolean }) {
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {
   return (
     <section id="tour-exams-summary" className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
-      <Trophy
-        aria-hidden="true"
-        size={112}
-        strokeWidth={1.6}
-        className="pointer-events-none absolute right-[12px] top-[14px] z-0 h-28 w-28 rotate-[10deg] text-[var(--primary)] opacity-[.065]"
-      />
       <div className="relative z-10">
         <div className="min-w-0">
-          <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Ensayos</div>
+          <div className="text-sm font-semibold text-[var(--muted)]">Ensayos</div>
           <h3 className="mt-1 text-xl font-extrabold tracking-[-.02em]">¿Listo para realizar un ensayo?</h3>
           <p className="mt-2 text-xs leading-5 text-[var(--muted)]">Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
         </div>
       </div>
 
       <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+        <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
           <div className="mt-1 text-lg font-extrabold">742 pts</div>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+        <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Formato</div>
           <div className="mt-1 text-lg font-extrabold">65 preguntas</div>
         </div>
@@ -549,9 +531,9 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
       <motion.div whileHover={{ scale: 1.01 }} className="relative z-10 mt-auto pt-4">
         <Link
           href="/app/ensayos"
-          className="tactile-primary inline-flex min-h-[80px] w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-xs font-extrabold"
+          className="tactile-primary inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-xs font-extrabold"
         >
-          REALIZAR UN ENSAYO
+          Hacer un ensayo
           <ArrowUpRight size={16} />
         </Link>
       </motion.div>
@@ -561,6 +543,7 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
 
 
 function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
+  const reducedMotion = useReducedMotion();
   const points = [690, 711, 728, 742];
   const labels = ["03", "10", "16", "21 sep"];
   const min = 670;
@@ -571,16 +554,16 @@ function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
     <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Progreso de septiembre</div>
+          <div className="text-sm font-semibold text-[var(--muted)]">Progreso de septiembre</div>
           <h3 className="mt-1 text-lg font-extrabold">Vas +52 puntos este mes</h3>
           <p className="mt-1 text-xs text-[var(--muted)]">Solo resultados reales de ensayos, no estimaciones del diagnóstico.</p>
         </div>
         <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-500">↗ +7,5%</div>
       </div>
-      <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-3">
+      <div className="mt-4 overflow-hidden py-3">
         <svg viewBox="0 0 340 135" className="h-[135px] w-full" role="img" aria-label="Evolución de puntajes del mes">
           {[32, 72, 112].map((y) => <line key={y} x1="20" x2="330" y1={y} y2={y} stroke="var(--border)" strokeWidth="1" />)}
-          <motion.path d={path} fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.1, ease: [.22,1,.36,1] }} />
+          <motion.path d={path} fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: reducedMotion ? 0 : 1.1, ease: [.22,1,.36,1] }} />
           {coords.map((c, i) => (
             <g key={points[i]}>
               <circle cx={c.x} cy={c.y} r="5" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
@@ -596,18 +579,12 @@ function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   return (
     <section id="tour-learn" className={`surface relative isolate overflow-hidden rounded-[20px] p-5 ${tourFocus ? "tour-focus" : ""}`}>
-      <Gamepad2
-        aria-hidden="true"
-        size={116}
-        strokeWidth={1.6}
-        className="pointer-events-none absolute right-[6px] top-[-2px] z-0 h-[116px] w-[116px] rotate-[8deg] text-[var(--secondary)] opacity-[.065]"
-      />
       <div className="relative z-10">
-        <div className="text-[11px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">Playground</div>
+        <div className="text-sm font-semibold text-[var(--muted)]">Playground</div>
         <h3 className="mt-2 text-lg font-extrabold">Practica a tu manera</h3>
         <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Resuelve todas las preguntas que quieras y ajusta la práctica por año, eje temático y otros filtros.</p>
 
-        <div className="mt-5 flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3.5">
+        <div className="mt-5 flex items-center justify-between gap-3 rounded-xl bg-[var(--surface-2)] p-3.5">
           <div>
             <div className="text-xs font-extrabold">Pregunta aleatoria</div>
             <div className="mt-1 text-[10px] text-[var(--muted)]">Empieza al instante o entra al Playground para personalizar la sesión.</div>
@@ -733,7 +710,7 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
   return (
     <motion.button
       whileHover={{ y: -3 }}
-      whileTap={{ scale: .992 }}
+      whileTap={{ scale: .98 }}
       className="group w-full rounded-[18px] border border-[var(--border)] bg-[var(--surface-2)] p-4 text-left shadow-[var(--shadow-1)] transition-[border-color,box-shadow] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-2)] sm:p-5"
     >
       <div className="flex items-start justify-between gap-4">
@@ -1091,16 +1068,16 @@ export function Dashboard() {
   }, [tourOpen, tourStep]);
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)]">
+    <MotionConfig reducedMotion="user"><div className="paessed-home min-h-screen bg-[var(--canvas)]">
       <FloatingHomeActions dark={dark} setDark={setDark} onTour={startTour} />
       <main className="min-h-screen transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]">
         <div
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          <section className="mb-6 px-[30px]">
+          <section className="mb-6 px-1 sm:px-[30px]">
             <PageHeadingTransition>
-              <h1 className="text-[38px] font-extrabold leading-[44px] tracking-[-.035em] sm:text-[44px] sm:leading-[50px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en M1 <motion.span className="inline-block" animate={{ y: [0, -3, 0], rotate: [0, 3, 0] }} transition={{ duration: 3.2, repeat: Infinity }}>🚀</motion.span></h1>
+              <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
             </PageHeadingTransition>
             <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>
@@ -1117,6 +1094,6 @@ export function Dashboard() {
 
       <AxisModal axis={selectedAxis} onClose={() => setSelectedAxis(null)} />
       <Tour open={tourOpen} step={tourStep} setStep={setTourStep} close={closeTour} />
-    </div>
+    </div></MotionConfig>
   );
 }

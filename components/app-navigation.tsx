@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { sileo } from "sileo";
-import { Bell, BookOpen, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Gamepad2, Home, Play, Route, Sun, Moon, Target, Trophy, UserRound, X } from "lucide-react";
+import { Bell, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Play, Sun, Moon, Target, X } from "lucide-react";
 import { DEMO_EXAM_EVENT, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 
@@ -26,6 +26,18 @@ export function announce(title: string, subtitle: string, variant: "info" | "suc
   else sileo.info(options);
 }
 
+
+const navigationItems = [
+  { label: "Inicio", mobileLabel: "Inicio", emoji: "1f3e0", href: "/app/inicio" },
+  { label: "Aprender", mobileLabel: "Aprender", emoji: "1f4da", href: "/app/aprender" },
+  { label: "Ensayos", mobileLabel: "Ensayos", emoji: "1f3c6", href: "/app/ensayos" },
+  { label: "Playground", mobileLabel: "Jugar", emoji: "1f3ae", href: "/app/playground" },
+  { label: "Perfil", mobileLabel: "Perfil", emoji: "1f464", href: "/app/perfil" },
+] as const;
+
+function NavigationEmoji({ code, mobile = false }: { code: string; mobile?: boolean }) {
+  return <img src={`/emoji-apple/${code}.png`} alt="" aria-hidden="true" width={mobile ? 24 : 28} height={mobile ? 24 : 28} className="paessed-nav-emoji relative z-10" draggable={false} />;
+}
 
 let lastSidebarCollapsed = false;
 let sidebarPreferenceRead = false;
@@ -89,19 +101,12 @@ export function Sidebar({
   const lastScore = 0;
   const goalProgress = Math.min(100, Math.round((lastScore / goal) * 100));
   const goalGap = Math.max(goal - lastScore, 0);
-  const nav = [
-    ["Inicio", Home, "/app/inicio", ""],
-    ["Aprender", Route, "/app/aprender", "Ruta"],
-    ["Ensayos", Trophy, "/app/ensayos", ""],
-    ["Playground", Gamepad2, "/app/playground", ""],
-    ["Perfil", UserRound, "/app/perfil", ""],
-  ] as const;
 
   return (
-    <aside
+    <MotionConfig reducedMotion="user"><aside
       aria-hidden={collapsed}
       inert={collapsed}
-      className={`fixed inset-y-0 left-0 z-50 hidden w-[264px] overflow-hidden border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:block ${collapsed ? "-translate-x-full pointer-events-none" : "translate-x-0"}`}
+      className={`paessed-soft-nav fixed inset-y-0 left-0 z-50 hidden w-[264px] overflow-hidden border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:block ${collapsed ? "-translate-x-full pointer-events-none" : "translate-x-0"}`}
     >
       <div className="flex h-full w-[264px] flex-col overflow-y-auto px-5 py-5">
           <Link href="/app/inicio" className="mb-7 flex w-full justify-center">
@@ -117,7 +122,7 @@ export function Sidebar({
 
           <nav className={tourFocus ? "tour-focus" : ""}>
             <div className="space-y-1.5">
-              {nav.map(([label, Icon, href, badge]) => {
+              {navigationItems.map(({label, emoji, href}) => {
                 const active = selectedPath === href || selectedPath.startsWith(href + "/");
                 return (
                   <Link
@@ -129,18 +134,13 @@ export function Sidebar({
                     tabIndex={collapsed ? -1 : undefined}
                     className={`paessed-sidebar-nav-link group relative isolate flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-bold transition-colors duration-150 ${
                       active
-                        ? "text-white"
+                        ? "text-[var(--nav-active-text)]"
                         : "text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
                     }`}
                   >
-                    <span aria-hidden="true" className="paessed-sidebar-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)] shadow-[0_3px_0_var(--primary-pressed)]" />
-                    <Icon size={18} className="relative z-10 shrink-0" />
+                    <span aria-hidden="true" className="paessed-sidebar-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl" />
+                    <NavigationEmoji code={emoji} />
                     <span className="relative z-10 flex-1">{label}</span>
-                    {badge && (
-                      <span className={`relative z-10 rounded-full px-2 py-1 text-[9px] font-extrabold uppercase tracking-wider ${active ? "bg-white/20" : "bg-[var(--surface-3)] text-[var(--muted)]"}`}>
-                        {badge}
-                      </span>
-                    )}
                   </Link>
                 );
               })}
@@ -183,16 +183,14 @@ export function Sidebar({
               )}
             </AnimatePresence>
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
-              <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[.1em] text-[var(--muted)]">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
                 <Target size={14} className="text-[var(--primary)]" />
                 Meta del mes
               </div>
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div>
                   <div className="text-xl font-extrabold text-[var(--text)]">{goal} pts</div>
-                  <div className="mt-1 text-[10px] font-medium text-[var(--muted)]">Tu objetivo personal</div>
                 </div>
-                <div className="text-[10px] font-extrabold text-[var(--primary)]">M1</div>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-4)]">
                 <motion.div
@@ -205,7 +203,7 @@ export function Sidebar({
             </div>
           </div>
       </div>
-    </aside>
+    </aside></MotionConfig>
   );
 }
 
@@ -379,7 +377,7 @@ function HomeActions({
   };
 
   return (
-    <div className={`flex shrink-0 items-center gap-1.5 ${floating ? "rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] p-1.5 shadow-[var(--shadow-2)] backdrop-blur-xl" : ""}`}>
+    <MotionConfig reducedMotion="user"><div className={`paessed-soft-nav flex shrink-0 items-center gap-1.5 ${floating ? "rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_92%,transparent)] p-1.5 shadow-[var(--shadow-2)] backdrop-blur-xl" : ""}`}>
       <motion.button
         whileTap={{ scale: .92 }}
         aria-label="Notificaciones"
@@ -447,7 +445,7 @@ function HomeActions({
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </div></MotionConfig>
   );
 }
 
@@ -470,19 +468,19 @@ export function FloatingHomeActions({
   }, []);
 
   return (
-    <AnimatePresence>
+    <MotionConfig reducedMotion="user"><AnimatePresence>
       {visible && (
         <motion.div
           initial={{ opacity: 0, y: -10, scale: .96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: .97 }}
           transition={{ duration: .18, ease: [.22, 1, .36, 1] }}
-          className="fixed right-4 top-3 z-[70] sm:right-6"
+          className="paessed-soft-nav fixed right-4 top-3 z-[70] sm:right-6"
         >
           <HomeActions dark={dark} setDark={setDark} onTour={onTour} floating />
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence></MotionConfig>
   );
 }
 
@@ -498,7 +496,7 @@ export function DashboardTopNav({
   sidebarCollapsed: boolean;
 }) {
   return (
-    <header className="relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] transition-[margin-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:ml-[var(--sidebar-width)]">
+    <MotionConfig reducedMotion="user"><header className="paessed-soft-nav relative z-30 h-[64px] border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_96%,transparent)] transition-[margin-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:ml-[var(--sidebar-width)]">
       <div className="mx-auto flex h-full w-full max-w-[1280px] items-center gap-2 px-4 sm:px-6">
         <AnimatePresence mode="popLayout" initial={false}>
           {sidebarCollapsed && (
@@ -525,7 +523,7 @@ export function DashboardTopNav({
           <HomeActions dark={dark} setDark={setDark} onTour={onTour} />
         </div>
       </div>
-    </header>
+    </header></MotionConfig>
   );
 }
 
@@ -540,21 +538,14 @@ export function MobileNav() {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setPendingHref(href);
   };
-  const items = [
-    ["Inicio", Home, "/app/inicio"],
-    ["Aprender", BookOpen, "/app/aprender"],
-    ["Ensayos", Trophy, "/app/ensayos"],
-    ["Jugar", Gamepad2, "/app/playground"],
-    ["Perfil", UserRound, "/app/perfil"],
-  ] as const;
   return (
-    <nav className="paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
-      {items.map(([label, Icon, href]) => {
+    <nav className="paessed-soft-nav paessed-mobile-nav fixed bottom-3 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1.5 shadow-2xl backdrop-blur-xl lg:hidden">
+      {navigationItems.map(({mobileLabel: label, emoji, href}) => {
         const active = selectedPath === href || selectedPath.startsWith(href + "/");
         return (
-          <Link key={label} href={href} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-white" : "text-[var(--muted)]"}`}>
-            <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl bg-[var(--primary)]" />
-            <Icon size={17} className="relative z-10" />
+          <Link key={label} href={href} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-[var(--nav-active-text)]" : "text-[var(--muted)]"}`}>
+            <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl" />
+            <NavigationEmoji code={emoji} mobile />
             <span className="relative z-10">{label}</span>
           </Link>
         );

@@ -183,6 +183,86 @@ html.dark [data-sileo-toast] {
 .text-muted { color: var(--muted); }
 .text-muted-2 { color: var(--muted-2); }
 
+/* Inicio and the persistent navigation share a quiet, neutral palette.
+   Keep these tokens scoped: exercise paper and the other modes own their colors. */
+.paessed-home,
+.paessed-soft-nav {
+  --nav-active-text: #9a430d;
+  --nav-active-fill: #fff0e5;
+  --nav-active-border: #efcdb5;
+  color: var(--text);
+}
+html.dark .paessed-home,
+html.dark .paessed-soft-nav {
+  --canvas: #17191c;
+  --surface: #1e2125;
+  --surface-raised: #25282d;
+  --surface-2: #25282d;
+  --surface-3: #2b2f34;
+  --surface-4: #34383e;
+  --surface-5: #3e434a;
+  --border: #34383e;
+  --border-strong: #494f57;
+  --text: #f3f3f2;
+  --muted: #afb3ba;
+  --muted-2: #969ca5;
+  --nav-active-text: #ffb47b;
+  --nav-active-fill: #302720;
+  --nav-active-border: #64422c;
+  --shadow-1: 0 3px 12px -6px rgb(0 0 0 / .2);
+  --shadow-2: 0 12px 30px -16px rgb(0 0 0 / .4);
+}
+.paessed-soft-nav .paessed-sidebar-active-indicator,
+.paessed-soft-nav .paessed-mobile-active-indicator {
+  background: var(--nav-active-fill);
+  border: 1px solid var(--nav-active-border);
+  box-shadow: none;
+}
+.paessed-nav-emoji {
+  flex-shrink: 0;
+  object-fit: contain;
+  transition: transform 200ms cubic-bezier(.22, 1, .36, 1);
+}
+@media (hover: hover) {
+  .paessed-sidebar-nav-link:hover .paessed-nav-emoji,
+  .paessed-mobile-nav-link:hover .paessed-nav-emoji { transform: translateY(-2px); }
+}
+.paessed-sidebar-nav-link:active .paessed-nav-emoji,
+.paessed-mobile-nav-link:active .paessed-nav-emoji { transform: scale(.98); }
+.paessed-soft-nav :is(a, button):focus-visible,
+.paessed-home :is(a, button):focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 4px;
+}
+.paessed-home .mastery-card {
+  border-color: var(--border);
+  box-shadow: none;
+}
+.paessed-home .mastery-card::before,
+.paessed-home .mastery-card::after,
+.paessed-home .progress-fill::after { display: none; }
+.paessed-home .mastery-card:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-1);
+}
+.paessed-home .surface { border-color: color-mix(in srgb, var(--border) 70%, transparent); }
+.paessed-home .tactile-primary { box-shadow: 0 3px 0 var(--primary-pressed); }
+.paessed-home .tactile-primary:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--primary-pressed); }
+@media (max-width: 1023px) {
+  .paessed-soft-nav.paessed-mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(390px, calc(100vw - 24px));
+  }
+  .paessed-soft-nav .paessed-mobile-nav-link { min-width: 0; min-height: 52px; padding-inline: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paessed-soft-nav .paessed-nav-emoji,
+  .paessed-home .tactile-primary,
+  .paessed-home .soft-button { transform: none !important; }
+}
+
 .tactile-primary {
   background: var(--primary);
   color: white;
