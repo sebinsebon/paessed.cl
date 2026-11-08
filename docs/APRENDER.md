@@ -6,7 +6,6 @@ Implementación local sobre `feat/aprender`, inicialmente sincronizada con `main
 
 ```powershell
 npm ci
-npm run prepare:gold -- C:\Users\Administrator\Desktop\paes\demre\Gold
 npm run dev -- --hostname 127.0.0.1 --port 3100
 ```
 
@@ -14,7 +13,7 @@ Abrir http://127.0.0.1:3100/app/aprender. Elegir una meta de uno, dos o tres nod
 
 El catálogo Gold 0.7 contiene nueve ensayos y 585 preguntas. Aprender utiliza las 573 clasificadas dentro del temario M1 con clave verificada; los ensayos completos conservan las doce preguntas históricas restantes. El script comprueba los hashes contra `ENTREGA_SHA256.json` y no modifica los originales. Los paquetes se sirven automáticamente por ensayo, con verificación SHA-256 antes de abrirlos. Permanecen separados de las importaciones personales.
 
-Los binarios de terceros no se incluyen en Git: para otra instalación hay que aprovisionar esta misma entrega antes de iniciar o compilar el sitio. El catálogo y las herramientas están versionados. La clasificación `private_local` refleja que la revisión Gold acredita fidelidad técnica; la publicación pública requiere resolver por separado el registro de distribución `public_authorized` indicado por la documentación del banco.
+Los nueve paquetes de `public/default/gold/` se incluyen en `feat/aprender` por autorización explícita del propietario del repositorio el 8 de noviembre de 2026 para publicarlos en GitHub y servir las preguntas en Vercel. Una instalación desde Git no necesita aprovisionarlos por separado. El catálogo conserva la clasificación `private_local` de la entrega de origen; esta autorización de publicación se registra aquí y no modifica los paquetes ni su revisión técnica. `npm run prepare:gold -- RUTA_A_GOLD` permite volver a preparar la misma entrega desde sus originales, comprobando `ENTREGA_SHA256.json`.
 
 ## Comportamiento
 
@@ -37,7 +36,7 @@ La base local `paessed-learning` versión 1 guarda estado y sesiones Default. La
 
 El respaldo ZIP versión 2 añade Aprender y sesiones Default; los respaldos versión 1 siguen siendo legibles. Un navegador vacío puede adoptar la identidad del respaldo; un perfil con actividad de otro estudiante no se mezcla silenciosamente. Los datos corruptos se conservan y se informa el error.
 
-El guardado es propio de este navegador: no hay autenticación real ni sincronización entre dispositivos. La segunda etapa, después de la revisión del usuario, sustituirá estos repositorios por persistencia remota manteniendo las interfaces del motor. No se ha desplegado ni publicado contenido.
+El guardado es propio de este navegador: no hay autenticación real ni sincronización entre dispositivos. La segunda etapa, después de la revisión del usuario, sustituirá estos repositorios por persistencia remota manteniendo las interfaces del motor. La rama `feat/aprender` incluye código y paquetes para su preview mediante la integración Git de Vercel.
 
 ## Verificación
 

@@ -8,6 +8,5 @@ out/
 test-results/
 tests/test-results/
 .DS_Store
-# Reviewed third-party content is provisioned for local review separately.
-public/default/gold/*.paessed
+# Gold Default packages in public/default/gold are versioned for Vercel previews.
 playwright-report/
