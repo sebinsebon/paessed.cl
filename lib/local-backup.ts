@@ -1,4 +1,8 @@
 import type JSZip from "jszip";
+import { exportLearningState, restoreLearningState, validateLearningState } from "@/lib/learning/repository";
+import { listExamSessions, restoreExamSessions, validateExamSessions } from "@/lib/learning/exam-repository";
+import type { LearningState } from "@/lib/learning/types";
+import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
 import {
   DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_EVENT,
   DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY,
@@ -11,14 +15,15 @@ import { CATEGORY_KEYS, type LocalStorageReport, type StorageCategoryId } from "
 
 export type BackupCategory = Exclude<StorageCategoryId, "other">;
 export const BACKUP_CATEGORIES: BackupCategory[] = [
-  "exams", "sessions", "drawings", "marked", "diagnostic", "playground", "preferences",
+  "exams", "sessions", "drawings", "marked", "diagnostic", "playground", "preferences", "learning",
 ];
 
 type StoredSlice = { category: BackupCategory; key: string; value: string };
 type ExamDescriptor = { id: string; jsonPath: string; archivePath?: string; archiveMime?: string };
 type BackupManifest = {
   format: "paessed-browser-backup";
-  version: 1;
+  version: 1 | 2;
+  learning?: { state: LearningState; sessions: Record<string,SavedDefaultExamSession> };
   createdAt: string;
   categories: BackupCategory[];
   items: StoredSlice[];
@@ -60,13 +65,14 @@ function allowedFields(key: string, category: BackupCategory): string[] {
   const demo = key === DEMO_EXAM_STORAGE_KEY;
   if (category === "sessions") return demo
     ? ["answers", "questionIndex", "secondsLeft", "savedAt"]
-    : ["answers", "index", "completedAt"];
+    : ["answers", "index", "completedAt", "sessionId", "assisted", "legacyExposed", "submittedAnswers", "evidenceDelivered"];
   if (category === "drawings") return [demo ? "strokesByQuestion" : "strokes"];
   if (category === "marked") return [demo ? "flagged" : "bookmarks"];
   return [];
 }
 function categoryMatchesKey(category: BackupCategory, key: string): boolean {
   if (!key.startsWith("paessed-") || key.length > 512) return false;
+  if (key.startsWith("paessed-learning-ink:")) return category === "drawings";
   if (isProgressKey(key)) return PROGRESS_CATEGORIES.includes(category);
   return CATEGORY_KEYS[key] === category;
 }
@@ -85,9 +91,9 @@ function parseSlice(key: string, category: BackupCategory, raw: string): Record<
         !value.every((answer) => answer === null || (Number.isInteger(answer) && answer >= 0 && answer < 4))) {
         throw new Error("Las respuestas del ensayo de ejemplo son inválidas.");
       }
-    } else if (field === "answers" || field === "strokes" || field === "strokesByQuestion") {
+    } else if (field === "answers" || field === "submittedAnswers" || field === "strokes" || field === "strokesByQuestion") {
       if (!isObject(value)) throw new Error("El campo " + field + " no es un objeto válido.");
-    } else if (field === "bookmarks" || field === "flagged") {
+    } else if (field === "bookmarks" || field === "flagged" || field === "assisted" || field === "legacyExposed") {
       if (!Array.isArray(value)) throw new Error("Las marcas del respaldo no son válidas.");
       if (field === "flagged" && (value.length !== DEMO_EXAM_QUESTION_COUNT || !value.every((mark) => typeof mark === "boolean"))) {
         throw new Error("Las marcas del ensayo de ejemplo son inválidas.");
@@ -96,7 +102,9 @@ function parseSlice(key: string, category: BackupCategory, raw: string): Record<
       if (!Number.isFinite(value) || (field !== "savedAt" && (!Number.isInteger(value) || (value as number) < 0))) {
         throw new Error("El progreso contiene valores numéricos inválidos.");
       }
-    } else if (field === "completedAt" && typeof value !== "string") {
+    } else if (field === "evidenceDelivered" && typeof value !== "boolean") {
+      throw new Error("El estado de entrega no es válido.");
+    } else if ((field === "completedAt" || field === "sessionId") && typeof value !== "string") {
       throw new Error("La fecha de finalización es inválida.");
     }
   }
@@ -160,8 +168,12 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
     format: "paessed-browser-backup", version: 1,
     createdAt: new Date().toISOString(), categories: selected, items: [], exams: [],
   };
+  if (selected.includes("learning")) {
+    manifest.version=2;
+    manifest.learning={state:await exportLearningState(),sessions:await listExamSessions()};
+  }
   for (const category of selected) {
-    if (category === "exams") continue;
+    if (category === "exams" || category === "learning") continue;
     const savedKeys = report.categories.find((item) => item.id === category)?.keys ?? [];
     for (const key of [...new Set(savedKeys)]) {
       if (!categoryMatchesKey(category, key)) continue;
@@ -194,7 +206,7 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
 }
 
 function validateManifest(value: unknown): BackupManifest {
-  if (!isObject(value) || value.format !== "paessed-browser-backup" || value.version !== 1) {
+  if (!isObject(value) || value.format !== "paessed-browser-backup" || ![1,2].includes(Number(value.version))) {
     throw new Error("El archivo no es un respaldo PAESSED compatible (versión 1).");
   }
   if (typeof value.createdAt !== "string" || Number.isNaN(Date.parse(value.createdAt))) {
@@ -239,8 +251,13 @@ function validateManifest(value: unknown): BackupManifest {
       archivePath: candidate.archivePath as string | undefined,
       archiveMime: candidate.archiveMime as string | undefined });
   }
-  return { format: "paessed-browser-backup", version: 1, createdAt: value.createdAt,
-    categories: cats, items, exams };
+  let learning: BackupManifest["learning"];
+  if (cats.includes("learning")) {
+    if(value.version!==2||!isObject(value.learning)) throw new Error("Falta el progreso de Aprender en el respaldo.");
+    learning={state:validateLearningState(value.learning.state),sessions:validateExamSessions(value.learning.sessions)};
+  }
+  return { format: "paessed-browser-backup", version: value.version as 1|2, createdAt: value.createdAt,
+    categories: cats, items, exams, learning };
 }
 
 /** Reads and checks the file for preview. No browser data is changed here. */
@@ -272,6 +289,7 @@ export async function inspectLocalBackup(file: File): Promise<LocalBackupPreview
   }
   const itemCounts = Object.fromEntries(BACKUP_CATEGORIES.map((category) => [category, 0])) as Record<BackupCategory, number>;
   itemCounts.exams = manifest.exams.length;
+  itemCounts.learning = manifest.learning ? 1 : 0;
   for (const item of manifest.items) itemCounts[item.category]++;
   return {
     name: file.name, createdAt: manifest.createdAt, categories: manifest.categories,
@@ -318,6 +336,11 @@ export async function restoreLocalBackup(
   }
 
   const result: RestoreSummary = { examsAdded: 0, examsSkipped: 0, entriesApplied: 0, entriesSkipped: 0 };
+  if(selected.includes("learning")&&preview.manifest.learning){
+    await restoreLearningState(preview.manifest.learning.state);
+    await restoreExamSessions(preview.manifest.learning.sessions);
+    result.entriesApplied++;
+  }
   if (selected.includes("exams")) {
     const existing = new Set((await listImportedExams()).map((exam) => exam.id));
     for (const record of prepared) {

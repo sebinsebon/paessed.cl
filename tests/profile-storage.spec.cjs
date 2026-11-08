@@ -39,7 +39,7 @@ test("Perfil lists stored exam weight and deletes only a confirmed local package
   await page.getByRole("button", { name: "Importado", exact: true }).waitFor();
   await page.goto("/app/perfil");
   await expect(page.getByRole("heading", { name: "Almacenamiento local" })).toBeVisible();
-  await expect(page.getByText("ENSAYO TESLA", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^ENSAYO TESLA M1/)).toBeVisible();
   const exam = page.getByRole("button", { name: /Eliminar ensayo ENSAYO TESLA/ });
   await exam.click();
   await page.getByRole("button", { name: "Cancelar" }).click();

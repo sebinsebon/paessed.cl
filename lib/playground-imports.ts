@@ -1,6 +1,7 @@
 import Emphasis from "./paessed-runtime/block-renderer.js";
 import { getImportedExam, listImportedExams, type ImportedExamRecord } from "@/lib/local-imports";
 import { M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
+import { canonicalQuestionId } from "@/lib/question-identity";
 
 type Data = Record<string, unknown>;
 const record = (x: unknown): x is Data => !!x && typeof x === "object" && !Array.isArray(x);
@@ -15,6 +16,7 @@ export type BankQuestion = {
   optionBlocks?: Array<unknown[] | undefined>;
   optionLabels?: string[];
   explanationBlocks?: unknown[];
+  explanationStatus?: string;
 };
 export type BankSource = { id: string; name: string; fileName?: string; count: number; imported: boolean };
 
@@ -96,7 +98,7 @@ export function convertImportedExamQuestions(examId: string, title: string, json
     const number = typeof num === "number" && Number.isFinite(num) ? num :
       typeof num === "string" && /^\d+$/.test(num) ? Number(num) : index+1;
     return {
-      id: "imported:" + examId + ":" + index,
+      id: canonicalQuestionId(json, number) ?? "imported:" + examId + ":" + index,
       sourceId: "imported:" + examId,
       number, year, collection:title, axis:unit?.axisName ?? "Sin clasificar",
       topic:unit?.name ?? "Sin subeje asignado", unitId,

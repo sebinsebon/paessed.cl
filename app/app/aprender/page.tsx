@@ -1,4 +1,4 @@
-import { LearnExperience } from "@/components/product-pages";
+import { LearnExperience } from "@/components/learning/learn-experience";
 
 export default function LearnPage() {
   return <LearnExperience />;

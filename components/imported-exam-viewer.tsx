@@ -15,9 +15,18 @@ import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } f
 import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
 import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
 import { QuestionTopicTags } from "@/components/question-topic-tags";
+import { canonicalQuestionId } from "@/lib/question-identity";
+import { DEFAULT_QUESTION_INDEX } from "@/lib/learning/catalog";
+import { recordEvidence } from "@/lib/learning/evidence";
 
 const PROGRESS_PREFIX = IMPORTED_EXAM_PROGRESS_PREFIX;
 type SavedImportedProgress = {
+  sessionId: string;
+  completedAt?: string;
+  submittedAnswers?: Record<string, string>;
+  evidenceDelivered?: boolean;
+  assisted: number[];
+  legacyExposed: number[];
   index: number;
   answers: Record<string, string>;
   bookmarks: number[];
@@ -25,7 +34,7 @@ type SavedImportedProgress = {
 };
 
 function readSavedProgress(id: string, questionCount: number): SavedImportedProgress {
-  const empty: SavedImportedProgress = { index: 0, answers: {}, bookmarks: [], strokes: {} };
+  const empty: SavedImportedProgress = { sessionId: crypto.randomUUID(), assisted: [], legacyExposed: [], index: 0, answers: {}, bookmarks: [], strokes: {} };
   try {
     const stored = localStorage.getItem(PROGRESS_PREFIX + id);
     if (!stored) return empty;
@@ -47,7 +56,15 @@ function readSavedProgress(id: string, questionCount: number): SavedImportedProg
           typeof position === "number" && Number.isInteger(position) && position >= 0 && position < questionCount)
       : [];
     const strokes = isRecord(candidate.strokes) ? candidate.strokes as Record<number, PlaygroundInkStroke[]> : {};
-    return { index, answers, bookmarks, strokes };
+    const validIndices = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((i): i is number => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < questionCount))] : [];
+    const sessionId = typeof candidate.sessionId === "string" && candidate.sessionId ? candidate.sessionId : empty.sessionId;
+    const completedAt = typeof candidate.completedAt === "string" && Number.isFinite(Date.parse(candidate.completedAt)) ? candidate.completedAt : undefined;
+    const submittedAnswers = completedAt && isRecord(candidate.submittedAnswers)
+      ? Object.fromEntries(Object.entries(candidate.submittedAnswers).filter(([key, answer]) => /^\d+$/.test(key) && Number(key) < questionCount && typeof answer === "string")) as Record<string, string> : undefined;
+    return { index, answers: submittedAnswers ?? answers, bookmarks, strokes, sessionId, completedAt, submittedAnswers,
+      evidenceDelivered: candidate.evidenceDelivered === true,
+      assisted: validIndices(candidate.assisted),
+      legacyExposed: typeof candidate.sessionId === "string" ? validIndices(candidate.legacyExposed) : Array.from({ length: questionCount }, (_, i) => i) };
   } catch {
     return empty;
   }
@@ -62,6 +79,16 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [strokes, setStrokes] = useState<Record<number, PlaygroundInkStroke[]>>({});
   const [restored, setRestored] = useState(false);
+  const [sessionId, setSessionId] = useState("");
+  const [completedAt, setCompletedAt] = useState<string>();
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<string, string>>();
+  const [evidenceDelivered, setEvidenceDelivered] = useState(false);
+  const [assisted, setAssisted] = useState<number[]>([]);
+  const assistedRef = useRef<number[]>([]);
+  const [legacyExposed, setLegacyExposed] = useState<number[]>([]);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [delivering, setDelivering] = useState(false);
+  const [progressError, setProgressError] = useState("");
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -74,6 +101,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const { aiSettings, updateAiSettings } = useAiSettings();
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const deliveryDialogRef = useRef<HTMLElement>(null);
 
   // Avoid exposing the app's dark scrollbar gutter beside the full-screen paper.
   useEffect(() => {
@@ -104,6 +132,12 @@ export function ImportedExamViewer({ id }: { id: string }) {
           setAnswers(previous.answers);
           setBookmarks(previous.bookmarks);
           setStrokes(previous.strokes);
+          setSessionId(previous.sessionId);
+          setCompletedAt(previous.completedAt);
+          setSubmittedAnswers(previous.submittedAnswers);
+          setEvidenceDelivered(!!previous.evidenceDelivered);
+          setAssisted(previous.assisted); assistedRef.current = previous.assisted;
+          setLegacyExposed(previous.legacyExposed);
         }
         setRestored(true);
       })
@@ -120,18 +154,23 @@ export function ImportedExamViewer({ id }: { id: string }) {
   useEffect(() => {
     if (!restored || !record) return;
     try {
-      const next: SavedImportedProgress = { index: active, answers, bookmarks, strokes };
+      const saved = JSON.parse(localStorage.getItem(PROGRESS_PREFIX + id) ?? "null") as SavedImportedProgress | null;
+      if (saved?.completedAt && !completedAt) {
+        setCompletedAt(saved.completedAt); setSubmittedAnswers(saved.submittedAnswers ?? saved.answers); setAnswers(saved.submittedAnswers ?? saved.answers); setEvidenceDelivered(!!saved.evidenceDelivered); return;
+      }
+      const next: SavedImportedProgress = { index: active, answers, bookmarks, strokes, sessionId, completedAt, submittedAnswers, evidenceDelivered, assisted, legacyExposed };
       localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify(next));
+      setProgressError("");
     } catch {
       // Large drawings may exceed localStorage quota. Preserve answers when possible.
       try {
         localStorage.setItem(PROGRESS_PREFIX + id,
-          JSON.stringify({ index: active, answers, bookmarks, strokes: {} }));
+          JSON.stringify({ index: active, answers, bookmarks, strokes: {}, sessionId, completedAt, submittedAnswers, evidenceDelivered, assisted, legacyExposed }));
       } catch {
-        // Browsers may disable local storage.
+        setProgressError("No se pudo guardar tu progreso. Libera espacio o habilita el almacenamiento antes de entregar.");
       }
     }
-  }, [id, restored, record, active, answers, bookmarks, strokes]);
+  }, [id, restored, record, active, answers, bookmarks, strokes, sessionId, completedAt, submittedAnswers, evidenceDelivered, assisted, legacyExposed]);
 
   useEffect(() => {
     setPaperTheme(readQuestionPaperTheme());
@@ -154,6 +193,31 @@ export function ImportedExamViewer({ id }: { id: string }) {
     return [...new Set(ids.flatMap(id=>{const error=resourceIssues.get(id);return error?[error]:[];}))];
   },[current,currentOptions,referencedImages,resourceIssues]);
   const displayedResourceError=resourceError||(currentResourceErrors.length?`${currentResourceErrors.length} recursos no disponibles. ${currentResourceErrors[0]}`:'');
+  const canonicalQuestions = useMemo(() => questions.map((question, index) => {
+    const raw = isRecord(question) ? question.number ?? question.question_number : undefined;
+    const number = (typeof raw === "number" || typeof raw === "string") && /^\d+$/.test(String(raw)) ? Number(raw) : index + 1;
+    const canonical = canonicalQuestionId(record?.finalJson, number);
+    return DEFAULT_QUESTION_INDEX.find(q => q.id === canonical && q.eligible);
+  }), [questions, record]);
+  const verifiedQuestions = useMemo(() => canonicalQuestions.map((meta, index) => {
+    const q = questions[index];
+    return meta && isRecord(q) && isRecord(q.answer) && q.answer.status === "verified" && q.answer.label === meta.correct ? meta : null;
+  }), [canonicalQuestions, questions]);
+  const exposeLegacy = async () => {
+    for (const index of legacyExposed) {
+      const meta = canonicalQuestions[index];
+      if (meta) await recordEvidence({ type: "expose", questionId: meta.id, sessionId: `legacy-import:${id}`, mode: "exam" });
+    }
+  };
+  useEffect(() => {
+    if (!restored || !record || !sessionId || !legacyExposed.length) return;
+    void exposeLegacy().catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo recuperar la procedencia de tus respuestas."));
+  }, [restored, record, sessionId, legacyExposed, id]);
+  useEffect(() => {
+    const meta = canonicalQuestions[active];
+    if (!restored || loading || resourcesLoading || displayedResourceError || !meta || !sessionId || completedAt) return;
+    void recordEvidence({ type: "expose", questionId: meta.id, sessionId, mode: "exam" }).catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo registrar la pregunta mostrada."));
+  }, [active, canonicalQuestions, restored, loading, resourcesLoading, displayedResourceError, sessionId, completedAt]);
   const assetUrls=useMemo(()=>referencedImages.flatMap(path=>{
     const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
   }),[referencedImages,resourceUrls]);
@@ -166,13 +230,18 @@ export function ImportedExamViewer({ id }: { id: string }) {
   }, [active, setDrawingEnabled]);
 
   useEffect(() => {
-    if (!mapOpen && !settingsOpen) return;
+    if (!mapOpen && !settingsOpen && !deliveryOpen) return;
     const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setMapOpen(false); setSettingsOpen(false); }
+      if (event.key === "Escape") { setMapOpen(false); setSettingsOpen(false); if (!delivering) setDeliveryOpen(false); }
+      if (deliveryOpen && event.key === "Tab") {
+        const controls = Array.from(deliveryDialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
+        if (controls.length && event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
+        else if (controls.length && !event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0].focus(); }
+      }
     };
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
-  }, [mapOpen, settingsOpen]);
+  }, [mapOpen, settingsOpen, deliveryOpen, delivering]);
 
   const paperPalette = paperTheme === "dark"
     ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", footer: "#151d2c" }
@@ -197,6 +266,58 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const selectedAnswer = answers[String(active)] ?? "";
   const marked = bookmarks.includes(active);
   const currentStrokes = strokes[active] ?? [];
+  const finalAnswers = submittedAnswers ?? answers;
+  const evaluated = completedAt ? verifiedQuestions.flatMap((meta, i) => meta && finalAnswers[String(i)] ? [{ correct: finalAnswers[String(i)] === meta.correct }] : []) : [];
+  const requestHelp = () => {
+    if (!sessionId) return;
+    const meta = canonicalQuestions[active];
+    if (completedAt) {
+      if (meta && evidenceDelivered) void recordEvidence({ type: "expose", questionId: meta.id, sessionId, mode: "exam", assisted: true }).catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo guardar el uso de ayuda."));
+      return;
+    }
+    const next = [...new Set([...assistedRef.current, active])];
+    assistedRef.current = next; setAssisted(next);
+    try {
+      const saved = readSavedProgress(id, questions.length);
+      localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify({ ...saved, assisted: next }));
+    } catch { setProgressError("No se pudo guardar el uso de ayuda. No cierres esta pestaña antes de entregar."); }
+    if (meta) void recordEvidence({ type: "expose", questionId: meta.id, sessionId, mode: "exam", assisted: true }).catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo guardar el uso de ayuda."));
+  };
+  const deliver = async () => {
+    if (!record || !restored || !sessionId || delivering) return;
+    setDelivering(true);
+    try {
+      // Persist and lock the delivered snapshot before recording any evidence.
+      // A close or a failed write can then resume the same immutable submission.
+      const saved = readSavedProgress(id, questions.length);
+      const snapshot = saved.completedAt ? saved.submittedAnswers ?? saved.answers : { ...answers };
+      const completion = saved.completedAt ?? new Date().toISOString();
+      const helped = [...new Set([...assistedRef.current, ...saved.assisted])];
+      const locked: SavedImportedProgress = { index: active, answers: snapshot, bookmarks, strokes, sessionId: saved.sessionId, completedAt: completion, submittedAnswers: snapshot, evidenceDelivered: !!saved.evidenceDelivered, assisted: helped, legacyExposed };
+      localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify(locked));
+      setAnswers(snapshot); setSubmittedAnswers(snapshot); setCompletedAt(completion); setDeliveryOpen(false);
+      await exposeLegacy();
+      if (!locked.evidenceDelivered) {
+        for (const [i, meta] of verifiedQuestions.entries()) {
+          const answer = snapshot[String(i)];
+          if (!meta || !answer) continue;
+          await recordEvidence({ type: "external-attempt", questionId: meta.id, sessionId: locked.sessionId, mode: "exam", answer, assisted: helped.includes(i) });
+        }
+        localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify({ ...locked, evidenceDelivered: true }));
+      }
+      setEvidenceDelivered(true); setProgressError("");
+    } catch (error) { setProgressError(error instanceof Error ? error.message : "No se pudo registrar la entrega. Reintenta para conservar tu evidencia."); }
+    finally { setDelivering(false); }
+  };
+  const chooseAnswer = (answer: string) => {
+    if (completedAt || delivering) return;
+    const saved = readSavedProgress(id, questions.length);
+    if (saved.completedAt) {
+      setCompletedAt(saved.completedAt); setSubmittedAnswers(saved.submittedAnswers ?? saved.answers); setAnswers(saved.submittedAnswers ?? saved.answers); setEvidenceDelivered(!!saved.evidenceDelivered);
+      return;
+    }
+    setAnswers(previous => ({ ...previous, [String(active)]: answer }));
+  };
 
   const setQuestion = (position: number) => {
     setActive(Math.max(0, Math.min(questions.length - 1, position)));
@@ -235,7 +356,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
             </p>
           </div>
           <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
-             <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current} />
+             <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current || delivering || (!!completedAt && !evidenceDelivered)} onHelp={requestHelp} />
             <button type="button" title="Herramienta de lápiz"
               aria-label={drawingButtonLabel}
               aria-pressed={drawingEnabled}
@@ -384,6 +505,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
         </AnimatePresence>
       </header>
 
+      {progressError && <p role="alert" className="shrink-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">{progressError}</p>}
       <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta del ensayo importado">
         {loading ? (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--muted)]" role="status">
@@ -400,6 +522,13 @@ export function ImportedExamViewer({ id }: { id: string }) {
         ) : (
           <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
             <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
+              {completedAt && <section aria-label="Resultado del ensayo entregado" className="mb-6 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] p-4">
+                <h2 className="text-lg font-extrabold">Ensayo entregado</h2>
+                <p className="mt-2 text-sm">{Object.keys(finalAnswers).length} respondidas · {questions.length - Object.keys(finalAnswers).length} omitidas. Tus respuestas entregadas están guardadas.</p>
+                {evaluated.length > 0 ? <p className="mt-2 text-sm">{evaluated.filter(q => q.correct).length} correctas y {evaluated.filter(q => !q.correct).length} incorrectas entre {evaluated.length} preguntas con clave verificada del banco Default.</p> : <p className="mt-2 text-sm">Este archivo no tiene respuestas evaluables con clave verificada del banco Default.</p>}
+                <p className="mt-2 text-xs text-[var(--pg-muted)]">Las primeras respuestas nuevas sin ayuda aportan evidencia al perfil. Este resultado no se convierte en puntaje PAES.</p>
+                {!evidenceDelivered && <button type="button" disabled={delivering} onClick={() => void deliver()} className="mt-3 min-h-10 rounded-lg border border-[var(--pg-border)] px-3 text-xs font-bold disabled:opacity-40">{delivering ? "Guardando evidencia…" : "Reintentar registro de evidencia"}</button>}
+              </section>}
               {current ? (
                 <div className="relative flex min-h-full flex-col">
                   {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
@@ -432,8 +561,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
                         const letter = String.fromCharCode(65 + index);
                         const picked = selectedAnswer === letter;
                         return (
-                          <button type="button" key={letter} disabled={drawingEnabled} aria-pressed={picked}
-                            onClick={() => setAnswers((prev) => ({ ...prev, [String(active)]: letter }))}
+                          <button type="button" key={letter} disabled={drawingEnabled || !!completedAt || delivering} aria-pressed={picked}
+                            onClick={() => chooseAnswer(letter)}
                             className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
                               (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
                             <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
@@ -463,9 +592,9 @@ export function ImportedExamViewer({ id }: { id: string }) {
                   className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
                   <ChevronLeft size={16}/> Anterior
                 </button>
-                <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">
-                  {questions.length ? "Pregunta " + (active + 1) + " de " + questions.length : "Sin preguntas"}
-                </span>
+                <div className="flex flex-wrap items-center justify-center gap-2"><span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">{questions.length ? "Pregunta " + (active + 1) + " de " + questions.length : "Sin preguntas"}</span>
+                  {!completedAt && questions.length > 0 && <button type="button" disabled={!restored || delivering} onClick={() => setDeliveryOpen(true)} className="min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-extrabold text-white disabled:opacity-40">Entregar ensayo</button>}
+                </div>
                 <button type="button" disabled={active >= questions.length - 1 || questions.length === 0} onClick={() => setQuestion(active + 1)}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
                   Siguiente <ChevronRight size={16}/>
@@ -475,6 +604,11 @@ export function ImportedExamViewer({ id }: { id: string }) {
           </article>
         )}
       </main>
+      {deliveryOpen && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4"><section ref={deliveryDialogRef} role="dialog" aria-modal="true" aria-labelledby="imported-delivery-title" className="w-full max-w-md rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-6 text-[var(--pg-fg)] shadow-xl">
+        <h2 id="imported-delivery-title" className="text-xl font-extrabold">¿Entregar este ensayo?</h2>
+        <p className="mt-3 text-sm">{questions.length - answered} preguntas quedarán omitidas. Se guardarán tus respuestas actuales y la entrega no se podrá modificar.</p>
+        <div className="mt-6 flex flex-wrap gap-3"><button type="button" autoFocus disabled={delivering} onClick={() => setDeliveryOpen(false)} className="min-h-11 rounded-xl border border-[var(--pg-border)] px-4 text-sm font-bold">Seguir revisando</button><button type="button" disabled={delivering} onClick={() => void deliver()} className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white">{delivering ? "Guardando…" : "Confirmar entrega"}</button></div>
+      </section></div>}
     </div>
   );
 

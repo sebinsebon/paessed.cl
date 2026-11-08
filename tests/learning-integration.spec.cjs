@@ -1,0 +1,55 @@
+const {test,expect}=require("@playwright/test");
+const fs=require("node:fs");
+const JSZip=require("jszip");
+const index=require("../lib/default-catalog.json");
+async function state(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open("paessed-learning",1);r.onsuccess=()=>{const db=r.result;const read=db.transaction("state").objectStore("state").get("current");read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};r.onerror=()=>reject(r.error);}));}
+test("Default exam delivers real evidence, resumes, and backup restores into a fresh browser",async({page,browser})=>{
+  const exam=index.exams[0],q=index.questions.find(q=>q.examId===exam.id&&q.number===1);
+  const errors=[];page.on("pageerror",e=>errors.push(e.message));
+  await page.goto(exam.href);
+  const radio=page.getByRole("radio").nth(q.correct.charCodeAt(0)-65);
+  await expect(radio).toBeVisible();await radio.click();await expect(radio).toHaveAttribute("aria-checked","true");
+  await page.reload();await expect(page.getByRole("radio").nth(q.correct.charCodeAt(0)-65)).toHaveAttribute("aria-checked","true");
+  await page.getByLabel("Ir a pregunta").selectOption({value:"64"});
+  await page.getByRole("button",{name:"Entregar ensayo",exact:true}).click();await page.getByRole("button",{name:"Confirmar entrega"}).click();
+  await expect(page.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();
+  await expect.poll(async()=> (await state(page)).attempts.length).toBe(1);
+  const before=await state(page);expect(before.attempts).toHaveLength(1);expect(before.attempts[0].eligible).toBe(true);expect(before.attempts[0].correct).toBe(true);
+  await page.reload();await expect(page.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();expect((await state(page)).attempts).toHaveLength(1);
+  await page.goto("/app/perfil");
+  await expect(page.getByRole("heading",{name:"Copias de seguridad"})).toBeVisible();
+  const download=page.waitForEvent("download");await page.getByRole("button",{name:"Descargar respaldo"}).click();
+  const bytes=fs.readFileSync(await(await download).path());
+  const zip=await JSZip.loadAsync(bytes);const manifest=JSON.parse(await zip.file("manifest.json").async("string"));expect(manifest.version).toBe(2);expect(manifest.learning.state.attempts).toHaveLength(1);
+  const fresh=await browser.newContext();const target=await fresh.newPage();await target.goto("/app/perfil");
+  await expect(target.getByTestId("backup-panel")).toHaveAttribute("data-ready","true");
+  await target.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({name:"PAESSED.zip",mimeType:"application/zip",buffer:bytes});
+  await expect(target.getByTestId("backup-import-preview")).toBeVisible();await target.getByRole("button",{name:"Restaurar datos",exact:true}).click();await target.getByRole("button",{name:"Confirmar restauración"}).click();await expect(target.getByText(/Restauración terminada/)).toBeVisible();
+  const after=await state(target);expect(after.learnerId).toBe(before.learnerId);expect(after.attempts).toEqual(before.attempts);
+  await target.goto(exam.href);await expect(target.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();
+  await fresh.close();expect(errors).toEqual([]);
+});
+test("Playground shares the Default bank and original evidence with exam mode",async({page})=>{
+  const q=index.questions.find(q=>q.examId===index.exams[0].id&&q.number===1);
+  await page.goto("/app/playground");
+  await page.getByLabel("Primera pregunta").selectOption(q.id);
+  await page.getByRole("button",{name:/Comenzar práctica/}).click();
+  const option=page.getByRole("button").filter({hasText:new RegExp("^"+q.correct+"\\)")}).first();await expect(option).toBeVisible();await option.click();
+  await page.getByRole("button",{name:"Comprobar respuesta"}).click();await page.getByRole("button",{name:"Confirmar respuesta"}).click();
+  await expect.poll(async()=> (await state(page)).attempts.length).toBe(1);
+  expect((await state(page)).attempts[0].eligible).toBe(true);
+  await page.goto(index.exams[0].href);const radio=page.getByRole("radio").nth(q.correct.charCodeAt(0)-65);await expect(radio).toBeVisible();await radio.click();
+  await page.getByLabel("Ir a pregunta").selectOption({value:"64"});await page.getByRole("button",{name:"Entregar ensayo",exact:true}).click();await page.getByRole("button",{name:"Confirmar entrega"}).click();
+  await expect(page.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();const attempts=(await state(page)).attempts;expect(attempts).toHaveLength(2);expect(attempts.filter(a=>a.eligible)).toHaveLength(1);
+});
+test("two Default exam tabs merge changed answers without overwriting another question",async({page,context})=>{
+  const exam=index.exams[0];const second=await context.newPage();
+  await Promise.all([page.goto(exam.href),second.goto(exam.href)]);
+  await Promise.all([expect(page.getByRole("radio").first()).toBeVisible(),expect(second.getByRole("radio").first()).toBeVisible()]);
+  await second.getByLabel("Ir a pregunta").selectOption({value:"1"});
+  await expect(second.getByRole("radio").nth(1)).toBeVisible();
+  await page.getByRole("radio").first().click();await second.getByRole("radio").nth(1).click();
+  await expect.poll(()=>page.evaluate(()=>new Promise(resolve=>{const request=indexedDB.open("paessed-learning",1);request.onsuccess=()=>{const db=request.result;const read=db.transaction("exam-sessions").objectStore("exam-sessions").getAll();read.onsuccess=()=>{resolve(Object.keys(read.result[0].answers).length);db.close();};};}))).toBe(2);
+  await page.reload();await expect(page.getByRole("radio").nth(1)).toHaveAttribute("aria-checked","true");
+  await page.getByLabel("Ir a pregunta").selectOption({value:"0"});await expect(page.getByRole("radio").first()).toHaveAttribute("aria-checked","true");
+});

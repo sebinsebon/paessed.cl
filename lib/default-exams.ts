@@ -22,4 +22,5 @@ export type DefaultExamEntry = {
   publishedAt?: string;
 };
 
-export const DEFAULT_EXAMS: DefaultExamEntry[] = [];
+import catalog from "./default-catalog.json";
+export const DEFAULT_EXAMS: Array<(typeof catalog.exams)[number] & {publishedAt?: string}> = catalog.exams;

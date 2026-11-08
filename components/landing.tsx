@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { ArrowRight, BarChart3, BookOpen, Check, ShieldCheck, Sparkles, Target, Trophy, Zap } from "lucide-react";
 
 const steps = [
-  { icon: Zap, title: "Haz un diagnóstico corto", text: "12 preguntas para detectar dónde estás fuerte y qué te conviene reforzar primero." },
+  { icon: Zap, title: "Haz un diagnóstico corto", text: "16 preguntas para detectar dónde estás fuerte y qué te conviene reforzar primero." },
   { icon: Target, title: "Recibe una ruta adaptativa", text: "PAESSED ordena práctica, contenidos y ensayos según tu evidencia real." },
   { icon: Trophy, title: "Mide progreso de verdad", text: "Tus ensayos recalibran el perfil y muestran si realmente estás acercándote a tu meta." },
 ];
@@ -44,7 +44,7 @@ export function Landing() {
             </motion.div>
 
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-[var(--muted)]">
-              {["12 preguntas", "Sin registro", "Gratis", "Resultado inmediato"].map((item) => (
+              {["16 preguntas", "Sin registro", "Gratis", "Resultado inmediato"].map((item) => (
                 <span key={item} className="flex items-center gap-1.5"><Check size={14} className="text-emerald-500" />{item}</span>
               ))}
             </div>

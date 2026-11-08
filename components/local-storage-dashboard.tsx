@@ -23,6 +23,7 @@ function deleteExplanation(target: DeleteTarget): string {
   if (target.id === "diagnostic") return "Se eliminará el resultado del diagnóstico almacenado en este navegador.";
   if (target.id === "playground") return "Se vaciará el historial de preguntas recientes del Playground.";
   if (target.id === "preferences") return "Se eliminarán los ajustes y datos de perfil locales de PAESSED.";
+  if (target.id === "learning") return "Se borrarán el diagnóstico, la ruta, el historial y las sesiones Default de este navegador. Los paquetes Gold se conservarán.";
   return "No se eliminarán claves desconocidas.";
 }
 
@@ -244,8 +245,7 @@ export function LocalStorageDashboard() {
       </div>
 
       <p className="mt-4 text-[11px] leading-5 text-[var(--muted)]">
-        Actualmente el diagnóstico conserva su resultado y Playground conserva preguntas recientes y guardadas.
-        El guardado de sesiones más completas llegará en una etapa posterior.
+        Aprender conserva diagnóstico, ruta, primeras respuestas y correcciones. Los ensayos Default guardan su avance y entrega en este navegador.
       </p>
 
       <LocalBackupPanel report={report} onRestored={() => { void refresh(); }} />

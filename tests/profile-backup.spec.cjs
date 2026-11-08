@@ -57,7 +57,7 @@ test("Perfil can export and reimport the source archive of a local exam", async 
   await page.getByRole("button", { name: "Importar ensayo", exact: true }).click();
   await page.getByRole("button", { name: "Importado", exact: true }).waitFor();
   await page.goto("/app/perfil");
-  await expect(page.getByText("ENSAYO TESLA", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^ENSAYO TESLA M1/)).toBeVisible();
   const downloadEvent = page.waitForEvent("download");
   await page.getByRole("button", { name: "Descargar respaldo" }).click();
   const archive = fs.readFileSync(await (await downloadEvent).path());
@@ -76,5 +76,5 @@ test("Perfil can export and reimport the source archive of a local exam", async 
   });
   await page.getByRole("button", { name: "Restaurar datos" }).click();
   await page.getByRole("button", { name: "Confirmar restauración" }).click();
-  await expect(page.getByText("ENSAYO TESLA", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^ENSAYO TESLA M1/)).toBeVisible();
 });

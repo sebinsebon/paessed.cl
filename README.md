@@ -1,5 +1,9 @@
 # PAESSED — Product UI prototype v4
 
+## Aprender funcional
+
+La rama `feat/aprender` incorpora ruta adaptativa, diagnóstico de 16 preguntas, banco Gold Default, correcciones y progreso real en este navegador. Preparación, decisiones y pruebas en [docs/APRENDER.md](docs/APRENDER.md). Las secciones históricas siguientes describen el prototipo previo; Aprender y Perfil utilizan el repositorio de aprendizaje local, mientras Inicio conserva su pantalla original.
+
 Prototipo navegable de la experiencia completa de **PAESSED M1**, construido sobre el dashboard v3.x y el sistema visual de `DESIGN.md`.
 
 ## Stack

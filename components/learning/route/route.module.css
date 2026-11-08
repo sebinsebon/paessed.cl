@@ -1,0 +1,716 @@
+/* components/learning/route/route.module.css
+   Estilos específicos de la ruta protagonista PAESSED M1
+   Nodos táctiles con relieve de 6-8px, curvatura serpenteante y cero desbordes */
+
+.root {
+  width: 100%;
+  min-width: 0;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 16px 12px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   CABECERA LIMPIA Y SOBRIA (PAESSED REAL)
+   ========================================================================== */
+.headerClean {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.statChipBtn {
+  cursor: pointer;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.statChipBtn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.muted {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.notice {
+  background: var(--surface-2);
+  border-left: 4px solid var(--primary);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  box-sizing: border-box;
+}
+
+.progressSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.progressTrack {
+  flex: 1;
+  min-width: 0;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   RUTA SERPENTEANTE PROTAGONISTA
+   ========================================================================== */
+.pathContainer {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 24px 8px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.pathSvgConnections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pathStepRow {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-width: 0;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Offsets de la serpiente (escritorio) */
+.pos0 .tactileNodeWrapper { transform: translateX(-65px); }
+.pos1 .tactileNodeWrapper { transform: translateX(55px); }
+.pos2 .tactileNodeWrapper { transform: translateX(85px); }
+.pos3 .tactileNodeWrapper { transform: translateX(0px); }
+.pos4 .tactileNodeWrapper { transform: translateX(-85px); }
+.pos5 .tactileNodeWrapper { transform: translateX(-55px); }
+.pos6 .tactileNodeWrapper { transform: translateX(50px); }
+.posMilestone { transform: translateX(0px); height: 80px; }
+
+/* Offsets seguros para móvil (sin desbordes) */
+@media (max-width: 640px) {
+  .pathStepRow {
+    height: 130px;
+  }
+  .pos0 .tactileNodeWrapper { transform: translateX(-35px); }
+  .pos1 .tactileNodeWrapper { transform: translateX(30px); }
+  .pos2 .tactileNodeWrapper { transform: translateX(45px); }
+  .pos3 .tactileNodeWrapper { transform: translateX(0px); }
+  .pos4 .tactileNodeWrapper { transform: translateX(-45px); }
+  .pos5 .tactileNodeWrapper { transform: translateX(-30px); }
+  .pos6 .tactileNodeWrapper { transform: translateX(30px); }
+}
+
+/* ==========================================================================
+   NODOS TÁCTILES CON RELIEVE DE 6-8px (REVERTIDOS AL PRIMER PROTOTIPO)
+   ========================================================================== */
+.tactileNodeWrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tactileNode {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  outline: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  position: relative;
+  font-weight: 800;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .tactileNode {
+    width: 88px;
+    height: 88px;
+  }
+}
+
+/* Estado: Completado (verde esmeralda, 8px extrusión) */
+.completedNode {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  box-shadow: 0 8px 0 0 #047857;
+}
+
+.completedNode:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 0 0 #047857;
+}
+
+.completedNode:active {
+  transform: translateY(5px);
+  box-shadow: 0 3px 0 0 #047857;
+}
+
+/* Estado: Activo (naranja PAESSED, 104px en escritorio / 96px en móvil, 8px extrusión, halo pulsante) */
+.activeNode {
+  width: 104px;
+  height: 104px;
+  background: linear-gradient(180deg, #fb923c 0%, var(--primary) 70%, #ea580c 100%);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  box-shadow: 0 8px 0 0 var(--primary-pressed);
+  animation: pulseActiveHalo 2.4s infinite ease-in-out;
+}
+
+@media (max-width: 640px) {
+  .activeNode {
+    width: 96px;
+    height: 96px;
+    box-shadow: 0 6px 0 0 var(--primary-pressed);
+  }
+  .completedNode {
+    box-shadow: 0 6px 0 0 #047857;
+  }
+}
+
+.activeNode:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 0 0 var(--primary-pressed);
+}
+
+.activeNode:active {
+  transform: translateY(5px);
+  box-shadow: 0 3px 0 0 var(--primary-pressed);
+}
+
+@keyframes pulseActiveHalo {
+  0%, 100% {
+    box-shadow: 0 8px 0 0 var(--primary-pressed), 0 0 0 0 rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 0 0 var(--primary-pressed), 0 0 0 14px rgba(249, 115, 22, 0);
+  }
+}
+
+/* Estado: Previsión Futura Adaptativa (7px extrusión, superficie neutra) */
+.upcomingNode {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 3px solid var(--border-strong);
+  color: var(--muted);
+  box-shadow: 0 7px 0 0 var(--border-strong);
+}
+
+@media (max-width: 640px) {
+  .upcomingNode {
+    box-shadow: 0 5px 0 0 var(--border-strong);
+  }
+}
+
+.upcomingNode:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  color: var(--text);
+  box-shadow: 0 9px 0 0 var(--border-strong);
+}
+
+.upcomingNode:active {
+  transform: translateY(4px);
+  box-shadow: 0 3px 0 0 var(--border-strong);
+}
+
+/* Medallón de tipo M / R */
+.typeBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);
+  z-index: 5;
+}
+
+.typeBadgeM {
+  background: var(--secondary);
+  color: #ffffff;
+}
+
+.typeBadgeR {
+  background: #d97706;
+  color: #ffffff;
+}
+
+/* Bocadillo flotante sobre el nodo activo */
+.activeBubble {
+  position: absolute;
+  top: -46px;
+  background: var(--surface);
+  color: var(--primary);
+  padding: 5px 14px;
+  border-radius: 9999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-1);
+  border: 1.5px solid var(--border);
+  white-space: nowrap;
+  pointer-events: none;
+  animation: gentleFloat 2.2s infinite ease-in-out;
+  z-index: 10;
+}
+
+.activeBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--surface);
+}
+
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Hito decorativo de fin de bloque */
+.milestoneMarker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--surface);
+  border: 1.5px dashed var(--border-strong);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, transform 0.15s;
+  user-select: none;
+}
+
+.milestoneMarker:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   HISTORIAL ANTERIOR ACCESIBLE (DETALLES COLAPSABLES)
+   ========================================================================== */
+.historyCollapsible {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+
+.historySummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.historyList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   MODALES Y DIÁLOGOS ACCESIBLES
+   ========================================================================== */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 16, 32, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.dialogCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialogCloseBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  transition: background 0.15s, color 0.15s;
+}
+
+.dialogCloseBtn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.dialogBadgeGroup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 36px;
+}
+
+.dialogTag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tagM {
+  background: var(--secondary-soft);
+  color: var(--secondary);
+}
+
+.tagR {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.dialogTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.dialogSub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.featuresList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+}
+
+.featureRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.featureRow svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+/* Botones principales de acción */
+.btnPrimary {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: none;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 0 var(--primary-pressed);
+  transition: transform 0.1s, box-shadow 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 0 var(--primary-pressed);
+}
+
+.btnPrimary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 0 var(--primary-pressed);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnSecondary:hover {
+  background: var(--surface-2);
+  border-color: var(--primary);
+}
+
+/* ==========================================================================
+   DRAWER DESLIZABLE "MAPA M1"
+   ========================================================================== */
+.drawerPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.drawerAxisCard {
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawerAxisRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+
+.drawerAxisSub {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.drawerAxisTrack {
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.drawerAxisFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   PREFERS REDUCED MOTION
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .activeNode,
+  .activeBubble,
+  .tactileNode,
+  .progressFill,
+  .drawerAxisFill {
+    animation: none !important;
+    transition: none !important;
+  }
+}

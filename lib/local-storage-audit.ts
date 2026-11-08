@@ -1,11 +1,14 @@
 import { deleteImportedExam, listImportedExamStorageUsage, type ImportedExamStorageUsage, IMPORTED_EXAM_PROGRESS_PREFIX } from "@/lib/local-imports";
 import { DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY, DEMO_EXAM_EVENT } from "@/lib/demo-exam-progress";
+import { readLearningState } from "@/lib/learning/repository";
+import { listExamSessions, clearLearningState } from "@/lib/learning/exam-repository";
 
 export type StorageCategoryId =
   | "exams" | "sessions" | "drawings" | "marked"
-  | "diagnostic" | "playground" | "preferences" | "other";
+  | "diagnostic" | "playground" | "preferences" | "learning" | "other";
 
 export const STORAGE_CATEGORIES: Array<{ id: StorageCategoryId; label: string; description: string; color: string }> = [
+  { id:"learning",label:"Aprender y ensayos Default",description:"Ruta, diagnóstico, primeras respuestas y sesiones reales",color:"bg-orange-600" },
   { id: "exams", label: "Ensayos importados", description: "Paquetes y contenido extraído", color: "bg-orange-500" },
   { id: "sessions", label: "Respuestas y sesiones", description: "Intentos, respuestas, tiempos y último resultado", color: "bg-indigo-500" },
   { id: "drawings", label: "Dibujos", description: "Trazos realizados en los ensayos", color: "bg-pink-500" },
@@ -127,7 +130,7 @@ export async function inspectLocalStorage(): Promise<LocalStorageReport> {
         }
         continue;
       }
-      const id = CATEGORY_KEYS[key] ?? "other";
+      const id = key.startsWith("paessed-learning-ink:") ? "drawings" : CATEGORY_KEYS[key] ?? "other";
       const category = byId.get(id)!;
       category.bytes += (key.length + value.length) * 2;
       category.itemCount += 1;
@@ -149,6 +152,13 @@ export async function inspectLocalStorage(): Promise<LocalStorageReport> {
   }
 
   let browserReportedBytes: number | null = null;
+  try {
+    const [learning, sessions] = await Promise.all([readLearningState(), listExamSessions()]);
+    const category = byId.get("learning")!;
+    const hasProgress=!!learning.diagnostic||learning.attempts.length>0||Object.keys(sessions).length>0||learning.goal!==2||!!learning.pendingGoal;
+    category.bytes = hasProgress?new Blob([JSON.stringify({learning,sessions})]).size:0;
+    category.itemCount = learning.attempts.length + Object.keys(sessions).length;
+  } catch { localError = "No se pudo leer el progreso de Aprender. Sus datos se conservan; vuelve a intentar."; }
   try {
     if (typeof navigator.storage?.estimate === "function") {
       browserReportedBytes = (await navigator.storage.estimate()).usage ?? null;
@@ -199,6 +209,7 @@ function editStoredProgress(key: string, category: "sessions" | "drawings" | "ma
 /** Only acts on the keys/IDs that were visible in the confirmed snapshot. */
 export async function clearLocalStorageCategory(category: StorageCategoryId, report: LocalStorageReport): Promise<void> {
   if (category === "other") throw new Error("Las claves desconocidas se dejan intactas por seguridad.");
+  if (category === "learning") { await clearLearningState(); return; }
   if (category === "exams") {
     for (const exam of report.exams) await deleteImportedExam(exam.id);
     return;
@@ -209,7 +220,7 @@ export async function clearLocalStorageCategory(category: StorageCategoryId, rep
       if (category === "sessions" || category === "drawings" || category === "marked") {
         editStoredProgress(key, category);
       }
-    } else if (CATEGORY_KEYS[key] === category) {
+    } else if (CATEGORY_KEYS[key] === category || (category === "drawings" && key.startsWith("paessed-learning-ink:"))) {
       localStorage.removeItem(key);
     }
   }

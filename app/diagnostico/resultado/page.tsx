@@ -1,5 +1,5 @@
-import { DiagnosticResult } from "@/components/onboarding";
+import { LearningDiagnostic } from "@/components/learning/diagnostic";
 
 export default function DiagnosticResultPage() {
-  return <DiagnosticResult />;
+  return <LearningDiagnostic resultOnly />;
 }

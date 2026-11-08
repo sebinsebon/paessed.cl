@@ -1,5 +1,5 @@
-import { ProfileExperience } from "@/components/product-pages";
+import { LearningProfilePage } from "@/components/learning-overview";
 
 export default function ProfilePage() {
-  return <ProfileExperience />;
+  return <LearningProfilePage />;
 }

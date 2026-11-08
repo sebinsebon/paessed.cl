@@ -69,9 +69,9 @@ async function copyToClipboard(value: string): Promise<boolean> {
   finally { area.remove(); }
 }
 
-type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean };
+type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean; onHelp?: () => void };
 
-export function AskAiButton({ settings, onChange, question, disabled = false }: AskProps) {
+export function AskAiButton({ settings, onChange, question, disabled = false, onHelp }: AskProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
@@ -116,6 +116,7 @@ export function AskAiButton({ settings, onChange, question, disabled = false }: 
     if (disabled) return;
     setCopied(false);
     setCopyError(false);
+    onHelp?.();
     setDialogOpen(true);
   };
   const copyPrompt = () => {

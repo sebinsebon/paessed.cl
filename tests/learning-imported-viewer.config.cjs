@@ -1,0 +1,2 @@
+const { defineConfig } = require("@playwright/test");
+module.exports = defineConfig({ testDir: __dirname, outputDir: "test-results/imported-learning", testMatch: "learning-imported-viewer.spec.cjs", timeout: 90000, expect: { timeout: 20000 }, workers: 1, reporter: "list", use: { baseURL: process.env.PAESSED_BASE_URL || "http://127.0.0.1:3100", viewport: { width: 1280, height: 900 }, reducedMotion: "reduce", trace: "retain-on-failure" } });

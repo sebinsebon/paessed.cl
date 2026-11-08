@@ -32,10 +32,16 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
   const [busy, setBusy] = useState<Busy>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const initializedSelection = useRef(false);
+  const [selectionReady,setSelectionReady]=useState(false);
 
   useEffect(() => {
     if (!report) return;
-    setExportSelected(BACKUP_CATEGORIES.filter((id) => (report.categories.find((item) => item.id === id)?.bytes ?? 0) > 0));
+    const available=BACKUP_CATEGORIES.filter((id) => (report.categories.find((item) => item.id === id)?.bytes ?? 0) > 0);
+    const wasInitialized=initializedSelection.current;
+    setExportSelected(previous=>wasInitialized?previous.filter(id=>available.includes(id)):available);
+    initializedSelection.current=true;
+    setSelectionReady(true);
   }, [report]);
 
   useEffect(() => {
@@ -128,7 +134,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
   }
 
   return (
-    <section aria-labelledby="profile-backup-title" className="mt-6 border-t border-[var(--border)] pt-6">
+    <section aria-labelledby="profile-backup-title" data-testid="backup-panel" data-ready={Boolean(report)&&selectionReady} className="mt-6 border-t border-[var(--border)] pt-6">
       <div className="flex items-center gap-2">
         <Archive size={18} className="text-[var(--primary)]" />
         <h3 id="profile-backup-title" className="text-[16px] font-extrabold">Copias de seguridad</h3>
@@ -142,7 +148,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
           <div className="mb-2 flex items-center gap-2 text-[13px] font-extrabold"><Download size={17} /> Exportar</div>
           <p className="mb-3 text-[11px] leading-5 text-[var(--muted)]">Selecciona qué incluir en un único archivo .zip.</p>
           <div className="space-y-1.5">
-            {BACKUP_CATEGORIES.map((category) => {
+            {selectionReady && BACKUP_CATEGORIES.map((category) => {
               const bytes = report?.categories.find((item) => item.id === category)?.bytes ?? 0;
               return (
                 <label key={category} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-[var(--surface)]">
@@ -170,9 +176,9 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
           <p className="mb-3 text-[11px] leading-5 text-[var(--muted)]">
             Primero se revisa el archivo; no se modificará nada hasta que confirmes.
           </p>
-          <input ref={inputRef} type="file" accept=".zip,application/zip" className="sr-only"
+          <input ref={inputRef} type="file" accept=".zip,application/zip" className="sr-only" disabled={!report || busy !== null}
             aria-label="Seleccionar respaldo PAESSED" onChange={(event) => { void readFile(event.target.files?.[0]); }} />
-          <button type="button" disabled={busy !== null} onClick={() => inputRef.current?.click()}
+          <button type="button" disabled={!report || busy !== null} onClick={() => inputRef.current?.click()}
             className="soft-button inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:opacity-50">
             {busy === "inspect" ? "Verificando copia…" : <><FileUp size={16}/> Seleccionar ZIP</>}
           </button>

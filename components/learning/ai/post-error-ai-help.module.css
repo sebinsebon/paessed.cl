@@ -1,0 +1,33 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 1px;
+  background: transparent;
+  border: 1px solid rgba(249, 115, 22, 0.5);
+  animation: subtleEntranceGlow 1.2s ease-out 1 forwards;
+  box-sizing: border-box;
+}
+
+@keyframes subtleEntranceGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45);
+    border-color: var(--primary, #f97316);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.15);
+    border-color: var(--primary-accent, #fb923c);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+    border-color: rgba(249, 115, 22, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapper {
+    animation: none !important;
+    box-shadow: none !important;
+    border-color: rgba(249, 115, 22, 0.5);
+  }
+}

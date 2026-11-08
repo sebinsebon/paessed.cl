@@ -6,4 +6,8 @@ out/
 !.env.example
 *.tsbuildinfo
 test-results/
+tests/test-results/
 .DS_Store
+# Reviewed third-party content is provisioned for local review separately.
+public/default/gold/*.paessed
+playwright-report/

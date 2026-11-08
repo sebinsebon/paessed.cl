@@ -86,7 +86,7 @@ export function Sidebar({
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     setPendingHref(href);
   };
-  const lastScore = 742;
+  const lastScore = 0;
   const goalProgress = Math.min(100, Math.round((lastScore / goal) * 100));
   const goalGap = Math.max(goal - lastScore, 0);
   const nav = [
@@ -190,9 +190,9 @@ export function Sidebar({
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div>
                   <div className="text-xl font-extrabold text-[var(--text)]">{goal} pts</div>
-                  <div className="mt-1 text-[10px] font-medium text-[var(--muted)]">{lastScore} pts · último ensayo</div>
+                  <div className="mt-1 text-[10px] font-medium text-[var(--muted)]">Tu objetivo personal</div>
                 </div>
-                <div className="text-[10px] font-extrabold text-[var(--primary)]">+{goalGap} pts</div>
+                <div className="text-[10px] font-extrabold text-[var(--primary)]">M1</div>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-4)]">
                 <motion.div
@@ -425,7 +425,7 @@ function HomeActions({
                   SB
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-extrabold text-[var(--text)]">Seba</div>
+                  <div className="text-sm font-extrabold text-[var(--text)]">Mi perfil local</div>
                   <div className="mt-0.5 text-[11px] font-medium text-[var(--muted)]">Estudiante · Matemática M1</div>
                 </div>
               </Link>
