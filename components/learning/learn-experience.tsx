@@ -40,13 +40,13 @@ export function LearningSetup({ state, dispatch, onContinue }: { state: Learning
   };
   return <section className={styles.setup}>
     <div className={styles.setupArt}><Flag size={36} strokeWidth={2.3} /></div>
-    <span className={styles.eyebrow}>Un paso pequeño. Todos los días.</span>
-    <h1 className={`${styles.title} mt-3`}>Dale un ritmo a tu meta.</h1>
-    <p className={`${styles.muted} mt-4 max-w-xl`}>Tu ruta empieza conociendo cómo resuelves. Después, cada nodo te propone cinco preguntas originales y un espacio para aprender de tus errores.</p>
-    <fieldset className="mt-8"><legend className="text-sm font-extrabold">¿Cuántos nodos quieres completar al día?</legend><div className={styles.goalChoices}>
-      {([1, 2, 3] as DailyGoal[]).map((value) => <button key={value} type="button" aria-pressed={goal === value} className={`${styles.goalChoice} ${goal === value ? styles.goalSelected : ""}`} onClick={() => setGoal(value)}><span>{value === 1 ? "PASO A PASO" : value === 2 ? "BUEN RITMO" : "CON TODO"}</span><strong>{value} {value === 1 ? "nodo" : "nodos"}</strong><span>{value * 5} preguntas + corrección</span></button>)}
+    <span className={styles.eyebrow}>Aprender</span>
+    <h1 className={`${styles.title} mt-3`}>Prepara tu ruta de M1</h1>
+    <p className={`${styles.muted} mt-4 max-w-xl`}>Primero, un diagnóstico de 16 preguntas. Después, sesiones de 5 preguntas para repasar y reforzar los temas que necesitas.</p>
+    <fieldset className="mt-8"><legend className="text-sm font-extrabold">¿Cuántas sesiones quieres hacer al día?</legend><div className={styles.goalChoices}>
+      {([1, 2, 3] as DailyGoal[]).map((value) => <button key={value} type="button" aria-pressed={goal === value} className={`${styles.goalChoice} ${goal === value ? styles.goalSelected : ""}`} onClick={() => setGoal(value)}><span>{value === 1 ? "5 preguntas" : value === 2 ? "10 preguntas" : "15 preguntas"}</span><strong>{value} {value === 1 ? "sesión" : "sesiones"}</strong><span>Con revisión de errores</span></button>)}
     </div></fieldset>
     <button className={styles.primary} disabled={busy} onClick={() => void choose()}>{busy ? "Guardando…" : "Continuar al diagnóstico"}<ArrowRight size={18} /></button>
-    <div className={styles.setupList}><p><strong>16 preguntas iniciales</strong>Una por cada subeje M1 disponible.</p><p><strong>Sin reloj ni pistas</strong>Una primera señal de dónde empezar.</p><p><strong>Tu avance se guarda</strong>En este navegador, sin crear una cuenta.</p></div>
+    <div className={styles.setupList}><p><strong>16 preguntas iniciales</strong>Para elegir los temas de tu ruta.</p><p><strong>Sin reloj ni pistas</strong>Responde a tu ritmo.</p><p><strong>Tu avance se guarda</strong>En este navegador, sin crear una cuenta.</p></div>
   </section>;
 }

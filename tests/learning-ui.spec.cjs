@@ -74,8 +74,8 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await page.goto("/app/aprender");
-  await expect(page.getByRole("heading", { name: "Dale un ritmo a tu meta." })).toBeVisible();
-  await page.getByRole("button", { name: /PASO A PASO/ }).click();
+  await expect(page.getByRole("heading", { name: "Prepara tu ruta de M1" })).toBeVisible();
+  await page.getByRole("button", { name: /^5 preguntas/ }).click();
   await page.getByRole("button", { name: "Continuar al diagnóstico" }).click();
   await expect(page).toHaveURL(/\/diagnostico$/);
   for (let index = 0; index < 16; index++) {
@@ -100,7 +100,7 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   expect(afterDiagnostic.attempts.filter((attempt) => attempt.mode === "diagnostic")).toHaveLength(16);
   expect(new Set(afterDiagnostic.attempts.map((attempt) => attempt.unitId)).size).toBe(16);
   await page.getByRole("link", { name: "Comenzar mi ruta" }).click();
-  await expect(page.getByRole("heading", { name: "Un paso más cerca." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Aprender", exact: true })).toBeVisible();
   await expect(page.getByTestId("learning-route-node")).toHaveCount(7);
   await page.screenshot({ path: testInfo.outputPath("learning-desktop-light.png"), fullPage: true });
   const beforePreview = await readState(page);

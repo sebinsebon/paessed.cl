@@ -1,466 +1,23 @@
-/* components/learning/route/route.module.css
-   Estilos específicos de la ruta protagonista PAESSED M1
-   Nodos táctiles con relieve de 6-8px, curvatura serpenteante y cero desbordes */
+/* The route and its context stay together; exercise rendering is untouched. */
+.root{width:100%;max-width:1040px;min-width:0;margin:0 auto;padding:10px 0 60px;color:var(--text)}
+.headerClean{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 28px;padding:0 4px}
+.title{font-size:34px;font-weight:800;letter-spacing:-.045em;line-height:1.2;margin:0 0 8px}.muted{font-size:13px;line-height:1.7;color:var(--muted);margin:0}
+.mapButton{display:flex;align-items:center;gap:10px;min-height:46px;padding:10px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .16s,transform .16s}.mapButton:hover{background:var(--surface-2)}.mapButton:active{transform:translateY(2px)}.mapButton>svg:first-child{color:var(--primary)}
+.routeLayout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:28px;align-items:start}.routeColumn{min-width:0;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:24px;overflow:hidden}.blockHeading{display:flex;align-items:center;gap:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}.blockHeading h2{font-size:19px;line-height:1.4;font-weight:800;margin:0 0 4px}.blockHeading span{font-size:12px;color:var(--muted)}.progressTrack{flex:1;min-width:45px;height:7px;border-radius:99px;background:var(--surface-3);overflow:hidden}.progressFill{height:100%;border-radius:inherit;background:var(--primary);transition:width .3s ease}
+.notice{background:var(--surface-2);border-radius:12px;padding:12px 14px;margin-top:16px;color:var(--muted);font-size:12px;line-height:1.7}.notice a{display:inline-block;color:var(--primary-accent)}
+.pathContainer{position:relative;width:100%;min-width:0;padding:14px 0 8px;margin:0;box-sizing:border-box}.pathSvgConnections{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.55}.pathStepRow{position:relative;z-index:1;display:flex;align-items:center;min-height:112px;width:100%}.tactileNodeWrapper{position:relative;display:flex;align-items:center;gap:22px;width:calc(100% - 46px);min-width:0}.pos0 .tactileNodeWrapper{transform:translateX(4px)}.pos1 .tactileNodeWrapper{transform:translateX(28px)}.pos2 .tactileNodeWrapper{transform:translateX(42px)}.pos3 .tactileNodeWrapper{transform:translateX(22px)}.pos4 .tactileNodeWrapper{transform:translateX(4px)}.pos5 .tactileNodeWrapper{transform:translateX(20px)}.pos6 .tactileNodeWrapper{transform:translateX(38px)}
+.tactileNode{display:grid;place-items:center;flex-shrink:0;width:64px;height:64px;border-radius:23px;border:2px solid var(--border-strong);color:var(--muted);background:var(--surface-2);box-shadow:0 4px 0 var(--border);cursor:pointer;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s,border-color .2s;position:relative}.tactileNode svg{width:25px;height:25px}.tactileNode:hover{transform:translateY(-3px);border-color:var(--primary-accent)}.tactileNode:active{transform:translateY(3px);box-shadow:0 1px 0 var(--border)}.activeNode{width:72px;height:72px;background:linear-gradient(160deg,#ff9b45,var(--primary));color:white;border-color:#ffb876;box-shadow:0 5px 0 var(--primary-pressed),0 0 0 6px color-mix(in srgb,var(--primary) 9%,transparent)}.activeNode:active{box-shadow:0 2px 0 var(--primary-pressed)}.completedNode{background:var(--success);color:white;border-color:#6ee7b7;box-shadow:0 4px 0 #047857}.nodeCopy{min-width:0;flex:1}.nodeCopy>span{display:block;font-size:11px;font-weight:650;color:var(--muted);margin-bottom:5px}.activeNode+.nodeCopy>span{color:var(--primary-accent)}.nodeCopy h3{font-size:14px;line-height:1.45;font-weight:750;margin:0 0 5px;overflow-wrap:anywhere}.nodeCopy p{font-size:11px;line-height:1.5;color:var(--muted);margin:0}.posMilestone{min-height:72px;justify-content:center}.milestoneMarker{display:flex;align-items:center;gap:9px;padding:12px 18px;background:var(--surface-2);border:1px solid var(--border);border-radius:14px;font-size:12px;color:var(--muted);font-weight:650;cursor:pointer}.milestoneMarker:hover{border-color:var(--primary);color:var(--text)}
+.routeAside{display:grid;gap:18px;position:sticky;top:24px}.nextCard,.goalCard{border:1px solid var(--border);border-radius:22px;background:var(--surface);padding:24px}.nextCard{background:linear-gradient(155deg,color-mix(in srgb,var(--primary) 6%,var(--surface)),var(--surface) 65%)}.nextIcon{display:grid;place-items:center;width:52px;height:52px;background:var(--primary-soft);color:var(--primary-accent);border-radius:18px;margin-bottom:22px}.sectionLabel{font-size:12px;color:var(--muted);margin:0 0 9px}.nextCard h2{font-size:20px;font-weight:800;letter-spacing:-.025em;line-height:1.4;margin:0 0 12px}.nextCard .btnPrimary{margin-top:24px}.asideNote{font-size:11px;line-height:1.6;color:var(--muted);margin:14px 0 0}.nextCard .asideNote{text-align:center}.goalHeading{display:flex;align-items:center;justify-content:space-between;gap:12px}.goalHeading h2{font-size:16px;font-weight:750;margin:0}.goalHeading button{font-size:11px;color:var(--primary-accent);padding:8px 0;cursor:pointer}.goalCount{font-size:13px;color:var(--muted);margin:16px 0}.goalCount strong{font-size:32px;font-weight:800;color:var(--text)}.goalDots{display:flex;gap:10px}.goalDots span{display:grid;place-items:center;width:38px;height:38px;background:var(--surface-2);border:1px solid var(--border);border-radius:13px;color:var(--muted);font-size:12px}.goalDots span[data-done=true]{background:var(--primary);color:white;border-color:var(--primary)}.statsRow{display:flex;flex-wrap:wrap;gap:18px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)}.statsRow>span{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}.statsRow strong{color:var(--text);font-size:12px}.statsRow svg{color:var(--primary-accent)}
+.historyCollapsible{margin-top:16px;border-bottom:1px solid var(--border);padding:12px 0}.historySummary{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;min-height:32px}.historyList{list-style:none;padding:0;margin:10px 0}.historyItem{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;font-size:12px;border-radius:10px;background:var(--surface-2);margin:8px 0}
+.root button:focus-visible,.root [role=button]:focus-visible,.root a:focus-visible,.root summary:focus-visible{outline:3px solid var(--primary-accent);outline-offset:4px}
+@media(max-width:1150px){.routeLayout{grid-template-columns:minmax(0,1fr) 260px;gap:18px}.routeColumn{padding:20px 16px}.nextCard,.goalCard{padding:20px}.tactileNodeWrapper{gap:16px}}
+@media(max-width:760px){.root{padding-top:4px}.headerClean{margin-bottom:20px;gap:12px}.title{font-size:28px}.headerClean .muted{font-size:12px}.mapButton{padding:10px;gap:6px}.mapButton>svg:last-child{display:none}.routeLayout{grid-template-columns:1fr}.routeAside{position:static;grid-row:1;grid-template-columns:1fr}.nextCard{display:none}.goalCard{padding:16px 18px}.goalCount{margin:0}.goalDots{display:none}.statsRow{margin-top:10px;padding-top:12px}.goalHeading{float:right}.goalHeading h2{display:none}.routeColumn{padding:18px 14px;border-radius:20px}.blockHeading{gap:14px}.blockHeading h2{font-size:17px}.blockHeading span{font-size:11px}.pathStepRow{min-height:110px}.tactileNode{width:54px;height:54px;border-radius:19px}.activeNode{width:60px;height:60px}.tactileNodeWrapper{gap:16px}.nodeCopy h3{font-size:13px}.nodeCopy>span,.nodeCopy p{font-size:10px}.historyItem{flex-wrap:wrap}}
 
-.root {
-  width: 100%;
-  min-width: 0;
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 16px 12px 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  box-sizing: border-box;
-}
-
-/* ==========================================================================
-   CABECERA LIMPIA Y SOBRIA (PAESSED REAL)
-   ========================================================================== */
-.headerClean {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px 20px;
-  box-shadow: var(--shadow-1);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.statsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-}
-
-.statChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 9999px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  box-sizing: border-box;
-  user-select: none;
-}
-
-.statChipBtn {
-  cursor: pointer;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-.statChipBtn:hover {
-  background: var(--surface-3);
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
-}
-
-.headerMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.eyebrow {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--primary);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  margin: 0;
-  line-height: 1.25;
-}
-
-.muted {
-  font-size: 13.5px;
-  color: var(--muted);
-  line-height: 1.5;
-  margin: 0;
-}
-
-.notice {
-  background: var(--surface-2);
-  border-left: 4px solid var(--primary);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text);
-  box-sizing: border-box;
-}
-
-.progressSection {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding-top: 4px;
-}
-
-.progressTrack {
-  flex: 1;
-  min-width: 0;
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--surface-3);
-  overflow: hidden;
-}
-
-.progressFill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 9999px;
-  transition: width 0.3s ease;
-}
-
-.progressText {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ==========================================================================
-   RUTA SERPENTEANTE PROTAGONISTA
-   ========================================================================== */
-.pathContainer {
-  position: relative;
-  width: 100%;
-  max-width: 640px;
-  min-width: 0;
-  margin: 0 auto;
-  padding: 24px 8px 36px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.pathSvgConnections {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.pathStepRow {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  min-width: 0;
-  height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Offsets de la serpiente (escritorio) */
-.pos0 .tactileNodeWrapper { transform: translateX(-65px); }
-.pos1 .tactileNodeWrapper { transform: translateX(55px); }
-.pos2 .tactileNodeWrapper { transform: translateX(85px); }
-.pos3 .tactileNodeWrapper { transform: translateX(0px); }
-.pos4 .tactileNodeWrapper { transform: translateX(-85px); }
-.pos5 .tactileNodeWrapper { transform: translateX(-55px); }
-.pos6 .tactileNodeWrapper { transform: translateX(50px); }
-.posMilestone { transform: translateX(0px); height: 80px; }
-
-/* Offsets seguros para móvil (sin desbordes) */
-@media (max-width: 640px) {
-  .pathStepRow {
-    height: 130px;
-  }
-  .pos0 .tactileNodeWrapper { transform: translateX(-35px); }
-  .pos1 .tactileNodeWrapper { transform: translateX(30px); }
-  .pos2 .tactileNodeWrapper { transform: translateX(45px); }
-  .pos3 .tactileNodeWrapper { transform: translateX(0px); }
-  .pos4 .tactileNodeWrapper { transform: translateX(-45px); }
-  .pos5 .tactileNodeWrapper { transform: translateX(-30px); }
-  .pos6 .tactileNodeWrapper { transform: translateX(30px); }
-}
-
-/* ==========================================================================
-   NODOS TÁCTILES CON RELIEVE DE 6-8px (REVERTIDOS AL PRIMER PROTOTIPO)
-   ========================================================================== */
-.tactileNodeWrapper {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.tactileNode {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.25);
-  outline: none;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  position: relative;
-  font-weight: 800;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  box-sizing: border-box;
-}
-
-@media (max-width: 640px) {
-  .tactileNode {
-    width: 88px;
-    height: 88px;
-  }
-}
-
-/* Estado: Completado (verde esmeralda, 8px extrusión) */
-.completedNode {
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
-  box-shadow: 0 8px 0 0 #047857;
-}
-
-.completedNode:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 0 0 #047857;
-}
-
-.completedNode:active {
-  transform: translateY(5px);
-  box-shadow: 0 3px 0 0 #047857;
-}
-
-/* Estado: Activo (naranja PAESSED, 104px en escritorio / 96px en móvil, 8px extrusión, halo pulsante) */
-.activeNode {
-  width: 104px;
-  height: 104px;
-  background: linear-gradient(180deg, #fb923c 0%, var(--primary) 70%, #ea580c 100%);
-  border-color: rgba(255, 255, 255, 0.45);
-  color: #ffffff;
-  box-shadow: 0 8px 0 0 var(--primary-pressed);
-  animation: pulseActiveHalo 2.4s infinite ease-in-out;
-}
-
-@media (max-width: 640px) {
-  .activeNode {
-    width: 96px;
-    height: 96px;
-    box-shadow: 0 6px 0 0 var(--primary-pressed);
-  }
-  .completedNode {
-    box-shadow: 0 6px 0 0 #047857;
-  }
-}
-
-.activeNode:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 0 0 var(--primary-pressed);
-}
-
-.activeNode:active {
-  transform: translateY(5px);
-  box-shadow: 0 3px 0 0 var(--primary-pressed);
-}
-
-@keyframes pulseActiveHalo {
-  0%, 100% {
-    box-shadow: 0 8px 0 0 var(--primary-pressed), 0 0 0 0 rgba(249, 115, 22, 0.4);
-  }
-  50% {
-    box-shadow: 0 8px 0 0 var(--primary-pressed), 0 0 0 14px rgba(249, 115, 22, 0);
-  }
-}
-
-/* Estado: Previsión Futura Adaptativa (7px extrusión, superficie neutra) */
-.upcomingNode {
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
-  border: 3px solid var(--border-strong);
-  color: var(--muted);
-  box-shadow: 0 7px 0 0 var(--border-strong);
-}
-
-@media (max-width: 640px) {
-  .upcomingNode {
-    box-shadow: 0 5px 0 0 var(--border-strong);
-  }
-}
-
-.upcomingNode:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
-  color: var(--text);
-  box-shadow: 0 9px 0 0 var(--border-strong);
-}
-
-.upcomingNode:active {
-  transform: translateY(4px);
-  box-shadow: 0 3px 0 0 var(--border-strong);
-}
-
-/* Medallón de tipo M / R */
-.typeBadge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 800;
-  border: 2px solid var(--surface);
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.15);
-  z-index: 5;
-}
-
-.typeBadgeM {
-  background: var(--secondary);
-  color: #ffffff;
-}
-
-.typeBadgeR {
-  background: #d97706;
-  color: #ffffff;
-}
-
-/* Bocadillo flotante sobre el nodo activo */
-.activeBubble {
-  position: absolute;
-  top: -46px;
-  background: var(--surface);
-  color: var(--primary);
-  padding: 5px 14px;
-  border-radius: 9999px;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: var(--shadow-1);
-  border: 1.5px solid var(--border);
-  white-space: nowrap;
-  pointer-events: none;
-  animation: gentleFloat 2.2s infinite ease-in-out;
-  z-index: 10;
-}
-
-.activeBubble::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 6px solid var(--surface);
-}
-
-@keyframes gentleFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-
-/* Hito decorativo de fin de bloque */
-.milestoneMarker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  background: var(--surface);
-  border: 1.5px dashed var(--border-strong);
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--muted);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, transform 0.15s;
-  user-select: none;
-}
-
-.milestoneMarker:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  transform: translateY(-2px);
-}
-
-/* ==========================================================================
-   HISTORIAL ANTERIOR ACCESIBLE (DETALLES COLAPSABLES)
-   ========================================================================== */
-.historyCollapsible {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 16px;
-  box-sizing: border-box;
-}
-
-.historySummary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-}
-
-.historyList {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.historyItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  font-size: 12.5px;
-  color: var(--text);
-}
-
-/* ==========================================================================
-   MODALES Y DIÁLOGOS ACCESIBLES
-   ========================================================================== */
 .dialogOverlay {
   position: fixed;
   inset: 0;
   background: rgba(11, 16, 32, 0.6);
+  animation: overlayIn .16s ease both;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 999;
@@ -472,6 +29,7 @@
 }
 
 .dialogCard {
+  animation: panelIn .24s cubic-bezier(.22,1,.36,1) both;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -522,8 +80,8 @@
   font-weight: 800;
   padding: 3px 10px;
   border-radius: 9999px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .tagM {
@@ -639,6 +197,7 @@
    DRAWER DESLIZABLE "MAPA M1"
    ========================================================================== */
 .drawerPanel {
+  animation: drawerIn .24s cubic-bezier(.22,1,.36,1) both;
   position: fixed;
   top: 0;
   right: 0;
@@ -714,3 +273,6 @@
     transition: none !important;
   }
 }
+
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}@keyframes panelIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}@keyframes drawerIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.root *{animation:none!important;transition:none!important}.tactileNode:hover,.tactileNode:active,.btnPrimary:hover,.btnPrimary:active{transform:none!important}}

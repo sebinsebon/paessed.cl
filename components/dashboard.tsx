@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LearningEntryCard } from "@/components/learning/learning-entry-card";
 import { PageHeadingTransition } from "@/components/app-page-transition";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 import { FloatingHomeActions, announce } from "@/components/app-navigation";
@@ -446,64 +447,7 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
 }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
-  return (
-    <section
-      id="tour-mission"
-      className={`surface-raised relative overflow-hidden rounded-[20px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}
-    >
-      <div className="grid items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_250px] xl:grid-cols-[minmax(0,1fr)_285px] 2xl:grid-cols-[minmax(0,1fr)_315px]">
-        <div className="relative isolate flex min-w-0 flex-col justify-between lg:min-h-[306px]">
-          <div className="relative z-10">
-            <div>
-              <p className="text-sm font-semibold text-[var(--muted)]">Aprender</p>
-            </div>
-            <h2 className="mt-6 max-w-[470px] text-[24px] font-extrabold leading-[1.24] tracking-[-.025em] text-[var(--text)] sm:text-[25px]">
-              Aprende siguiendo una ruta personalizada
-            </h2>
-            <p className="mt-3 max-w-[480px] text-sm leading-6 text-[var(--muted)]">
-              Refuerza lo que necesitas, repasa a tu ritmo y avanza por cada eje de Matemática M1, paso a paso.
-            </p>
-          </div>
-
-          <motion.div whileHover={{ scale: 1.015 }} whileTap={{ scale: .98 }} className="relative z-10 mt-8 self-start">
-            <Link
-              href="/app/aprender"
-              className="tactile-primary inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[13px] font-extrabold"
-            >
-              <Play size={17} fill="currentColor" />
-              Empezar
-            </Link>
-          </motion.div>
-        </div>
-
-        <div className="flex h-full w-full flex-col justify-between rounded-2xl bg-[var(--surface-2)] p-5 lg:min-h-[260px]">
-          <div>
-          <div className="flex items-center justify-between gap-3">
-            <Route size={19} className="shrink-0 text-[var(--primary)]" strokeWidth={2} />
-          </div>
-
-          <div className="mt-2 py-2">
-            <p className="text-xs font-semibold text-[var(--nav-active-text)]">Tu próxima lección</p>
-            <p className="mt-1.5 text-base font-extrabold leading-6 text-[var(--text)]">Álgebra y Funciones</p>
-          </div>
-
-          </div>
-          <div className="mt-6">
-          <div className="flex items-center justify-between gap-2 text-xs font-bold text-[var(--muted)]">
-            <span>Explora los ejes de M1</span>
-            <span className="tabular-nums">4 ejes</span>
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-2" aria-hidden="true">
-            <span className="h-2 rounded-full bg-[var(--primary)]" />
-            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
-            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
-            <span className="h-2 rounded-full bg-[var(--border-strong)]" />
-          </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return <LearningEntryCard tourFocus={tourFocus} />;
 }
 
 function ExamsCard({ embedded = false }: { embedded?: boolean }) {

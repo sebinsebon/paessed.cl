@@ -166,9 +166,6 @@ export function LearningRouteDashboard({
   // Progreso dentro del bloque actual
   const completedInBlock = blockNodes.filter((n) => n.state === "completed").length;
   const totalInBlock = blockNodes.length;
-  const stepInBlock = current
-    ? Math.min(totalInBlock, (current.position % 7) + 1)
-    : totalInBlock;
   const progressPercent = totalInBlock > 0 ? (completedInBlock / totalInBlock) * 100 : 0;
   const pathRef = useRef<HTMLElement>(null);
   const [geometry, setGeometry] = useState<{ width: number; height: number; points: Point[]; milestone: Point | null }>({ width: 1, height: 1, points: [], milestone: null });
@@ -230,78 +227,26 @@ export function LearningRouteDashboard({
           CABECERA LIMPIA Y SOBRIA (PAESSED REAL)
           ========================================================================== */}
       <header className={styles.headerClean}>
-        {/* Fila de chips de estado compactos */}
-        <div className={styles.statsRow}>
-          <div className={styles.statChip} title="Racha de días activos">
-            <Flame size={15} className="text-[var(--primary)]" />
-            <span>{stats.streak} {stats.streak === 1 ? "día" : "días"}</span>
-          </div>
-
-          <button
-            type="button"
-            className={`${styles.statChip} ${styles.statChipBtn}`}
-            onClick={() => setEditingGoal(true)}
-            aria-label={`Meta diaria: ${stats.today} de ${stats.goal} nodos completados. Cambiar meta.`}
-          >
-            <Target size={15} className="text-[var(--primary)]" />
-            <span>{stats.today} / {stats.goal}</span>
-          </button>
-
-          <div className={styles.statChip} title="Puntos de experiencia acumulados">
-            <Zap size={15} className="text-[var(--secondary)]" />
-            <span>{stats.xp} XP</span>
-          </div>
-
-          <button
-            type="button"
-            className={`${styles.statChip} ${styles.statChipBtn} ml-auto`}
-            onClick={() => setMapaM1Open(true)}
-            aria-label="Mapa M1"
-          >
-            <Compass size={15} className="text-[var(--secondary)]" />
-            <span>Mapa M1</span>
-          </button>
-        </div>
-
-        {/* Título de la sección y subtítulo formativo */}
-        <div className={styles.headerMeta}>
-          <span className={styles.eyebrow}>
-            <Sparkles size={13} />
-            TU RUTA M1
-          </span>
-          <h1 className={styles.title}>Un paso más cerca.</h1>
-          <p className={styles.muted}>
-            {stats.today >= stats.goal
-              ? "Meta de hoy cumplida. Puedes seguir a tu ritmo."
-              : "Cinco preguntas. Un aprendizaje que se queda."}
-          </p>
-        </div>
-
-        {/* Barra de progreso del bloque */}
-        <div className={styles.progressSection}>
-          <div className={styles.progressTrack} role="progressbar" aria-valuenow={completedInBlock} aria-valuemin={0} aria-valuemax={totalInBlock}>
-            <div
-              className={styles.progressFill}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className={styles.progressText}>
-            Paso {stepInBlock} de {totalInBlock} · {completedInBlock} completados
-          </span>
-        </div>
+        <div><h1 className={styles.title}>Aprender</h1><p className={styles.muted}>Tu ruta de práctica en Matemática M1.</p></div>
+        <button type="button" className={styles.mapButton} onClick={() => setMapaM1Open(true)} aria-label="Mapa M1"><Compass size={18} />Mapa M1<ArrowRight size={16} /></button>
       </header>
-
+      <div className={styles.routeLayout}>
+      <div className={styles.routeColumn}>
+        <div className={styles.blockHeading}>
+          <div><h2>Tramo {viewBlockIndex + 1}</h2><span>{completedInBlock} de {totalInBlock} sesiones completadas</span></div>
+          <div className={styles.progressTrack} role="progressbar" aria-label="Progreso del tramo" aria-valuenow={completedInBlock} aria-valuemin={0} aria-valuemax={totalInBlock}><div className={styles.progressFill} style={{ width: `${progressPercent}%` }} /></div>
+        </div>
       {/* Aviso de meta diferida si existe */}
       {state.pendingGoal && (
         <div className={styles.notice} role="status">
-          Tu nueva meta de {state.pendingGoal.goal} {state.pendingGoal.goal === 1 ? "nodo empieza" : "nodos empieza"} el {state.pendingGoal.effectiveDate}.
+          Desde el {new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${state.pendingGoal.effectiveDate}T12:00:00Z`))}: {state.pendingGoal.goal} {state.pendingGoal.goal === 1 ? "sesión al día" : "sesiones al día"}.
         </div>
       )}
 
       {/* Aviso de diagnóstico pendiente si no se ha completado */}
       {!diagnosticDone && (
         <div className={styles.notice} role="status">
-          <strong>Tu punto de partida te espera:</strong> Completa el diagnóstico para orientar mejor tus primeros pasos.{" "}
+          Completa el diagnóstico para ajustar tu ruta.{" "}
           <Link href="/diagnostico" className="font-extrabold text-[var(--primary)] underline ml-1">
             Retomar diagnóstico →
           </Link>
@@ -311,7 +256,7 @@ export function LearningRouteDashboard({
       {/* Aviso de sesión guardada previamente */}
       {closedNode && state.nodes.find((n) => n.id === closedNode)?.state !== "completed" && (
         <div className={styles.notice} role="status">
-          Sesión guardada. Retoma desde el nodo naranja cuando quieras.
+          Sesión guardada. Puedes continuar donde quedaste.
         </div>
       )}
 
@@ -398,13 +343,6 @@ export function LearningRouteDashboard({
           return (
             <div key={node.id} className={`${styles.pathStepRow} ${posClass}`}>
               <div className={styles.tactileNodeWrapper}>
-                {/* Bocadillo flotante sobre el nodo activo */}
-                {isCurrent && (
-                  <div className={styles.activeBubble}>
-                    {node.startedAt ? "CONTINÚA AQUÍ" : "EMPIEZA AQUÍ"}
-                  </div>
-                )}
-
                 {/* Botón táctil con extrusión de 6-8px */}
                 <button
                   type="button"
@@ -414,7 +352,6 @@ export function LearningRouteDashboard({
                     ${styles.tactileNode}
                     ${isCurrent ? styles.activeNode : ""}
                     ${isCompleted ? styles.completedNode : ""}
-                    ${isFuture ? styles.upcomingNode : ""}
                   `}
                   onClick={() => {
                     if (isCurrent) {
@@ -443,14 +380,12 @@ export function LearningRouteDashboard({
                     <BookOpen size={26} strokeWidth={2.2} />
                   )}
 
-                  {/* Medallón de tipo M / R */}
-                  <div
-                    className={`${styles.typeBadge} ${node.type === "M" ? styles.typeBadgeM : styles.typeBadgeR}`}
-                    title={node.type === "M" ? "Mantenimiento" : "Refuerzo"}
-                  >
-                    {node.type}
-                  </div>
                 </button>
+                <div className={styles.nodeCopy}>
+                  <span>{isCompleted ? "Completada" : isCurrent ? (node.startedAt ? "En curso" : "Siguiente sesión") : `Sesión ${node.position + 1}`}</span>
+                  <h3>{unit?.name ?? node.unitId}</h3>
+                  <p>{node.type === "M" ? "Repaso" : "Refuerzo"} · {isCompleted ? `${node.originalCorrect ?? 0}/5 correctas` : "5 preguntas"}</p>
+                </div>
               </div>
             </div>
           );
@@ -473,7 +408,7 @@ export function LearningRouteDashboard({
             aria-label={`Información del hito: Cierre de Bloque ${viewBlockIndex + 1}`}
           >
             <Trophy size={15} className="text-[var(--primary)]" />
-            <span>Cierre de Bloque {viewBlockIndex + 1} (4M + 3R)</span>
+            <span>Final del tramo {viewBlockIndex + 1}</span>
           </div>
         </div>
 
@@ -488,6 +423,26 @@ export function LearningRouteDashboard({
           </div>
         )}
       </section>
+
+      </div>
+      <aside className={styles.routeAside} aria-label="Resumen de aprendizaje">
+        {current && <section className={styles.nextCard}>
+          <div className={styles.nextIcon}><BookOpen size={25} /></div>
+          <p className={styles.sectionLabel}>{current.startedAt ? "Continúa tu sesión" : "Tu próxima sesión"}</p>
+          <h2>{getM1Unit(current.unitId)?.name ?? current.unitId}</h2>
+          <p className={styles.muted}>{axisName(current.axisId)} · 5 preguntas</p>
+          <button className={styles.btnPrimary} onClick={() => setActiveDialogNode(current)}>{current.startedAt ? "Continuar" : "Empezar sesión"}<Play size={16} fill="currentColor" /></button>
+          <p className={styles.asideNote}>Revisa tus errores al terminar.</p>
+        </section>}
+        <section className={styles.goalCard}>
+          <div className={styles.goalHeading}><h2>Hoy</h2><button onClick={() => setEditingGoal(true)} aria-label={`Meta diaria: ${stats.today} de ${stats.goal} nodos completados. Cambiar meta.`}>Cambiar meta</button></div>
+          <p className={styles.goalCount}><strong>{stats.today}</strong> / {stats.goal} sesiones</p>
+          <div className={styles.goalDots} aria-hidden="true">{Array.from({length:stats.goal},(_,i)=><span key={i} data-done={i < stats.today}>{i < stats.today ? <Check size={18} /> : i+1}</span>)}</div>
+          {stats.today >= stats.goal && <p className={styles.asideNote}>Meta diaria completada.</p>}
+          <div className={styles.statsRow}><span><Flame size={18}/><strong>{stats.streak}</strong> {stats.streak === 1 ? "día de racha" : "días de racha"}</span><span><Zap size={17}/><strong>{stats.xp}</strong> XP</span></div>
+        </section>
+      </aside>
+      </div>
 
       {/* ==========================================================================
           MODAL: NODO ACTIVO (PREVIEW + CTA)
@@ -518,10 +473,10 @@ export function LearningRouteDashboard({
 
             <div className={styles.dialogBadgeGroup}>
               <span className={`${styles.dialogTag} ${activeDialogNode.type === "M" ? styles.tagM : styles.tagR}`}>
-                {activeDialogNode.type === "M" ? "M · MANTENIMIENTO" : "R · REFUERZO ADAPTATIVO"}
+                {activeDialogNode.type === "M" ? "Repaso" : "Refuerzo"}
               </span>
               <span className="text-xs font-bold text-[var(--muted)]">
-                PASO {activeDialogNode.position + 1}
+                Sesión {activeDialogNode.position + 1}
               </span>
             </div>
 
@@ -537,19 +492,19 @@ export function LearningRouteDashboard({
             <div className={styles.featuresList}>
               <div className={styles.featureRow}>
                 <Target size={16} />
-                <span><strong>5 preguntas:</strong> Feedback inmediato; tus primeras respuestas cuentan.</span>
+                <span><strong>5 preguntas.</strong> Verás el resultado de cada respuesta.</span>
               </div>
               <div className={styles.featureRow}>
                 <RotateCcw size={16} />
-                <span><strong>Corrección formativa:</strong> 2 reintentos en errores; el puntaje original se conserva.</span>
+                <span><strong>Revisa tus errores.</strong> Tienes 2 reintentos; tu resultado inicial se conserva.</span>
               </div>
               <div className={styles.featureRow}>
                 <Check size={16} />
-                <span><strong>Clave verificada DEMRE:</strong> Explicación provisional o no disponible según el banco.</span>
+                <span><strong>Respuestas verificadas.</strong> Las explicaciones pueden ser provisionales o no estar disponibles.</span>
               </div>
               <div className={styles.featureRow}>
                 <Zap size={16} />
-                <span><strong>Hasta +25 XP:</strong> +5 XP por respuesta nueva al completar el nodo.</span>
+                <span><strong>Hasta 25 XP.</strong> Ganas 5 por cada pregunta nueva al completar la sesión.</span>
               </div>
             </div>
 
@@ -674,10 +629,10 @@ export function LearningRouteDashboard({
 
             <div className={styles.dialogBadgeGroup}>
               <span className={`${styles.dialogTag} ${futureDialogNode.type === "M" ? styles.tagM : styles.tagR}`}>
-                {futureDialogNode.type === "M" ? "M · PREVISIÓN" : "R · PREVISIÓN"}
+                Próximamente
               </span>
               <span className="text-xs font-bold text-[var(--muted)]">
-                PASO {futureDialogNode.position + 1}
+                Sesión {futureDialogNode.position + 1}
               </span>
             </div>
 
@@ -694,13 +649,13 @@ export function LearningRouteDashboard({
               <div className={styles.featureRow}>
                 <Sparkles size={16} />
                 <span>
-                  <strong>Previsión adaptativa:</strong> Esta sesión se habilitará automáticamente al completar el paso previo de tu ruta.
+                  Esta sesión estará disponible después de la anterior.
                 </span>
               </div>
               <div className={styles.featureRow}>
                 <BookOpen size={16} />
                 <span>
-                  <strong>Sin candados:</strong> La cola se reorganiza según tu rendimiento real en cada sesión completada.
+                  Los próximos temas pueden cambiar según tus respuestas.
                 </span>
               </div>
             </div>
@@ -747,14 +702,14 @@ export function LearningRouteDashboard({
               <Trophy size={28} className="text-[var(--primary)]" />
               <div>
                 <h2 id="milestone-title" className={styles.dialogTitle}>
-                  Cierre de Bloque {viewBlockIndex + 1}
+                  Final del tramo {viewBlockIndex + 1}
                 </h2>
-                <p className={styles.dialogSub}>Ciclo formativo 4:3 (4 Mantenimiento + 3 Refuerzo)</p>
+                <p className={styles.dialogSub}>4 sesiones de repaso y 3 de refuerzo</p>
               </div>
             </div>
 
             <p className="text-sm text-[var(--muted)] leading-relaxed">
-              Cada bloque de tu ruta se estructura en <strong>7 sesiones completas</strong> (35 preguntas en total). Al completar las siete sesiones, consolidas el mantenimiento transversal y el refuerzo de tus áreas prioritarias.
+              Cada tramo tiene <strong>7 sesiones de 5 preguntas</strong>. Combina repaso de M1 con práctica de los temas que necesitas reforzar.
             </p>
 
             <button
@@ -797,9 +752,9 @@ export function LearningRouteDashboard({
 
             <div>
               <h2 id="goal-title" className={styles.dialogTitle}>
-                Un ritmo que puedas sostener
+                Tu meta diaria
               </h2>
-              <p className={styles.dialogSub}>¿Cuántos nodos quieres completar al día?</p>
+              <p className={styles.dialogSub}>¿Cuántas sesiones quieres completar al día?</p>
             </div>
 
             <div className="flex flex-col gap-2 my-2">
@@ -819,10 +774,10 @@ export function LearningRouteDashboard({
                 >
                   <div>
                     <strong className="block text-sm text-[var(--text)]">
-                      {val} {val === 1 ? "nodo al día" : "nodos al día"}
+                      {val} {val === 1 ? "sesión al día" : "sesiones al día"}
                     </strong>
                     <span className="text-xs text-[var(--muted)]">
-                      {val === 1 ? "Paso a paso (5 preguntas)" : val === 2 ? "Buen ritmo (10 preguntas)" : "Con todo (15 preguntas)"}
+                      {val === 1 ? "5 preguntas" : val === 2 ? "10 preguntas" : "15 preguntas"}
                     </span>
                   </div>
                   {selectedGoal === val && <Check size={18} className="text-[var(--primary)]" />}
@@ -831,7 +786,7 @@ export function LearningRouteDashboard({
             </div>
 
             <p className="text-xs text-[var(--muted)] leading-5">
-              Los cambios se aplican mañana. La meta de hoy sigue siendo {state.goal} {state.goal === 1 ? "nodo" : "nodos"}.
+              Los cambios se aplican mañana. La meta de hoy sigue siendo {state.goal} {state.goal === 1 ? "sesión" : "sesiones"}.
             </p>
 
             <button
