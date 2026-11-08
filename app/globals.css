@@ -183,39 +183,24 @@ html.dark [data-sileo-toast] {
 .text-muted { color: var(--muted); }
 .text-muted-2 { color: var(--muted-2); }
 
-/* Inicio and the persistent navigation share a quiet, neutral palette.
-   Keep these tokens scoped: exercise paper and the other modes own their colors. */
+/* Keep the original app palette; give selected navigation a clear outline. */
 .paessed-home,
 .paessed-soft-nav {
   --nav-active-text: #9a430d;
   --nav-active-fill: #fff0e5;
-  --nav-active-border: #efcdb5;
+  --nav-active-border: #df935b;
   color: var(--text);
 }
 html.dark .paessed-home,
 html.dark .paessed-soft-nav {
-  --canvas: #17191c;
-  --surface: #1e2125;
-  --surface-raised: #25282d;
-  --surface-2: #25282d;
-  --surface-3: #2b2f34;
-  --surface-4: #34383e;
-  --surface-5: #3e434a;
-  --border: #34383e;
-  --border-strong: #494f57;
-  --text: #f3f3f2;
-  --muted: #afb3ba;
-  --muted-2: #969ca5;
   --nav-active-text: #ffb47b;
-  --nav-active-fill: #302720;
-  --nav-active-border: #64422c;
-  --shadow-1: 0 3px 12px -6px rgb(0 0 0 / .2);
-  --shadow-2: 0 12px 30px -16px rgb(0 0 0 / .4);
+  --nav-active-fill: var(--surface-2);
+  --nav-active-border: #c7783f;
 }
 .paessed-soft-nav .paessed-sidebar-active-indicator,
 .paessed-soft-nav .paessed-mobile-active-indicator {
   background: var(--nav-active-fill);
-  border: 1px solid var(--nav-active-border);
+  border: 2px solid var(--nav-active-border);
   box-shadow: none;
 }
 .paessed-nav-emoji {
