@@ -13,6 +13,7 @@ export function PlaygroundScratchpad({
   strokes,
   onChange,
   onInteractionStart,
+  singlePointer = false,
 }: {
   enabled: boolean;
   mode: "pen" | "eraser";
@@ -20,9 +21,13 @@ export function PlaygroundScratchpad({
   strokes: PlaygroundInkStroke[];
   onChange: (next: PlaygroundInkStroke[]) => void;
   onInteractionStart?: () => void;
+  /** Aprender can opt into cancellation-safe, single-pointer drawing. */
+  singlePointer?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const liveStrokeRef = useRef<PlaygroundInkStroke | null>(null);
+  const activePointer = useRef<number | null>(null);
+  const contacts = useRef(new Set<number>());
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -97,6 +102,16 @@ export function PlaygroundScratchpad({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
+    if (singlePointer) {
+      contacts.current.add(event.pointerId);
+      if (contacts.current.size > 1 || !event.isPrimary || event.button !== 0) {
+        liveStrokeRef.current = null;
+        activePointer.current = null;
+        draw();
+        return;
+      }
+      activePointer.current = event.pointerId;
+    }
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     onInteractionStart?.();
@@ -110,6 +125,7 @@ export function PlaygroundScratchpad({
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!enabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    if (singlePointer && activePointer.current !== event.pointerId) return;
     if (mode === "eraser") {
       eraseAt(pointOf(event));
     } else if (liveStrokeRef.current) {
@@ -118,11 +134,56 @@ export function PlaygroundScratchpad({
     }
   };
   const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (singlePointer) {
+      contacts.current.delete(event.pointerId);
+      if (activePointer.current !== event.pointerId) return;
+      activePointer.current = null;
+    }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const stroke = liveStrokeRef.current;
     liveStrokeRef.current = null;
     if (stroke) onChange([...strokes, stroke]);
   };
+  const cancelStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!singlePointer) { finishStroke(event); return; }
+    contacts.current.delete(event.pointerId);
+    activePointer.current = null;
+    liveStrokeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    draw();
+  };
+  useEffect(() => {
+    if (!enabled && singlePointer) { activePointer.current = null; contacts.current.clear(); liveStrokeRef.current = null; draw(); }
+  }, [enabled, singlePointer, draw]);
+  useEffect(() => {
+    if (!singlePointer || !enabled) return;
+    const owner = canvasRef.current?.ownerDocument;
+    if (!owner) return;
+    const down = (event: PointerEvent) => {
+      contacts.current.add(event.pointerId);
+      if (contacts.current.size > 1) {
+        liveStrokeRef.current = null;
+        activePointer.current = null;
+        draw();
+      }
+    };
+    const ended = (event: PointerEvent) => {
+      contacts.current.delete(event.pointerId);
+      if (event.type === "pointercancel" && activePointer.current === event.pointerId) {
+        liveStrokeRef.current = null;
+        activePointer.current = null;
+        draw();
+      }
+    };
+    owner.addEventListener("pointerdown", down, true);
+    owner.addEventListener("pointerup", ended, true);
+    owner.addEventListener("pointercancel", ended, true);
+    return () => {
+      owner.removeEventListener("pointerdown", down, true);
+      owner.removeEventListener("pointerup", ended, true);
+      owner.removeEventListener("pointercancel", ended, true);
+    };
+  }, [singlePointer, enabled, draw]);
 
   return (
     <canvas
@@ -131,7 +192,8 @@ export function PlaygroundScratchpad({
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishStroke}
-      onPointerCancel={finishStroke}
+      onPointerCancel={cancelStroke}
+      onLostPointerCapture={singlePointer ? cancelStroke : undefined}
       className={"absolute inset-0 z-10 h-full w-full " +
         (enabled ? (mode === "eraser" ? "pointer-events-auto cursor-cell touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
     />

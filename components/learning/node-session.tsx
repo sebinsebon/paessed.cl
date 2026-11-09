@@ -7,6 +7,7 @@ import { LearningError } from "./question-card";
 import { LearningQuestionWorkspace } from "./learning-question-workspace";
 import styles from "./learning.module.css";
 import sessionStyles from "./node-session.module.css";
+import mobileStyles from "./workspace/mobile-question.module.css";
 
 type Dispatch = (action: LearningAction) => Promise<LearningState | null>;
 
@@ -16,6 +17,7 @@ export function NodeSession({ node, state, catalog, dispatch, error, onClose }: 
   const [selected, setSelected] = useState("");
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
   const [feedback, setFeedback] = useState<null | { correct: boolean; answer: string; questionId: string; round: "original" | "correction" }>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLDivElement>(null);
@@ -32,16 +34,27 @@ export function NodeSession({ node, state, catalog, dispatch, error, onClose }: 
   const showSolution = phase === "correction" && (correction?.tries ?? 0) >= 2 && !correction?.resolved;
   const correctionDone = phase === "correction" && !correctionId && !holdingCorrectionFeedback;
   const answered = Object.keys(node.answers).length;
-  const complete = async () => { setBusy(true); const result = await dispatch({ type: "complete-node", nodeId: node.id }); if (result) setPhase("done"); setBusy(false); };
-  const confirm = async () => {
-    if (!meta || !selected || busy) return;
-    setBusy(true);
-    const result = await dispatch({ type: phase === "correction" ? "retry" : "answer", nodeId: node.id, questionId: meta.id, answer: selected });
-    if (result) { setFeedback({ correct: selected === meta.correct, answer: selected, questionId: meta.id, round: phase === "correction" ? "correction" : "original" }); if (phase === "correction") setSelected(""); }
-    setBusy(false);
+  const complete = async () => {
+    if (saving.current) return;
+    saving.current = true; setBusy(true);
+    try { const result = await dispatch({ type: "complete-node", nodeId: node.id }); if (result) setPhase("done"); }
+    finally { saving.current = false; setBusy(false); }
   };
-  const nextOriginal = () => { setFeedback(null); setSelected(""); const next = node.questionIds.find((id) => !node.answers[id]); if (next) setDisplayId(next); else setPhase(node.state === "completed" ? "done" : "summary"); };
-  const review = async () => { setBusy(true); const result = await dispatch({ type: "review", nodeId: node.id, questionId }); if (result) { setFeedback(null); setSelected(""); } setBusy(false); };
+  const confirm = async () => {
+    if (!meta || !selected || !ready || saving.current || (phase === "original" && node.answers[meta.id])) return;
+    saving.current = true; setBusy(true);
+    try {
+      const result = await dispatch({ type: phase === "correction" ? "retry" : "answer", nodeId: node.id, questionId: meta.id, answer: selected });
+      if (result) { setFeedback({ correct: selected === meta.correct, answer: selected, questionId: meta.id, round: phase === "correction" ? "correction" : "original" }); if (phase === "correction") setSelected(""); }
+    } finally { saving.current = false; setBusy(false); }
+  };
+  const nextOriginal = () => { setFeedback(null); setSelected(""); const next = node.questionIds.find((id) => !node.answers[id]); if (next) { setReady(false); setDisplayId(next); } else setPhase(node.state === "completed" ? "done" : "summary"); };
+  const review = async () => {
+    if (saving.current || !ready) return;
+    saving.current = true; setBusy(true);
+    try { const result = await dispatch({ type: "review", nodeId: node.id, questionId }); if (result) { setFeedback(null); setSelected(""); } }
+    finally { saving.current = false; setBusy(false); }
+  };
   useEffect(() => { if (phase === "correction") { setSelected(""); setFeedback(null); } }, [questionId, phase]);
   const summary = phase === "summary" || phase === "done" || correctionDone;
   const correctedCount = errors.filter((id) => node.corrections[id]?.resolved && !node.corrections[id]?.viaSolution).length;
@@ -60,8 +73,12 @@ export function NodeSession({ node, state, catalog, dispatch, error, onClose }: 
     scrollArea.current?.scrollTo({ top: 0, behavior: "instant" });
     heading.current?.focus({ preventScroll: true });
   }, [questionId, summary]);
+  const feedbackMessage = currentFeedback ? currentFeedback.correct ? <strong className="inline-flex items-center gap-1.5 text-emerald-600"><Check size={15} />{phase === "correction" ? "¡Corregida!" : "¡Respuesta correcta!"}</strong> : <><strong className="inline-flex items-center gap-1.5 text-rose-500"><X size={15} />Todavía no es correcta. </strong>{phase === "original" ? "La retomarás al terminar las cinco preguntas." : showSolution ? "Revisa la solución y compárala con tu procedimiento." : "Te queda un intento antes de revisar la solución."}</> : showSolution ? "Lee la solución antes de continuar." : null;
+  const dualLabel = (mobile: string, desktop: string) => <><span className={mobileStyles.mobileOnly}>{mobile}</span><span className={mobileStyles.desktopOnly}>{desktop}</span></>;
   if (!summary && meta) return <LearningQuestionWorkspace
     key={meta.id} meta={meta} scratchpadKey={`${node.id}:${meta.id}`}
+    timerKey={`${node.id}:${meta.id}:${phase}:${phase === "correction" ? Math.max(0, (correction?.tries ?? 0) - (currentFeedback ? 1 : 0)) : 0}`}
+    feedback={feedbackMessage}
     selected={currentFeedback ? currentFeedback.answer : selected}
     checkedAnswer={currentFeedback?.answer}
     onSelect={answer => { setSelected(answer); if (phase === "correction") setFeedback(null); }} locked={!!currentFeedback && (phase === "original" || currentFeedback.correct) || showSolution || busy}
@@ -71,22 +88,21 @@ export function NodeSession({ node, state, catalog, dispatch, error, onClose }: 
     onReady={loaded => { setReady(loaded); if (loaded) void dispatch({ type: "expose", questionId: meta.id, mode: "learn", sessionId: node.id }); }}
     number={meta.number} total={5} progress={phase === "correction" ? errors.length - unresolved.length : answered} progressMax={phase === "correction" ? errors.length : 5}
     subtitle={phase === "correction" ? `Corrección · ${errors.length - unresolved.length}/${errors.length} errores trabajados` : `Pregunta ${node.questionIds.indexOf(meta.id) + 1} de 5 · ${answered}/5 respondidas`}
-    onClose={onClose} busy={busy}
-    steps={node.questionIds.map((id, index) => ({ number: index + 1, answered: !!node.answers[id], current: id === questionId }))}
+    onClose={() => { if (!saving.current) onClose(); }} busy={busy}
+    steps={(phase === "correction" ? errors : node.questionIds).map((id, index) => ({ number: index + 1, answered: phase === "correction" ? !!node.corrections[id]?.resolved : !!node.answers[id], current: id === questionId }))}
     notices={<>
       {error && <LearningError message={error} />}
       {repeated && <p className="mb-3 max-w-[1060px] text-xs text-[var(--pg-muted)]">Repaso · Ya viste esta pregunta. No sumará dominio, calibración ni XP.</p>}
       {node.substitution && <p className="mb-3 max-w-[1060px] text-xs text-[var(--pg-muted)]">Elegimos este subeje porque el previsto no tenía cinco preguntas disponibles.</p>}
     </>}
     footer={(drawing, aiHelp) => <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="min-w-0 flex-1 basis-full text-[11px] leading-5 text-[var(--pg-muted)] sm:basis-0" aria-live="polite">
-        {currentFeedback ? currentFeedback.correct ? <strong className="inline-flex items-center gap-1.5 text-emerald-600"><Check size={15} />{phase === "correction" ? "¡Corregida!" : "¡Respuesta correcta!"}</strong> : <><strong className="text-rose-500">Todavía no es correcta. </strong>{phase === "original" ? "La retomarás al terminar las cinco preguntas." : showSolution ? "Revisa la solución y compárala con tu procedimiento." : "Te queda un intento antes de revisar la solución."}</> : showSolution ? "Lee la solución antes de continuar." : "Selecciona una alternativa y confirma."}
-      </div>
-      <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+      <div className={`${mobileStyles.footerFeedback} min-w-0 flex-1 basis-full text-[11px] leading-5 text-[var(--pg-muted)] sm:basis-0`} aria-live="polite">{feedbackMessage ?? "Selecciona una alternativa y confirma."}</div>
+      <div className={`${mobileStyles.sessionActions} ml-auto flex max-w-full flex-wrap items-center justify-end gap-2`}>
         {aiHelp}
-        {phase === "original" && currentFeedback ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold" onClick={nextOriginal}>{answered === 5 ? "Ver mi resultado" : "Siguiente pregunta"}<ArrowRight size={16} /></button> : phase === "correction" && currentFeedback?.correct ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold" onClick={() => { setSelected(""); setFeedback(null); }}>{correctionId ? "Siguiente pregunta" : "Ver mi resultado"}<ArrowRight size={16} /></button> : showSolution ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold disabled:opacity-45" disabled={busy || !ready || drawing} onClick={() => void review()}>Revisé la solución <Check size={16} /></button> : <button className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:opacity-45" disabled={!selected || busy || !ready || drawing} onClick={() => void confirm()}>{busy ? "Guardando…" : phase === "correction" ? "Confirmar nuevo intento" : "Confirmar respuesta"}</button>}
+        {phase === "original" && currentFeedback ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold" onClick={nextOriginal}>{answered === 5 ? dualLabel("Ver resultado", "Ver mi resultado") : dualLabel("Continuar", "Siguiente pregunta")}<ArrowRight size={16} /></button> : phase === "correction" && currentFeedback?.correct ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold" onClick={() => { setSelected(""); setFeedback(null); }}>{correctionId ? dualLabel("Continuar", "Siguiente pregunta") : dualLabel("Ver resultado", "Ver mi resultado")}<ArrowRight size={16} /></button> : showSolution ? <button className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold disabled:opacity-45" disabled={busy || !ready || drawing} onClick={() => void review()}>Revisé la solución <Check size={16} /></button> : <button className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:opacity-45" disabled={!selected || busy || !ready || drawing} onClick={() => void confirm()}>{busy ? "Guardando…" : dualLabel("Comprobar", phase === "correction" ? "Confirmar nuevo intento" : "Confirmar respuesta")}</button>}
       </div>
     </div>}
+
   />;
   return <section className={sessionStyles.viewport} aria-label="Sesión de aprendizaje" data-testid="learning-session">
     <header className={sessionStyles.header}>

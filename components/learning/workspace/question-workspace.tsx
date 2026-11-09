@@ -2,8 +2,9 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import { QuestionTopicTags } from "@/components/question-topic-tags";
+import styles from "./mobile-question.module.css";
 
 export interface QuestionWorkspaceProps {
   number: number;
@@ -21,6 +22,7 @@ export interface QuestionWorkspaceProps {
   children: ReactNode;
   paperStyle: CSSProperties;
   contentKey: string;
+  mobile?: { steps: { number: number; answered: boolean; current: boolean }[]; menu: ReactNode; footer: ReactNode };
 }
 
 /**
@@ -47,6 +49,7 @@ export function QuestionWorkspace({
   children,
   paperStyle,
   contentKey,
+  mobile,
 }: QuestionWorkspaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +66,7 @@ export function QuestionWorkspace({
     <div
       style={paperStyle}
       data-testid="learning-session"
-      className="fixed inset-0 z-[60] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]"
+      className={`${mobile ? styles.viewport : ""} fixed inset-0 z-[60] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]`}
       aria-label="Sesión de aprendizaje M1"
     >
       {/* ==========================================================================
@@ -73,7 +76,13 @@ export function QuestionWorkspace({
         style={paperStyle}
         className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]"
       >
-        <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
+        {mobile && <div className={styles.mobileHeader}>
+          <button type="button" className={styles.iconButton} aria-label="Guardar y cerrar sesión" disabled={closeDisabled} onClick={onClose}><X size={22} /></button>
+          <div className={styles.segments} role="group" aria-label={subtitle}>{mobile.steps.map(step => <span key={step.number} className={styles.segment} data-answered={step.answered} aria-current={step.current ? "step" : undefined} aria-label={`Pregunta ${step.number}: ${step.current ? "actual" : step.answered ? "respondida" : "pendiente"}`} />)}</div>
+          <span className={styles.position} aria-label={subtitle}>{mobile.steps.find(step => step.current)?.number ?? mobile.steps.length}/{mobile.steps.length}</span>
+          {mobile.menu}
+        </div>}
+        <div className={`${mobile ? styles.desktopHeader : ""} mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7`}>
           {/* Columna Izquierda: Botón Volver, Número de pregunta y Tags de Eje/Subeje */}
           <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
             <button
@@ -123,7 +132,7 @@ export function QuestionWorkspace({
           aria-valuemin={0}
           aria-valuemax={progressMax}
           aria-valuenow={progress}
-          className="h-[3px] w-full overflow-hidden bg-[var(--pg-soft)]"
+          className={`${mobile ? styles.desktopProgress : ""} h-[3px] w-full overflow-hidden bg-[var(--pg-soft)]`}
         >
           <div
             className="h-full bg-[var(--primary)] transition-[width] duration-200 motion-reduce:transition-none"
@@ -145,7 +154,7 @@ export function QuestionWorkspace({
             ref={scrollRef}
             key={contentKey}
             data-testid="learning-question-scroll"
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12"
+            className={`${mobile ? styles.scroll : ""} min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12`}
           >
             <div className="relative flex min-h-full flex-col">
               {children}
@@ -157,9 +166,9 @@ export function QuestionWorkspace({
               ========================================================================== */}
           <footer
             data-testid="learning-session-actions"
-            className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3"
+            className={`${mobile ? styles.footer : ""} shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3`}
           >
-            {footer}
+            {mobile ? mobile.footer : footer}
           </footer>
         </article>
       </main>

@@ -69,9 +69,9 @@ async function copyToClipboard(value: string): Promise<boolean> {
   finally { area.remove(); }
 }
 
-type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean; onHelp?: () => void };
+type AskProps = SettingsProps & { question: AiQuestion; disabled?: boolean; onHelp?: () => void; onOpenChange?: (open: boolean) => void; compactMobile?: boolean };
 
-export function AskAiButton({ settings, onChange, question, disabled = false, onHelp }: AskProps) {
+export function AskAiButton({ settings, onChange, question, disabled = false, onHelp, onOpenChange, compactMobile = false }: AskProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
@@ -80,7 +80,27 @@ export function AskAiButton({ settings, onChange, question, disabled = false, on
   const providerId = useId();
   const customId = useId();
   const dialogRef = useRef<HTMLElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const openCallback = useRef(onOpenChange);
+  openCallback.current = onOpenChange;
+  useEffect(() => { openCallback.current?.(dialogOpen); return () => { if (dialogOpen) openCallback.current?.(false); }; }, [dialogOpen]);
+  useEffect(() => {
+    if (!dialogOpen || !compactMobile) return;
+    const viewport = window.visualViewport;
+    const resize = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      dialogRef.current?.style.setProperty("--learning-visible-height", `${height}px`);
+      const overlay = overlayRef.current;
+      if (overlay && window.matchMedia("(max-width: 767px)").matches) {
+        overlay.style.height = `${height}px`;
+        overlay.style.top = `${viewport?.offsetTop ?? 0}px`;
+        overlay.style.bottom = "auto";
+      } else if (overlay) { overlay.style.height = ""; overlay.style.top = ""; overlay.style.bottom = ""; }
+    };
+    resize(); viewport?.addEventListener("resize", resize); viewport?.addEventListener("scroll", resize);
+    return () => { viewport?.removeEventListener("resize", resize); viewport?.removeEventListener("scroll", resize); };
+  }, [dialogOpen, compactMobile]);
 
   useEffect(() => { setDialogOpen(false); setCopied(false); setCopyError(false); }, [question.number]);
   useEffect(() => {
@@ -103,7 +123,7 @@ export function AskAiButton({ settings, onChange, question, disabled = false, on
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      (previouslyFocused?.isConnected ? previouslyFocused : triggerRef.current)?.focus();
+      (triggerRef.current?.isConnected ? triggerRef.current : previouslyFocused)?.focus({ preventScroll: true });
     };
   }, [dialogOpen]);
 
@@ -141,9 +161,9 @@ export function AskAiButton({ settings, onChange, question, disabled = false, on
         </button>
       </div>
       {typeof document !== "undefined" && dialogOpen && createPortal(
-        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/65 p-4" role="presentation"
+        <div ref={overlayRef} className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/65 p-4" role="presentation"
           onMouseDown={(event) => { if (event.target === event.currentTarget) setDialogOpen(false); }}>
-          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label="Prompt para preguntar a la IA"
+          <section ref={dialogRef} id={dialogId} role="dialog" aria-modal="true" aria-label="Prompt para preguntar a la IA" data-learning-mobile-ai={compactMobile || undefined}
             className="max-h-[min(90dvh,850px)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[17px] font-extrabold">Preguntar a la IA</h2>

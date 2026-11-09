@@ -10,6 +10,7 @@ export interface PostErrorAiHelpProps {
   question: AiQuestion;
   onHelp?: () => void;
   disabled?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function PostErrorAiHelp({
   question,
   onHelp,
   disabled = false,
+  onOpenChange,
 }: PostErrorAiHelpProps) {
   const reduced = useReducedMotion();
   const { aiSettings, updateAiSettings } = useAiSettings();
@@ -45,14 +47,10 @@ export function PostErrorAiHelp({
         <motion.div
           data-testid="post-error-ai-help"
           className={styles.wrapper}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.94 }}
+          initial={{ opacity: 0 }}
           animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={reduced ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.95 }}
-          transition={
-            reduced
-              ? { duration: 0.15 }
-              : { type: "spring", stiffness: 440, damping: 26 }
-          }
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduced ? 0 : 0.18 }}
         >
           <AskAiButton
             settings={{ ...aiSettings, enabled: true }}
@@ -60,6 +58,8 @@ export function PostErrorAiHelp({
             question={question}
             disabled={disabled}
             onHelp={onHelp}
+            onOpenChange={onOpenChange}
+            compactMobile
           />
         </motion.div>
       )}

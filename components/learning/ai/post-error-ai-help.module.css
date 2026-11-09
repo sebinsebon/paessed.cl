@@ -5,8 +5,24 @@
   padding: 1px;
   background: transparent;
   border: 1px solid rgba(249, 115, 22, 0.5);
-  animation: subtleEntranceGlow 1.2s ease-out 1 forwards;
   box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  :global([data-learning-mobile-ai]) {
+    max-height: calc(var(--learning-visible-height, 100dvh) - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    scroll-padding-block: 60px;
+  }
+  :global([data-learning-mobile-ai] > div:first-child) {
+    position: sticky;
+    top: -20px;
+    z-index: 1;
+    background: var(--surface);
+  }
+  :global([data-learning-mobile-ai] button) { min-width: 44px; min-height: 44px; }
+  :global([data-learning-mobile-ai] input),
+  :global([data-learning-mobile-ai] textarea),
+  :global([data-learning-mobile-ai] select) { font-size: 16px; }
 }
 
 @keyframes subtleEntranceGlow {

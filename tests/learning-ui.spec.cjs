@@ -61,7 +61,7 @@ async function openCurrentNode(page, resume = false) {
   // PAESSED's spacing scale is configurable; the sheet must stay near the edge,
   // rather than returning to the centered learning card.
   expect(sheetGeometry.left).toBeLessThanOrEqual(sheetGeometry.viewport * 0.07);
-  await expect(page.getByRole("button", { name: "Ajustes de apariencia de la hoja", exact: true })).toBeInViewport();
+  await expect(page.getByRole("button", { name: page.viewportSize().width <= 767 ? "Abrir menú de la pregunta" : "Ajustes de apariencia de la hoja", exact: true })).toBeInViewport();
 }
 
 test("real diagnostic, original 3/5, correction, resume and earned XP", async ({ page }, testInfo) => {
@@ -138,27 +138,27 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   await page.mouse.move(canvasBox.x + 80, canvasBox.y + 60, { steps: 5 });
   await page.mouse.up();
   const inkKey = `paessed-learning-ink:${firstNodeId}:${current.questionIds[0]}`;
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]").length, inkKey)).toBe(1);
-  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key))[0].color, inkKey)).toBe("#e11d48");
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(1);
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).strokes[0].color, inkKey)).toBe("#e11d48");
   await expect(page.getByRole("group", { name: "Herramientas de dibujo", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Abrir herramientas del lápiz", exact: true }).click();
   await page.getByRole("button", { name: "Deshacer último trazo", exact: true }).click();
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]").length, inkKey)).toBe(0);
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(0);
   await page.mouse.move(canvasBox.x + 35, canvasBox.y + 35);
   await page.mouse.down();
   await page.mouse.move(canvasBox.x + 80, canvasBox.y + 60, { steps: 5 });
   await page.mouse.up();
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]").length, inkKey)).toBe(1);
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(1);
   await page.getByRole("button", { name: "Guardar y cerrar sesión" }).click();
   await openCurrentNode(page, true);
   await expect.poll(() => page.getByTestId("learning-session").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(17, 24, 39)");
-  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]").length, inkKey)).toBe(1);
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(1);
   for (let index = 0; index < 5; index++) {
     current = (await readState(page)).nodes.find((node) => node.id === firstNodeId);
     await choose(page, current.questionIds[index], index < 3);
     await expect(page.locator('[role="radio"][data-answer-status="correct"]')).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Preguntar a la IA", exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Confirmar respuesta", exact: true }).click();
+    await page.getByRole("button", { name: page.viewportSize().width <= 767 ? "Comprobar" : "Confirmar respuesta", exact: true }).click();
     await expect.poll(async () => Object.keys((await readState(page)).nodes.find((node) => node.id === firstNodeId).answers).length).toBe(index + 1);
     await expect(page.getByText("Alternativa correcta:", { exact: false })).toHaveCount(0);
     await answerFeedback(page, current.questionIds[index], index < 3);
@@ -265,9 +265,9 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
     }
     await choose(page, secondNode.questionIds[index], true);
     await noHorizontalOverflow(page);
-    await page.getByRole("button", { name: "Confirmar respuesta", exact: true }).click();
+    await page.getByRole("button", { name: "Comprobar", exact: true }).click();
     await answerFeedback(page, secondNode.questionIds[index], true);
-    await page.getByRole("button", { name: index === 4 ? "Ver mi resultado" : "Siguiente pregunta", exact: true }).click();
+    await page.getByRole("button", { name: index === 4 ? "Ver resultado" : "Continuar", exact: true }).click();
   }
   await expect(page.getByRole("heading", { name: "¡Nodo completado!" })).toBeVisible();
   expect((await readState(page)).nodes.find((node) => node.id === secondNode.id).originalCorrect).toBe(5);
