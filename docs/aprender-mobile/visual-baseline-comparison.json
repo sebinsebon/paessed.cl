@@ -1,0 +1,18 @@
+{
+  "base": "079baab",
+  "implementation": "bb9190e",
+  "currentFailed": 67,
+  "baseFailed": 68,
+  "newFailures": [],
+  "baseOnly": [
+    "41bcb2859099caff756b-b23a7f9016a4a6f57c12"
+  ],
+  "baseStats": {
+    "startTime": "2026-11-09T01:50:19.281Z",
+    "duration": 181021.258,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 68,
+    "flaky": 0
+  }
+}
