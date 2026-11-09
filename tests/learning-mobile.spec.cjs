@@ -109,7 +109,6 @@ test('ink stays aligned through feedback, rotation, reload and pointer cancellat
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
   await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
-  await page.getByRole('button', { name: 'Listo, dibujar', exact: true }).click();
   const canvas = sheet.locator('canvas');
   const box = await canvas.boundingBox();
   const draw = async () => {
@@ -167,7 +166,6 @@ test('ink storage failure warns and preserves in-memory marks when the session r
   });
   await expect(page.getByTestId('learning-ink-sheet')).toHaveAttribute('data-ink-ready', 'true');
   await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
-  await page.getByRole('button', { name: 'Listo, dibujar', exact: true }).click();
   const box = await page.locator('canvas').boundingBox();
   await page.mouse.move(box.x + 25, box.y + 25);
   await page.mouse.down();

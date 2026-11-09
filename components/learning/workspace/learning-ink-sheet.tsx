@@ -99,7 +99,7 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
         <div ref={sheetRef} data-testid="learning-ink-sheet" data-ink-ready={ready} data-ink-locked={!!sheet} data-ink-layout={sheet?.layout} data-ink-option-layout={sheet?.optionLayout}
           style={{ position: "relative", display: "flow-root", ...(sheet ? { width: sheet.width, minHeight: sheet.height, transform: `scale(${zoom})`, transformOrigin: "top left" } : {}) }}>
           {children}
-          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer onInteractionStart={() => {
+          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase onInteractionStart={() => {
             if (!sheet) { const value = dimensions(); if (value) { setSheet(value); callbacks.current.onLockChange?.(true); } }
           }} />
         </div>

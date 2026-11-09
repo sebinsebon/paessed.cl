@@ -1,7 +1,7 @@
 const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: __dirname,
-  testMatch: ['learning-mobile.spec.cjs', 'learning-mobile-bank.spec.cjs'],
+  testMatch: ['learning-mobile.spec.cjs', 'learning-mobile-bank.spec.cjs', 'learning-mobile-pen.spec.cjs'],
   workers: 1,
   timeout: 120000,
   expect: { timeout: 20000 },

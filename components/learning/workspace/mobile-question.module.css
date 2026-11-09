@@ -25,6 +25,25 @@
 .drawingTools button[aria-pressed=true] { outline:2px solid var(--primary); outline-offset:-2px; }
 .drawingHint { color:var(--pg-muted); font-size:13px; margin-bottom:12px; }
 .aiInBody { display:none; }
+.penExit { display:none; }
+.penButton { position:relative; width:48px; padding:0!important; isolation:isolate; transition:background-color 180ms,border-color 180ms; }
+.penButton:disabled { cursor:default; }
+.penGear { position:absolute; opacity:0; transform:scale(.65) rotate(-40deg); transition:opacity 180ms,transform 180ms; }
+.penIcon { position:relative; transition:transform 180ms; }
+.penButton[data-settings-ready=true] .penGear { opacity:.35; transform:scale(1) rotate(0deg); }
+.penButton[data-settings-ready=true] .penIcon { transform:translate(6px,5px) scale(.7); }
+.answerEffects { position:fixed; inset:0; z-index:65; overflow:hidden; pointer-events:none; --result-color:#10b981; }
+.answerEffects[data-result=incorrect] { --result-color:#f97366; }
+.answerWash { position:absolute; inset:0; box-shadow:inset 0 0 80px color-mix(in srgb,var(--result-color) 24%,transparent); animation:answer-wash 650ms ease-out both; }
+.answerParticle { position:absolute; top:70%; width:7px; height:10px; border-radius:3px; background:var(--result-color); animation:answer-particle 600ms cubic-bezier(.16,.65,.35,1) both; }
+.answerParticle:nth-child(3n) { border-radius:50%; width:6px; height:6px; }
+.answerEffects[data-result=incorrect] .answerParticle { width:5px; height:5px; border-radius:50%; opacity:.65; }
+.option[data-answer-status=correct] { animation:answer-good 500ms ease-out; }
+.option[data-answer-status=incorrect] { animation:answer-bad 500ms ease-out; }
+@keyframes answer-wash { from { opacity:0; } 25% { opacity:1; } to { opacity:0; } }
+@keyframes answer-particle { from { opacity:0; transform:translate(0,0) scale(.5); } 15% { opacity:1; } to { opacity:0; transform:translate(var(--particle-x),var(--particle-y)) rotate(var(--particle-turn)) scale(.8); } }
+@keyframes answer-good { from { box-shadow:0 0 0 5px #10b98140; } to { box-shadow:0 0 0 0 #10b98100; } }
+@keyframes answer-bad { from { box-shadow:0 0 0 5px #fb718540; } to { box-shadow:0 0 0 0 #fb718500; } }
 @media (min-width:768px) {
  .dialog:not(.figureDialog) { position:absolute; top:calc(100% + 9px); right:24px; left:auto; margin:0; width:min(340px,calc(100vw - 24px)); box-shadow:0 12px 30px #0002; z-index:50; }
 }
@@ -54,6 +73,7 @@
  .footer { min-height:calc(72px + env(safe-area-inset-bottom)); padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))!important; }
  .footerRow { display:flex; align-items:center; gap:10px; }
  .footerMain { flex:1; min-width:0; }
+ .penExit { display:flex; width:100%; min-height:48px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--pg-border); border-radius:12px; background:var(--pg-soft); font-size:15px; font-weight:700; }
  .sessionActions { display:flex!important; width:100%; flex-wrap:nowrap!important; gap:8px!important; }
  .sessionActions > button { flex:1; min-height:48px!important; font-size:15px!important; padding:10px 14px!important; justify-content:center; }
  .sessionActions > :global([data-testid=post-error-ai-help]) { flex:1; min-width:0; }
@@ -91,5 +111,6 @@
 :global([data-ink-locked=true][data-ink-layout=desktop]) .optionContent { flex:initial; }
 :global([data-ink-locked=true][data-ink-layout=desktop]) .optionStatus { width:17px; flex-basis:17px; }
 @media (prefers-reduced-motion:reduce) {
+ .answerEffects { display:none; }
  .viewport *, .dialog * { animation:none!important; transition:none!important; }
 }

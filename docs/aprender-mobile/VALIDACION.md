@@ -1,5 +1,13 @@
 # Aprender móvil
 
+## Ajuste posterior: lápiz y feedback
+
+Primer toque: activa el lápiz directamente. Durante un segundo se ignoran toques repetidos en ese botón; después aparece una tuerca detrás del lápiz y el siguiente toque abre sus opciones. «Desplazar» es una acción separada de 48 px al pie. El doble toque rápido sobre tinta elimina solo el trazo señalado y conserva los demás. Las alternativas se pueden desmarcar antes de confirmar. Aciertos y errores muestran partículas breves y una transición de color; movimiento reducido oculta las partículas.
+
+[Lápiz activo](screenshots/pen-active.png) · [Opciones](screenshots/pen-settings.png)
+
+Verificación de este ajuste: 22 pruebas de interacción entre Chromium y WebKit, las 2 pruebas existentes de aprendizaje (incluidos corrección y XP), TypeScript y build aprobados. Los barridos completos documentados abajo corresponden al rediseño inicial; no se repitieron para este ajuste de interacción.
+
 Rama `feat/aprender-mobile`, basada en `feat/inicio-soft` (`079baab`).
 
 Implementación: commit `bb9190e`. [Preview Vercel](https://paesseduiux-orduvzha7-sebinsebonzb-gmailcoms-projects.vercel.app/app/aprender). El proyecto tiene protección de Vercel; el enlace temporal compartido en la entrega permite abrirlo sin cambiar esa configuración.
