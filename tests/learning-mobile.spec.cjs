@@ -138,7 +138,7 @@ test('ink stays aligned through feedback, rotation, reload and pointer cancellat
   await page.locator('body').dispatchEvent('pointerdown', { pointerId: 9, pointerType: 'touch', isPrimary: false });
   await page.mouse.up();
   expect((await readInk()).strokes).toEqual(saved.strokes);
-  await page.getByRole('button', { name: 'Desplazar', exact: true }).click();
+  await page.getByRole('button', { name: 'Desactivar lápiz', exact: true }).click();
   const original = await sheet.evaluate(el => ({ width: el.offsetWidth, height: el.offsetHeight, font: getComputedStyle(el.querySelector('[data-testid="learning-paper-stem"]')).fontSize }));
   for (const viewport of [{ width: 844, height: 390 }, { width: 320, height: 740 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);

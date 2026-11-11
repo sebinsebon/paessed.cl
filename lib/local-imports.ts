@@ -24,6 +24,18 @@ export type ImportedExamRecord = {
   archive?: Blob;
 };
 
+// WebKit on Windows cannot reliably persist Blob/File data in IndexedDB.
+// Keep binary bytes in storage and restore the public Blob API at the boundary.
+// Existing records with a Blob remain readable without a database migration.
+type StoredImportedExam = Omit<ImportedExamRecord, "archive"> & { archive?: Blob | ArrayBuffer; archiveType?: string };
+function restored(record: StoredImportedExam): ImportedExamRecord {
+  const { archiveType, ...value } = record;
+  return { ...value, archive: value.archive instanceof ArrayBuffer ? new Blob([value.archive], { type: archiveType }) : value.archive };
+}
+function archiveSize(record: StoredImportedExam): number | undefined {
+  return record.archive instanceof ArrayBuffer ? record.archive.byteLength : record.archive?.size;
+}
+
 function refreshed(record:ImportedExamRecord):ImportedExamRecord {
   const data=record.finalJson as {format?:unknown;questions?:Array<{answer?:{label?:unknown;status?:unknown};curriculum?:{eje?:unknown;subeje?:unknown;en_temario?:unknown}}>};
   if(data?.format!=='paessed-benchmark'||!Array.isArray(data.questions))return record;
@@ -87,41 +99,42 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 export async function saveImportedExam(record: ImportedExamRecord): Promise<void> {
+  const value: StoredImportedExam = { ...refreshed(record), archive: record.archive ? await record.archive.arrayBuffer() : undefined, archiveType: record.archive?.type };
   const database = await openDatabase();
-  await new Promise<void>((resolve, reject) => {
+  try { await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORE, "readwrite");
-    transaction.objectStore(STORE).put(refreshed(record));
+    transaction.objectStore(STORE).put(value);
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo guardar el ensayo."));
-  });
-  database.close();
+    transaction.onabort = () => reject(transaction.error ?? new Error("No se pudo guardar el ensayo."));
+  }); } finally { database.close(); }
 }
 
 export async function listImportedExams(): Promise<ImportedExamSummary[]> {
   const database = await openDatabase();
-  const records = await new Promise<ImportedExamRecord[]>((resolve, reject) => {
+  const records = await new Promise<StoredImportedExam[]>((resolve, reject) => {
     const transaction = database.transaction(STORE, "readonly");
     const request = transaction.objectStore(STORE).getAll();
-    request.onsuccess = () => resolve(request.result as ImportedExamRecord[]);
+    request.onsuccess = () => resolve(request.result as StoredImportedExam[]);
     request.onerror = () => reject(request.error ?? new Error("No se pudieron leer los ensayos importados."));
   });
   database.close();
   return records.map((record) => {
-    const summary = refreshed(record).summary;
-    return { ...summary, fileSizeBytes: summary.fileSizeBytes ?? record.archive?.size };
+    const summary = refreshed(restored(record)).summary;
+    return { ...summary, fileSizeBytes: summary.fileSizeBytes ?? archiveSize(record) };
   }).sort((a, b) => b.importedAt.localeCompare(a.importedAt));
 }
 
 export async function getImportedExam(id: string): Promise<ImportedExamRecord | null> {
   const database = await openDatabase();
-  const record = await new Promise<ImportedExamRecord | undefined>((resolve, reject) => {
+  const record = await new Promise<StoredImportedExam | undefined>((resolve, reject) => {
     const transaction = database.transaction(STORE, "readonly");
     const request = transaction.objectStore(STORE).get(id);
-    request.onsuccess = () => resolve(request.result as ImportedExamRecord | undefined);
+    request.onsuccess = () => resolve(request.result as StoredImportedExam | undefined);
     request.onerror = () => reject(request.error ?? new Error("No se pudo leer el ensayo importado."));
   });
   database.close();
-  return record ? refreshed(record) : null;
+  return record ? refreshed(restored(record)) : null;
 }
 
 export async function deleteImportedExam(id: string): Promise<void> {
@@ -159,19 +172,19 @@ function utf8Size(value: unknown): number {
 /** Estimate bytes actually represented by each stored record, not just source file size. */
 export async function listImportedExamStorageUsage(): Promise<ImportedExamStorageUsage[]> {
   const database = await openDatabase();
-  let records: ImportedExamRecord[];
+  let records: StoredImportedExam[];
   try {
-    records = await new Promise<ImportedExamRecord[]>((resolve, reject) => {
+    records = await new Promise<StoredImportedExam[]>((resolve, reject) => {
       const transaction = database.transaction(STORE, "readonly");
       const request = transaction.objectStore(STORE).getAll();
-      request.onsuccess = () => resolve(request.result as ImportedExamRecord[]);
+      request.onsuccess = () => resolve(request.result as StoredImportedExam[]);
       request.onerror = () => reject(request.error ?? new Error("No se pudo medir la biblioteca local."));
     });
   } finally {
     database.close();
   }
   return records.map((record) => {
-    const archiveBytes = record.archive?.size ?? 0;
+    const archiveBytes = archiveSize(record) ?? 0;
     return {
       id: record.summary.id,
       title: record.summary.title,

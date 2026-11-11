@@ -19,13 +19,20 @@
 .figureLinks button { min-height:44px; padding:8px 12px; border:1px solid var(--pg-border); border-radius:10px; font:600 13px/1.4 var(--font-sans,sans-serif); }
 .optionStatus { width:17px; flex:0 0 17px; margin-left:auto; margin-top:4px; }
 .optionContent { min-width:0; }
+/* KaTeX's invisible fraction struts can extend into a neighbouring answer.
+   Hit testing belongs to the answer and its scroll viewport, not those struts. */
+.option :global(.katex) { pointer-events:none; }
 .options { max-width:1060px; }
 .drawingTools { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
 .drawingTools button { min-width:44px; min-height:44px; display:grid; place-items:center; border-radius:8px; }
 .drawingTools button[aria-pressed=true] { outline:2px solid var(--primary); outline-offset:-2px; }
 .drawingHint { color:var(--pg-muted); font-size:13px; margin-bottom:12px; }
 .aiInBody { display:none; }
+.externalAi { display:contents; }
 .penExit { display:none; }
+.drawingToggle { min-width:44px; min-height:44px; border:1px solid var(--pg-border); background:var(--pg-soft); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--pg-fg); }
+.drawingToggle[aria-pressed=true] { color:var(--primary); border-color:var(--primary); background:var(--pg-selected); }
+.sessionActions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
 .penButton { position:relative; width:48px; padding:0!important; isolation:isolate; transition:background-color 180ms,border-color 180ms; }
 .penButton:disabled { cursor:default; }
 .penGear { position:absolute; opacity:0; transform:scale(.65) rotate(-40deg); transition:opacity 180ms,transform 180ms; }
@@ -76,6 +83,7 @@
  .penExit { display:flex; width:100%; min-height:48px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--pg-border); border-radius:12px; background:var(--pg-soft); font-size:15px; font-weight:700; }
  .sessionActions { display:flex!important; width:100%; flex-wrap:nowrap!important; gap:8px!important; }
  .sessionActions > button { flex:1; min-height:48px!important; font-size:15px!important; padding:10px 14px!important; justify-content:center; }
+ .sessionActions select { font-size:16px; min-height:44px; max-width:100%; }
  .sessionActions > :global([data-testid=post-error-ai-help]) { flex:1; min-width:0; }
  .sessionActions :global([data-testid=post-error-ai-help]) > div { width:100%; min-width:0; flex-shrink:1; }
  .sessionActions :global([data-testid=post-error-ai-help]) button { min-height:48px; width:100%; font-size:14px; white-space:normal; }

@@ -7,6 +7,8 @@ import { useDrawingTools } from "@/components/use-drawing-tools";
 import { M1_AXES, getM1Unit } from "@/lib/m1-curriculum";
 import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme, type QuestionPaperTheme } from "@/lib/question-paper";
 import type { LearningQuestion } from "@/lib/learning/types";
+import type { BankQuestion } from "@/lib/playground-imports";
+import type { PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useLearningQuestion } from "./use-learning-question";
 import { LearningError, LearningLoading } from "./question-card";
 import { QuestionWorkspace } from "./workspace/question-workspace";
@@ -39,13 +41,22 @@ function readSavedIds(): string[] {
   return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
 }
 
-export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selected, checkedAnswer, onSelect, locked, revealSolution, onReady, number, total, progress, progressMax, subtitle, onClose, busy, footer, feedback, notices, steps, showAiHelp, onAiHelp }: {
+export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selected, checkedAnswer, onSelect, locked, revealSolution, onReady, number, total, progress, progressMax, subtitle, onClose, busy, footer, feedback, notices, steps, showAiHelp, onAiHelp, source, context = "learn", tools: extraTools, aiHelp: customAiHelp, initialStrokes, onStrokesChange, renderAiHelp }: {
   meta: LearningQuestion; scratchpadKey: string; timerKey?: string; selected: string; checkedAnswer?: string; onSelect: (answer: string) => void; locked: boolean; revealSolution: boolean; onReady: (ready: boolean) => void;
   number: number; total: number; progress: number; progressMax: number; subtitle: string; onClose: () => void; busy: boolean;
   footer: (drawing: boolean, aiHelp: ReactNode) => ReactNode; feedback?: ReactNode; notices?: ReactNode; steps: Step[];
   showAiHelp: boolean; onAiHelp: () => void;
+  source?: { question: BankQuestion; assetUrls: Map<string,string>; ready: boolean; error?: string; retry?: () => void };
+  context?: "learn" | "diagnostic" | "exam" | "playground";
+  renderAiHelp?: (onOpenChange: (open: boolean) => void) => ReactNode;
+  tools?: ReactNode; aiHelp?: ReactNode; initialStrokes?: PlaygroundInkStroke[]; onStrokesChange?: (strokes: PlaygroundInkStroke[]) => void;
 }) {
-  const { content, resourceUrls, error, ready, retry } = useLearningQuestion(meta);
+  const loaded = useLearningQuestion(meta, undefined, !source);
+  const content = source ? { question: source.question } : loaded.content;
+  const resourceUrls = source ? { byId: source.assetUrls } : loaded.resourceUrls;
+  const error = source ? source.error : loaded.error;
+  const ready = source ? source.ready && !source.error : loaded.ready;
+  const retry = source ? source.retry : loaded.retry;
   const drawing = useDrawingTools();
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
   const [color, setColor] = useState<string>(INKS[0]);
@@ -70,8 +81,8 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const timer = useQuestionTimer({ timerKey: timerKey ?? scratchpadKey, ready: ready && sheetReady, paused: busy || aiOpen || panel !== null || figure !== null, frozen: !!checkedAnswer || revealSolution });
-  const axis = M1_AXES.find(item => item.id === meta.axisId)?.name ?? meta.axisId;
-  const topic = getM1Unit(meta.unitId)?.name;
+  const axis = source ? source.question.axis || "Matemática M1" : M1_AXES.find(item => item.id === meta.axisId)?.name ?? meta.axisId;
+  const topic = source ? source.question.topic || undefined : getM1Unit(meta.unitId)?.name;
   useEffect(() => { onReadyRef.current(ready && sheetReady); }, [ready, sheetReady]);
   useEffect(() => {
     if (ready && sheetReady) stemRef.current?.focus({ preventScroll: true });
@@ -80,10 +91,10 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     const footerElement = footerRef.current;
     if (!footerElement) return;
     const sync = () => {
-      if (!matchMedia("(max-width: 767px)").matches || !showAiHelp) { setNarrow(false); return; }
-      const primary = footerElement.querySelector<HTMLButtonElement>("[class*=sessionActions] > button");
-      const ai = footerElement.querySelector<HTMLButtonElement>("[data-testid=post-error-ai-help] button") ?? bodyAiRef.current?.querySelector<HTMLButtonElement>("button");
-      if (!primary || !ai) return;
+      if (!matchMedia("(max-width: 767px)").matches || !(showAiHelp || customAiHelp || renderAiHelp)) { setNarrow(false); return; }
+      const ai = footerElement.querySelector<HTMLButtonElement>("[data-testid=post-error-ai-help] button, [data-external-ai] button") ?? bodyAiRef.current?.querySelector<HTMLButtonElement>("button");
+      if (!ai) { setNarrow(false); return; }
+      const actions = Array.from(footerElement.querySelectorAll<HTMLButtonElement>("button")).filter(button => button !== ai && button.getClientRects().length);
       const context = document.createElement("canvas").getContext("2d");
       const requiredWidth = (button: HTMLButtonElement) => {
         const style = getComputedStyle(button);
@@ -91,7 +102,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
         const text = button.innerText.trim();
         return (context?.measureText(text).width ?? text.length * 9) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + (button.querySelector("svg") ? 24 : 0) + 4;
       };
-      setNarrow(requiredWidth(primary) + requiredWidth(ai) + 8 > footerElement.clientWidth);
+      setNarrow(actions.reduce((width, button) => width + Math.max(44, requiredWidth(button)) + 8, requiredWidth(ai)) > footerElement.clientWidth);
     };
     const observer = new ResizeObserver(sync);
     observer.observe(footerElement);
@@ -99,7 +110,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     void document.fonts.ready.then(sync);
     window.addEventListener("resize", sync);
     return () => { observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener("resize", sync); };
-  }, [showAiHelp, checkedAnswer, drawing.drawingEnabled]);
+  }, [showAiHelp, checkedAnswer, drawing.drawingEnabled, !!renderAiHelp, !!customAiHelp]);
   useEffect(() => {
     setTheme(readQuestionPaperTheme());
     const syncSaved = () => {
@@ -114,13 +125,14 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   useEffect(() => {
     if (!sheetReady) return;
     setFigures(Array.from(sheetRef.current?.querySelectorAll<HTMLImageElement>("img") ?? []).map(img => ({ src: img.currentSrc || img.src, alt: img.alt || "Figura del ejercicio", width: img.naturalWidth })));
-  }, [sheetReady, content]);
+  }, [sheetReady, content?.question]);
   const toggleSaved = () => {
     try {
       const ids = readSavedIds();
       const next = ids.includes(meta.id) ? ids.filter(id => id !== meta.id) : [...ids, meta.id];
       localStorage.setItem(SAVED_QUESTIONS, JSON.stringify(next));
       setSaved(next.includes(meta.id)); setStorageError("");
+      window.dispatchEvent(new Event("paessed-saved-questions-change"));
     } catch { setStorageError("No se pudo guardar la pregunta en este navegador."); }
   };
   const question = content?.question;
@@ -128,9 +140,12 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     number: question.number, stem: question.stemBlocks ?? question.stem,
     options: question.options.map((option, index) => ({ label: question.optionLabels?.[index] ?? String.fromCharCode(65 + index), content: question.optionBlocks?.[index] ?? option })),
   }} /> : null;
+  const customHelp = renderAiHelp?.(setAiOpen) ?? customAiHelp;
+  const help = customHelp ? <div data-external-ai className={styles.externalAi}>{customHelp}</div> : aiHelp;
   const buttonTone = (active: boolean) => "grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors " + (active ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]");
   const tools = <>
-    <button type="button" aria-label={!drawing.drawingEnabled ? "Activar lápiz" : panel === "drawing" ? "Desactivar lápiz" : "Abrir herramientas del lápiz"} aria-pressed={drawing.drawingEnabled} disabled={!sheetReady} onClick={() => { if (drawing.drawingEnabled && panel === "drawing") { drawing.setDrawingEnabled(false); setPanel(null); } else { drawing.setDrawingEnabled(true); setPanel("drawing"); } }} className={buttonTone(drawing.drawingEnabled)}><Pencil size={18} /></button>
+    <MobilePenButton enabled={drawing.drawingEnabled} disabled={!sheetReady || busy} onActivate={() => { setTool("pen"); drawing.setDrawingEnabled(true); }} onDeactivate={() => { drawing.setDrawingEnabled(false); setPanel(null); }} onSettings={() => setPanel("drawing")} />
+    <button type="button" aria-label="Abrir menú de la pregunta" className={buttonTone(panel === "menu")} onClick={() => setPanel("menu")}><Menu size={20}/></button>
     <button type="button" aria-label={saved ? "Quitar pregunta de guardadas" : "Guardar esta pregunta"} aria-pressed={saved} onClick={toggleSaved} className={buttonTone(saved)}><Bookmark size={18} fill={saved ? "currentColor" : "none"} /></button>
     <button type="button" aria-label="Abrir mapa de preguntas" onClick={() => setPanel("map")} className={buttonTone(panel === "map")}><Grid3X3 size={18} /></button>
     <button type="button" aria-label="Ajustes de apariencia de la hoja" onClick={() => setPanel("appearance")} className={buttonTone(panel === "appearance")}><Settings size={18} /></button>
@@ -138,6 +153,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const panels = <>
     {panel && <QuestionDialog returnFocusRef={panelTrigger} title={{ menu: "Herramientas de la pregunta", appearance: "Apariencia de la hoja", map: "Mapa de preguntas del nodo", info: "Información de la pregunta", drawing: "Herramientas de dibujo" }[panel]} onClose={() => setPanel(null)} paperStyle={paperStyle(theme)}>
       {panel === "menu" && <>
+        {extraTools && <div onClick={event => { if ((event.target as HTMLElement).closest("button")) setPanel(null); }}>{extraTools}</div>}
         <button type="button" className={styles.menuButton} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={20} />{saved ? "Quitar de guardadas" : "Guardar pregunta"}</button>
         <button type="button" className={styles.menuButton} disabled={!sheetReady} onClick={() => { drawing.setDrawingEnabled(true); setPanel("drawing"); }}><Pencil size={20} />Lápiz sobre la pregunta</button>
         <button type="button" className={styles.menuButton} onClick={() => setPanel("appearance")}><Settings size={20} />Apariencia</button>
@@ -146,7 +162,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
         <button type="button" className={styles.menuButton} aria-pressed={timer.enabled} onClick={timer.toggle}><Clock size={20} />{timer.enabled ? "Ocultar cronómetro" : "Mostrar cronómetro"}</button>
       </>}
       {panel === "appearance" && THEMES.map(item => <button type="button" key={item.value} className={styles.menuButton} aria-pressed={theme === item.value} onClick={() => { setTheme(item.value); try { saveQuestionPaperTheme(item.value); } catch { setStorageError("No se pudo guardar la apariencia."); } setPanel(null); }}>{item.title}{theme === item.value && <Check size={18} />}</button>)}
-      {panel === "info" && <div className="space-y-3 text-base leading-relaxed"><p>Pregunta N.º {number}</p><p>{axis}</p><p>{topic}</p><p>{subtitle}</p><p>La primera respuesta queda guardada. La ayuda y la corrección posterior no cambian ese resultado.</p></div>}
+      {panel === "info" && <div className="space-y-3 text-base leading-relaxed"><p>Pregunta N.º {number}</p><p>{axis}</p><p>{topic}</p><p>{subtitle}</p><p>{context === "diagnostic" ? "Responde sin pistas ni corrección durante el diagnóstico. Las respuestas confirmadas se conservan." : context === "exam" ? "Puedes revisar tus respuestas antes de entregar el ensayo." : "La primera respuesta queda guardada. La ayuda posterior no cambia ese resultado."}</p></div>}
       {panel === "map" && <><div className="grid grid-cols-5 gap-2">{steps.map(step => <span key={step.number} aria-current={step.current ? "step" : undefined} aria-label={`Pregunta ${step.number}, ${step.current ? "actual" : step.answered ? "respondida" : "pendiente"}`} className={`grid min-h-11 place-items-center rounded-lg border text-sm font-bold ${step.current ? "border-[var(--primary)] bg-[var(--pg-selected)]" : step.answered ? "border-emerald-500 bg-[var(--pg-good)]" : "border-[var(--pg-border)]"}`}>{step.number}</span>)}</div><p className="mt-3 text-sm">{subtitle}</p></>}
       {panel === "drawing" && <>
         <p className={styles.drawingHint}>Dibuja sobre la hoja. Toca dos veces un trazo para borrarlo. «Desplazar» te permite recorrer la pregunta.</p>
@@ -166,19 +182,18 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
       <div className={styles.figureViewport} tabIndex={0} aria-label="Figura ampliada, desplazable"><img src={figures[figure].src} alt={figures[figure].alt} style={{ width: Math.max(280, figures[figure].width) * zoom }} /></div>
     </QuestionDialog>}
   </>;
-  return <div onClickCapture={event => { const target = event.target as HTMLElement; const button = target.closest<HTMLElement>("button"); if (button && !button.closest("dialog")) panelTrigger.current = button; }}><QuestionWorkspace number={number} total={total} axis={axis} topic={topic} subtitle={subtitle} progress={progress} progressMax={progressMax} onClose={onClose} closeDisabled={busy} tools={tools} panels={panels} footer={null} paperStyle={paperStyle(theme)} contentKey={meta.id} mobile={{
+  return <div onClickCapture={event => { const target = event.target as HTMLElement; const button = target.closest<HTMLElement>("button"); if (button && !button.closest("dialog")) panelTrigger.current = button; }}><QuestionWorkspace modeLabel={context === "diagnostic" ? "Diagnóstico" : context === "exam" ? "Ensayos" : context === "playground" ? "Playground" : "Aprender"} number={number} total={total} axis={axis} topic={topic} subtitle={subtitle} progress={progress} progressMax={progressMax} onClose={onClose} closeDisabled={busy} tools={tools} panels={panels} footer={null} paperStyle={paperStyle(theme)} contentKey={meta.id} mobile={{
     steps,
     menu: <button type="button" className={styles.iconButton} aria-label="Abrir menú de la pregunta" aria-expanded={panel !== null} onClick={() => setPanel("menu")}><Menu size={22} /></button>,
-    footer: <div className={styles.footerRow}><div className={styles.mobileOnly}><MobilePenButton enabled={drawing.drawingEnabled} disabled={!sheetReady || busy} onActivate={() => { setTool("pen"); drawing.setDrawingEnabled(true); }} onSettings={() => setPanel("drawing")} /></div><div ref={footerRef} className={styles.footerMain}><div className={drawing.drawingEnabled ? styles.desktopOnly : undefined}>{footer(drawing.drawingEnabled, narrow ? null : aiHelp)}</div>{drawing.drawingEnabled && <button type="button" className={styles.penExit} onClick={() => drawing.setDrawingEnabled(false)}><Move size={18} />Desplazar</button>}</div></div>,
+    footer: <div className={styles.footerRow}><div className={styles.mobileOnly}><MobilePenButton enabled={drawing.drawingEnabled} disabled={!sheetReady || busy} onActivate={() => { setTool("pen"); drawing.setDrawingEnabled(true); }} onDeactivate={() => { drawing.setDrawingEnabled(false); setPanel(null); }} onSettings={() => setPanel("drawing")} /></div><div ref={footerRef} className={styles.footerMain}><div className={drawing.drawingEnabled ? styles.desktopOnly : undefined}>{footer(drawing.drawingEnabled, narrow ? null : help)}</div>{drawing.drawingEnabled && <button type="button" className={styles.penExit} onClick={() => drawing.setDrawingEnabled(false)}><Move size={18} />Desplazar</button>}</div></div>,
   }}>
     {checkedAnswer && <AnswerEffects key={`${timerKey}:${checkedAnswer}`} correct={checkedAnswer === meta.correct} />}
-    {drawing.drawingEnabled && <p className={`${styles.mobileOnly} ${styles.drawingHint}`} role="status">Lápiz activo · Doble toque sobre un trazo para borrarlo.</p>}
     {notices}
     {(storageError || timer.error) && <p role="alert" className="mb-3 max-w-[1060px] text-sm text-rose-500">{storageError || timer.error}</p>}
     {timer.enabled && <span className={`${styles.timer} ${styles.bodyTimer}`} data-testid="learning-question-timer" aria-label={`Tiempo activo: ${timer.label}`}>{timer.label}</span>}
     {error ? <LearningError message={error} retry={retry} /> : !question || !ready ? <LearningLoading label="Cargando la pregunta original…" /> : <>
       <div className="min-w-0" onPointerDownCapture={() => { if (panel === "drawing") setPanel(null); }}>
-      <LearningInkSheet storageKey={`paessed-learning-ink:${scratchpadKey}`} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
+      <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={`paessed-learning-ink:${scratchpadKey}`} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
         <div ref={sheetRef} className={styles.sheet}>
           <div ref={stemRef} tabIndex={-1} data-testid="learning-paper-stem" data-question-id={meta.id} style={QUESTION_PAPER_FONT} className={`${styles.stem} max-w-[1060px] text-[18px] leading-[1.55] text-[var(--pg-fg)] focus:outline-none sm:text-[21px]`}>{question.stemBlocks?.length ? <PaessedBlocks blocks={question.stemBlocks} assetUrls={resourceUrls.byId} /> : <p className="whitespace-pre-line">{question.stem}</p>}</div>
           <AdaptiveAlternatives frozen={!!checkedAnswer || inkLocked} contentKey={meta.id}>
@@ -214,7 +229,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
         <p className="font-extrabold">Alternativa correcta: {meta.correct}</p>
         {question.explanationBlocks?.length || question.explanation ? <><p className="mt-2 text-xs font-bold text-[var(--pg-muted)]">{question.explanationStatus === "verified" ? "Explicación verificada" : "Explicación provisional · pendiente de revisión docente"}</p><div className="mt-1" style={QUESTION_PAPER_FONT}>{question.explanationBlocks?.length ? <PaessedBlocks blocks={question.explanationBlocks} assetUrls={resourceUrls.byId} /> : question.explanation}</div></> : <p className="mt-2">El banco contiene la clave verificada, pero todavía no una explicación. Revisa tu procedimiento antes de continuar.</p>}
       </section>}
-      {narrow && showAiHelp && <div ref={bodyAiRef} className={styles.aiInBody}>{aiHelp}</div>}
+      {narrow && (showAiHelp || customAiHelp || renderAiHelp) && <div ref={bodyAiRef} className={styles.aiInBody}>{help}</div>}
     </>}
   </QuestionWorkspace></div>;
 }

@@ -1,0 +1,765 @@
+{
+  "date": "2026-11-10",
+  "branch": "feat/aprender-mobile",
+  "baseCommit": "d9ad32f614955fcab608e1c54168b302b675d331",
+  "server": "next start, production build, http://localhost:3100",
+  "platform": "Windows; Playwright Chromium and WebKit",
+  "suites": {
+    "universal-paes": {
+      "stats": {
+        "startTime": "2026-11-11T02:00:43.910Z",
+        "duration": 204161.645,
+        "expected": 64,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 320px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 390px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 1440px",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "blank space below a short question accepts ink and exiting preserves natural scroll without selecting an option",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "nested fraction alternatives keep separate clickable areas on desktop",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "growing the writing viewport preserves old ink and accepts ink in the new blank space",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "complete paessed archive preserves its bytes and figures after reload",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: clearing, navigation and reload preserve editable answers",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: clearing, navigation and reload preserve editable answers",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default exam delivers only current editable answers and reload does not duplicate attempts",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported exam delivery freezes the edited answer and survives reload",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "a new demo exam never restores the previous session ink",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "Playground keeps unverified imported answers neutral",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "external AI pauses the optional question timer and closing it resumes time",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "learning: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-inicio: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "diagnostic-aprender: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 320px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 390px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "playground: shared paper, pen and preserved semantics at 1440px",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "blank space below a short question accepts ink and exiting preserves natural scroll without selecting an option",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "nested fraction alternatives keep separate clickable areas on desktop",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "growing the writing viewport preserves old ink and accepts ink in the new blank space",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "complete paessed archive preserves its bytes and figures after reload",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "demo: clearing, navigation and reload preserve editable answers",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported: clearing, navigation and reload preserve editable answers",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "default exam delivers only current editable answers and reload does not duplicate attempts",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "imported exam delivery freezes the edited answer and survives reload",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "a new demo exam never restores the previous session ink",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "Playground keeps unverified imported answers neutral",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "external AI pauses the optional question timer and closing it resumes time",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        }
+      ]
+    },
+    "learning-mobile": {
+      "stats": {
+        "startTime": "2026-11-11T02:00:43.880Z",
+        "duration": 72571.12999999999,
+        "expected": 24,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "cases": [
+        {
+          "title": "pen opens directly, a second tap within 500ms opens settings; double tap removes only its target",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "after the 500ms window the pen returns to its regular control and the next tap exits drawing",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "selection toggles before confirmation, correct particles are decorative and temporary",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "selection toggles before confirmation, incorrect particles are decorative and temporary",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "reduced motion hides decorative particles",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "pen opens directly, a second tap within 500ms opens settings; double tap removes only its target",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "after the 500ms window the pen returns to its regular control and the next tap exits drawing",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "selection toggles before confirmation, correct particles are decorative and temporary",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "selection toggles before confirmation, incorrect particles are decorative and temporary",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "reduced motion hides decorative particles",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "figure zoom and tool dialogs restore their trigger focus",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "phone widths, landscape, desktop boundaries, keyboard and immutable answer",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "original package failure and retry never enable confirmation prematurely",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "five alternatives retain their labels and selection while resizing",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "ink stays aligned through feedback, rotation, reload and pointer cancellation",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "ink storage failure warns and preserves in-memory marks when the session reopens",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "optional timer counts active time, pauses hidden/help/menu, freezes and resumes without closed time",
+          "project": "chromium",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "figure zoom and tool dialogs restore their trigger focus",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "phone widths, landscape, desktop boundaries, keyboard and immutable answer",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "original package failure and retry never enable confirmation prematurely",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "five alternatives retain their labels and selection while resizing",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "ink stays aligned through feedback, rotation, reload and pointer cancellation",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "ink storage failure warns and preserves in-memory marks when the session reopens",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        },
+        {
+          "title": "optional timer counts active time, pauses hidden/help/menu, freezes and resumes without closed time",
+          "project": "webkit",
+          "status": "expected",
+          "results": [
+            "passed"
+          ]
+        }
+      ]
+    },
+    "learning-ui": {
+      "passed": 2,
+      "status": "passed",
+      "failedTests": []
+    },
+    "imported-learning": {
+      "passed": 3,
+      "status": "passed",
+      "failedTests": []
+    },
+    "integration": {
+      "passed": 7,
+      "status": "passed",
+      "failedTests": []
+    }
+  },
+  "node": {
+    "learning": 26,
+    "renderer_resources_imports_emphasis": 26,
+    "exam_progress": 4,
+    "curriculum": 6,
+    "ai_assistance": 6,
+    "failed": 0
+  },
+  "checks": {
+    "build": "passed",
+    "tsc_noEmit": "passed",
+    "git_diff_check": "passed"
+  }
+}

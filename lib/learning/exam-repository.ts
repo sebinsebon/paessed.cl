@@ -28,7 +28,7 @@ export async function saveExamSession(id:string,value:SavedDefaultExamSession,ch
   validateExamSessions({[id]:value});const db=await open();return new Promise((resolve,reject)=>{
     const tx=db.transaction("exam-sessions","readwrite");const store=tx.objectStore("exam-sessions");const request=store.get(id);
     let result=value;
-    request.onsuccess=()=>{try{const old=request.result as SavedDefaultExamSession|undefined;if(old?.completedAt){result={...old,evidenceDelivered:old.evidenceDelivered||value.evidenceDelivered};store.put(result,id);return;}result={...value,answers:old?{...old.answers,...(change?{[change.questionId]:change.answer}:{})}:value.answers};validateExamSessions({[id]:result});store.put(result,id);}catch(e){tx.abort();reject(e);}};
+    request.onsuccess=()=>{try{const old=request.result as SavedDefaultExamSession|undefined;if(old?.completedAt){result={...old,evidenceDelivered:old.evidenceDelivered||value.evidenceDelivered};store.put(result,id);return;}const merged=old?{...old.answers}:{...value.answers};if(change){if(change.answer)merged[change.questionId]=change.answer;else delete merged[change.questionId];}result={...value,answers:merged};validateExamSessions({[id]:result});store.put(result,id);}catch(e){tx.abort();reject(e);}};
     tx.oncomplete=()=>{db.close();window.dispatchEvent(new Event("paessed-learning-change"));resolve(result);};tx.onerror=tx.onabort=()=>{db.close();reject(tx.error??new Error("No se pudo guardar el ensayo."));};
   });
 }

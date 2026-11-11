@@ -1,5 +1,7 @@
 # Aprender móvil
 
+El comportamiento vigente del lápiz y la integración con todas las modalidades se documentan en [Hoja compartida: validación del 10 de noviembre](UNIVERSAL.md). Este archivo conserva la validación histórica del rediseño inicial.
+
 ## Ajuste posterior: lápiz y feedback
 
 Primer toque: activa el lápiz directamente. Durante un segundo se ignoran toques repetidos en ese botón; después aparece una tuerca detrás del lápiz y el siguiente toque abre sus opciones. «Desplazar» es una acción separada de 48 px al pie. El doble toque rápido sobre tinta elimina solo el trazo señalado y conserva los demás. Las alternativas se pueden desmarcar antes de confirmar. Aciertos y errores muestran partículas breves y una transición de color; movimiento reducido oculta las partículas.

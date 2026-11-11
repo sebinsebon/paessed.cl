@@ -1,23 +1,23 @@
 "use client";
 
-import Link from "next/link";
-import { isRecord, getQuestions, getQuestionId, getOptions, questionText, questionVisibleContent } from "@/lib/imported-question-content";
-import { ArrowLeft, Bookmark, Check, ChevronLeft, ChevronRight, Eraser, Grid3X3, Pencil, RotateCcw, Search, Settings, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { AppShell } from "@/components/app-shell";
-import { PaessedBlocks } from "@/components/paessed-blocks";
-import { blockAssetIds, imageReferences } from "@/lib/imported-resources";
-import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
-import { useDrawingTools } from "@/components/use-drawing-tools";
+import { AiHelpSettings,AskAiButton,useAiSettings } from "@/components/ask-ai";
+import { ExternalQuestionWorkspace } from "@/components/learning/workspace/external-question-workspace";
+import { QuestionDialog } from "@/components/learning/workspace/question-dialog";
+import { type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
-import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
-import { IMPORTED_EXAM_PROGRESS_PREFIX, getImportedExam, type ImportedExamRecord } from "@/lib/local-imports";
-import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
-import { QuestionTopicTags } from "@/components/question-topic-tags";
-import { canonicalQuestionId } from "@/lib/question-identity";
+import { getOptions,getQuestionId,getQuestions,isRecord,questionVisibleContent } from "@/lib/imported-question-content";
+import { blockAssetIds,imageReferences } from "@/lib/imported-resources";
 import { DEFAULT_QUESTION_INDEX } from "@/lib/learning/catalog";
 import { recordEvidence } from "@/lib/learning/evidence";
+import { IMPORTED_EXAM_PROGRESS_PREFIX,getImportedExam,type ImportedExamRecord } from "@/lib/local-imports";
+import { convertImportedExamQuestions } from "@/lib/playground-imports";
+import { canonicalQuestionId } from "@/lib/question-identity";
+import { readQuestionPaperTheme } from "@/lib/question-paper";
+import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect,useMemo,useRef,useState,type CSSProperties } from "react";
 
 const PROGRESS_PREFIX = IMPORTED_EXAM_PROGRESS_PREFIX;
 type SavedImportedProgress = {
@@ -71,6 +71,7 @@ function readSavedProgress(id: string, questionCount: number): SavedImportedProg
 }
 
 export function ImportedExamViewer({ id }: { id: string }) {
+  const router = useRouter();
   const [record, setRecord] = useState<ImportedExamRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -90,18 +91,10 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [delivering, setDelivering] = useState(false);
   const [progressError, setProgressError] = useState("");
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [mapOpen, setMapOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [query, setQuery] = useState("");
 
-  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
-  const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
-  const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
   const { aiSettings, updateAiSettings } = useAiSettings();
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(record);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const deliveryDialogRef = useRef<HTMLElement>(null);
 
   // Avoid exposing the app's dark scrollbar gutter beside the full-screen paper.
   useEffect(() => {
@@ -222,27 +215,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     const url=resourceUrls.byPath.get(path);return url?[{path,url}]:[];
   }),[referencedImages,resourceUrls]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    setMapOpen(false);
-    setSettingsOpen(false);
-    setDrawingEnabled(false);
-  }, [active, setDrawingEnabled]);
-
-  useEffect(() => {
-    if (!mapOpen && !settingsOpen && !deliveryOpen) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setMapOpen(false); setSettingsOpen(false); if (!delivering) setDeliveryOpen(false); }
-      if (deliveryOpen && event.key === "Tab") {
-        const controls = Array.from(deliveryDialogRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
-        if (controls.length && event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
-        else if (controls.length && !event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0].focus(); }
-      }
-    };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [mapOpen, settingsOpen, deliveryOpen, delivering]);
-
   const paperPalette = paperTheme === "dark"
     ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", footer: "#151d2c" }
     : paperTheme === "light"
@@ -255,13 +227,6 @@ export function ImportedExamViewer({ id }: { id: string }) {
     "--pg-selected": paperPalette.selected, "--pg-footer": paperPalette.footer,
   } as CSSProperties;
 
-  const displayedQuestions = useMemo(() => {
-    const term = query.toLowerCase().trim();
-    return questions.map((question, index) => ({ question, index }))
-      .filter(({ question, index }) => !term ||
-        getQuestionId(question, index).toLowerCase().includes(term) ||
-        questionText(question).toLowerCase().includes(term));
-  }, [questions, query]);
   const answered = Object.values(answers).filter(Boolean).length;
   const selectedAnswer = answers[String(active)] ?? "";
   const marked = bookmarks.includes(active);
@@ -316,307 +281,61 @@ export function ImportedExamViewer({ id }: { id: string }) {
       setCompletedAt(saved.completedAt); setSubmittedAnswers(saved.submittedAnswers ?? saved.answers); setAnswers(saved.submittedAnswers ?? saved.answers); setEvidenceDelivered(!!saved.evidenceDelivered);
       return;
     }
-    setAnswers(previous => ({ ...previous, [String(active)]: answer }));
+    setAnswers(previous => { const next = { ...previous }; if (answer) next[String(active)] = answer; else delete next[String(active)]; return next; });
   };
 
   const setQuestion = (position: number) => {
     setActive(Math.max(0, Math.min(questions.length - 1, position)));
   };
-  const changeTheme = (theme: "auto" | "light" | "dark") => {
-    setPaperTheme(theme);
-    saveQuestionPaperTheme(theme);
-    setSettingsOpen(false);
-  };
   const toggleBookmark = () => {
     setBookmarks((prev) => prev.includes(active) ? prev.filter((item) => item !== active) : [...prev, active]);
   };
 
-  const body = (
-    <div style={paperStyle} className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-      <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-        <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
-          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
-          <Link href="/app/ensayos" aria-label="Volver a Ensayos"
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]">
-            <ChevronLeft size={18} />
-            <span className="hidden sm:inline">Volver a ensayos</span>
-            <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
-          </Link>
-            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {current ? getQuestionId(current, active) : "—"}</span>
-            {isRecord(current) && isRecord(current.curriculum) && (
-              <QuestionTopicTags axis={String(current.curriculum.eje ?? "")} topic={String(current.curriculum.subeje ?? "")} />
-            )}
-          </div>
-          <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
-              <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
-            </div>
-            <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
-              {record?.summary.title ?? "Ensayo importado"}{record ? ` · ${answered}/${questions.length} respondidas · ${active + 1} de ${questions.length} preguntas` : ""}
-            </p>
-          </div>
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
-             <AskAiButton key={String(active)} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={!current || delivering || (!!completedAt && !evidenceDelivered)} onHelp={requestHelp} />
-            <button type="button" title="Herramienta de lápiz"
-              aria-label={drawingButtonLabel}
-              aria-pressed={drawingEnabled}
-              aria-expanded={drawingMenuOpen}
-              onClick={() => { toggleDrawing(); setMapOpen(false); setSettingsOpen(false); }}
-              className={"hidden h-10 w-10 place-items-center rounded-xl border transition-colors sm:grid " +
-                (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
-              <Pencil size={18}/>
-            </button>
-            <button type="button" onClick={toggleBookmark} disabled={!current}
-              aria-label={marked ? "Quitar marca de pregunta" : "Marcar pregunta"}
-              aria-pressed={marked} title={marked ? "Quitar marca" : "Marcar para revisar"}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors disabled:opacity-40 " +
-                (marked ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
-              <Bookmark size={18} fill={marked ? "currentColor" : "none"} />
-            </button>
-            <button type="button" title="Mapa de preguntas" aria-label="Abrir mapa de preguntas"
-              aria-expanded={mapOpen} onClick={() => { setMapOpen((open) => !open); setSettingsOpen(false); setDrawingEnabled(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                (mapOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
-              <Grid3X3 size={18}/>
-            </button>
-            <button type="button" title="Apariencia de la hoja" aria-label="Ajustes de apariencia de la hoja"
-              aria-expanded={settingsOpen} onClick={() => { setSettingsOpen((open) => !open); setMapOpen(false); setDrawingEnabled(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}>
-              <Settings size={18}/>
-            </button>
-          </div>
-        </div>
-        <div className={"h-[3px] overflow-hidden " + (paperTheme === "light" ? "bg-slate-200" : paperTheme === "dark" ? "bg-slate-700" : "bg-slate-200 dark:bg-slate-700")}>
-          <div className="h-full bg-[var(--primary)] transition-[width] duration-200"
-            style={{ width: questions.length ? ((active + 1) / questions.length) * 100 + "%" : "0%" }} />
-        </div>
-
-        {drawingMenuOpen && (
-          <div className="text-[var(--text)] absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
-            <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar"
-              aria-pressed={drawingTool === "pen"} className={"grid h-8 w-8 place-items-center rounded-lg " +
-                (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
-              <Pencil size={16}/>
-            </button>
-            <button type="button" onClick={() => setDrawingTool("eraser")} aria-label="Borrar trazo"
-              aria-pressed={drawingTool === "eraser"} className={"grid h-8 w-8 place-items-center rounded-lg " +
-                (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
-              <Eraser size={16}/>
-            </button>
-            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
-            {(["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827"] as const).map((ink) => (
-              <button type="button" key={ink} aria-label={"Color de tinta " + ink} title={ink}
-                aria-pressed={drawingColor === ink && drawingTool === "pen"}
-                onClick={() => { setDrawingColor(ink); setDrawingTool("pen"); }}
-                className={"grid h-8 w-8 place-items-center rounded-lg border " +
-                  (drawingColor === ink && drawingTool === "pen" ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "border-transparent hover:border-[var(--border)]")}>
-                <span style={{ backgroundColor: ink }} className="h-4 w-4 rounded-full border border-slate-400/40"/>
-              </button>
-            ))}
-            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
-            <button type="button" onClick={() => setStrokes((previous) => ({ ...previous, [active]: currentStrokes.slice(0, -1) }))}
-              disabled={currentStrokes.length === 0} title="Deshacer trazo" aria-label="Deshacer trazo"
-              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30">
-              <RotateCcw size={16}/>
-            </button>
-            <button type="button" onClick={() => setStrokes((previous) => ({ ...previous, [active]: [] }))}
-              disabled={currentStrokes.length === 0} title="Borrar trazos" aria-label="Borrar todos los trazos"
-              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30">
-              <Trash2 size={16}/>
-            </button>
-          </div>
-        )}
-
-        {(mapOpen || settingsOpen) && (
-          <button type="button" aria-label="Cerrar panel" className="fixed inset-0 z-30 cursor-default"
-            onClick={() => { setMapOpen(false); setSettingsOpen(false); }} />
-        )}
-        <AnimatePresence>
-          {mapOpen && (
-            <motion.section key="question-map" role="dialog" aria-label="Mapa del ensayo importado"
-              initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.99 }} transition={{ duration: 0.18 }}
-              className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-[13px] font-extrabold">Mapa de preguntas</h2>
-                <button type="button" onClick={() => setMapOpen(false)} aria-label="Cerrar mapa" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16}/></button>
-              </div>
-              <div className="flex items-center justify-between gap-3 text-[11px] font-bold text-[var(--muted)]">
-                <span>{answered} respondidas</span>
-                <span>{bookmarks.length} marcadas</span>
-                <span>{questions.length} en total</span>
-              </div>
-              <label className="mt-3 flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
-                <Search size={15} className="text-[var(--muted)]"/>
-                <input value={query} onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar pregunta" aria-label="Buscar pregunta"
-                  className="min-w-0 flex-1 bg-transparent text-xs font-bold outline-none placeholder:text-[var(--muted-2)]"/>
-              </label>
-              <div className="mt-3 grid grid-cols-10 gap-1.5">
-                {displayedQuestions.map(({ question, index }) => {
-                  const selected = index === active;
-                  const answeredQuestion = Boolean(answers[String(index)]);
-                  const bookmarked = bookmarks.includes(index);
-                  const tone = selected
-                    ? "border-orange-500 bg-[var(--primary-soft)] text-[var(--primary)] ring-2 ring-orange-500/30"
-                    : bookmarked ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                    : answeredQuestion ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                    : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]";
-                  return (
-                    <button type="button" key={index} onClick={() => { setQuestion(index); setMapOpen(false); }}
-                      aria-label={"Pregunta " + getQuestionId(question, index) +
-                        (bookmarked ? ", marcada" : answeredQuestion ? ", respondida" : ", pendiente")}
-                      aria-current={selected ? "step" : undefined}
-                      className={"aspect-square min-w-0 rounded-md border text-[10px] font-extrabold transition-colors hover:border-[var(--primary)] " + tone}>
-                      {index + 1}
-                    </button>
-                  );
-                })}
-              </div>
-              {displayedQuestions.length === 0 && <p className="mt-3 text-xs text-[var(--muted)]">No hay preguntas que coincidan con la búsqueda.</p>}
-            </motion.section>
-          )}
-          {settingsOpen && (
-            <motion.section key="paper-settings" role="group" aria-label="Apariencia de la hoja"
-              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.16 }}
-              className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
-                <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16}/></button>
-              </div>
-              {([
-                { key: "auto", name: "Según PAESSED" },
-                { key: "light", name: "Hoja clara" },
-                { key: "dark", name: "Hoja oscura" },
-              ] as const).map((option) => (
-                <button type="button" key={option.key} onClick={() => changeTheme(option.key)}
-                  aria-pressed={paperTheme === option.key}
-                  className={"mb-1 flex min-h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[11px] font-bold " +
-                    (paperTheme === option.key ? "border-[var(--primary)] bg-[var(--primary-soft)]" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}>
-                  {option.name}{paperTheme === option.key && <Check size={15} className="text-[var(--primary)]"/>}
-                </button>
-              ))}
-              <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
-              <p className="mt-2 text-[10px] leading-4 text-[var(--muted)]">Las respuestas se guardan en este navegador. El solucionario del archivo no se utiliza para corregir durante la sesión.</p>
-            </motion.section>
-          )}
-        </AnimatePresence>
-      </header>
-
-      {progressError && <p role="alert" className="shrink-0 border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-900">{progressError}</p>}
-      <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta del ensayo importado">
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--muted)]" role="status">
-            Abriendo ensayo importado…
-          </div>
-        ) : !record ? (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center">
-            <h2 className="text-lg font-extrabold">{loadError ? "No se pudo abrir este ensayo" : "No se encontró este ensayo"}</h2>
-            <p className="mt-2 max-w-md text-sm text-[var(--muted)]">Comprueba que siga guardado en la biblioteca local de este navegador.</p>
-            <Link href="/app/ensayos" className="soft-button mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-extrabold">
-              <ArrowLeft size={15}/> Volver a Ensayos
-            </Link>
-          </div>
-        ) : (
-          <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-            <div ref={scrollRef} key={active} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
-              {completedAt && <section aria-label="Resultado del ensayo entregado" className="mb-6 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] p-4">
-                <h2 className="text-lg font-extrabold">Ensayo entregado</h2>
-                <p className="mt-2 text-sm">{Object.keys(finalAnswers).length} respondidas · {questions.length - Object.keys(finalAnswers).length} omitidas. Tus respuestas entregadas están guardadas.</p>
-                {evaluated.length > 0 ? <p className="mt-2 text-sm">{evaluated.filter(q => q.correct).length} correctas y {evaluated.filter(q => !q.correct).length} incorrectas entre {evaluated.length} preguntas con clave verificada del banco Default.</p> : <p className="mt-2 text-sm">Este archivo no tiene respuestas evaluables con clave verificada del banco Default.</p>}
-                <p className="mt-2 text-xs text-[var(--pg-muted)]">Las primeras respuestas nuevas sin ayuda aportan evidencia al perfil. Este resultado no se convierte en puntaje PAES.</p>
-                {!evidenceDelivered && <button type="button" disabled={delivering} onClick={() => void deliver()} className="mt-3 min-h-10 rounded-lg border border-[var(--pg-border)] px-3 text-xs font-bold disabled:opacity-40">{delivering ? "Guardando evidencia…" : "Reintentar registro de evidencia"}</button>}
-              </section>}
-              {current ? (
-                <div className="relative flex min-h-full flex-col">
-                  {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
-                  {isRecord(current) && Array.isArray(current.stem) ? (
-                    <>
-                      <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
-                        <PaessedBlocks blocks={current.stem} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
-                        {questionText(current)}
-                      </h2>
-                  {assetUrls.length > 0 && (
-                    <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-4">
-                      {assetUrls.map((asset) => (
-                        // Content comes from the student's local package, not a remote server.
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={asset.path} src={asset.url} alt={"Ilustración para la pregunta " + (active + 1)}
-                          className="max-h-[360px] max-w-full rounded-lg object-contain" />
-                      ))}
-                    </div>
-                  )}
-                      </>
-                  )}
-                  {currentOptions.length ? (
-                    <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
-                      {currentOptions.map((option, index) => {
-                        const letter = String.fromCharCode(65 + index);
-                        const picked = selectedAnswer === letter;
-                        return (
-                          <button type="button" key={letter} disabled={drawingEnabled || !!completedAt || delivering} aria-pressed={picked}
-                            onClick={() => chooseAnswer(letter)}
-                            className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " +
-                              (picked ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
-                            <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                            {option.blocks ? <div style={QUESTION_PAPER_FONT} className="min-w-0"><PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /></div> : <span style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option.text}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="mt-6 max-w-[1060px] rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-[12px] text-amber-800 dark:bg-amber-950/20 dark:text-amber-300">
-                      El archivo no tiene alternativas reconocibles para esta pregunta.
-                    </p>
-                  )}
-                  <PlaygroundScratchpad key={active} enabled={drawingEnabled}
-                    onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={currentStrokes}
-                    onChange={(next) => setStrokes((previous) => ({ ...previous, [active]: next }))}/>
-                </div>
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm font-bold text-[var(--pg-muted)]">
-                  No hay preguntas reconocibles en este paquete.
-                </div>
-              )}
-            </div>
-            <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <button type="button" disabled={active <= 0 || questions.length === 0} onClick={() => setQuestion(active - 1)}
-                  className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
-                  <ChevronLeft size={16}/> Anterior
-                </button>
-                <div className="flex flex-wrap items-center justify-center gap-2"><span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">{questions.length ? "Pregunta " + (active + 1) + " de " + questions.length : "Sin preguntas"}</span>
-                  {!completedAt && questions.length > 0 && <button type="button" disabled={!restored || delivering} onClick={() => setDeliveryOpen(true)} className="min-h-10 rounded-lg bg-[var(--primary)] px-4 text-xs font-extrabold text-white disabled:opacity-40">Entregar ensayo</button>}
-                </div>
-                <button type="button" disabled={active >= questions.length - 1 || questions.length === 0} onClick={() => setQuestion(active + 1)}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
-                  Siguiente <ChevronRight size={16}/>
-                </button>
-              </div>
-            </footer>
-          </article>
-        )}
-      </main>
-      {deliveryOpen && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4"><section ref={deliveryDialogRef} role="dialog" aria-modal="true" aria-labelledby="imported-delivery-title" className="w-full max-w-md rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-6 text-[var(--pg-fg)] shadow-xl">
-        <h2 id="imported-delivery-title" className="text-xl font-extrabold">¿Entregar este ensayo?</h2>
-        <p className="mt-3 text-sm">{questions.length - answered} preguntas quedarán omitidas. Se guardarán tus respuestas actuales y la entrega no se podrá modificar.</p>
-        <div className="mt-6 flex flex-wrap gap-3"><button type="button" autoFocus disabled={delivering} onClick={() => setDeliveryOpen(false)} className="min-h-11 rounded-xl border border-[var(--pg-border)] px-4 text-sm font-bold">Seguir revisando</button><button type="button" disabled={delivering} onClick={() => void deliver()} className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-white">{delivering ? "Guardando…" : "Confirmar entrega"}</button></div>
-      </section></div>}
-    </div>
-  );
-
-  return (
-    <AppShell title="Ensayo importado" eyebrow="Biblioteca local" wide immersive
-      immersiveSidebarOpen={sidebarVisible}
-      onImmersiveSidebarToggle={() => setSidebarVisible((previous) => !previous)}>
-      {body}
-    </AppShell>
-  );
+  const bankQuestions = convertImportedExamQuestions(id, record?.summary.title ?? "Ensayo importado", record?.finalJson);
+  const bankQuestion = bankQuestions[active];
+  const mergedAssetUrls = new Map([...resourceUrls.byPath, ...resourceUrls.byId]);
+  const externalQuestion = bankQuestion && !bankQuestion.stemBlocks && assetUrls.length ? {
+    ...bankQuestion,
+    stemBlocks: [{ type: "text", text: bankQuestion.stem }, ...assetUrls.map(asset => ({ type: "image", asset_id: asset.path, alt: `Ilustración de la pregunta ${bankQuestion.number}` }))],
+  } : bankQuestion;
+  const body = externalQuestion ? <>
+    <ExternalQuestionWorkspace key={externalQuestion.id} question={externalQuestion} assetUrls={mergedAssetUrls}
+      ready={restored && !loading && !resourcesLoading && !displayedResourceError} error={displayedResourceError} retry={() => { setRecord(record ? { ...record } : null); }}
+      context="exam" sessionKey={`imported-exam:${sessionId}`} number={active + 1} total={questions.length}
+      subtitle={`${record?.summary.title ?? "Ensayo importado"} · ${answered}/${questions.length} respondidas`}
+      selected={selectedAnswer} onSelect={chooseAnswer} locked={!!completedAt || delivering} busy={delivering}
+      onClose={() => { if (!delivering) router.push("/app/ensayos"); }}
+      initialStrokes={currentStrokes} onStrokesChange={next => setStrokes(previous => ({ ...previous, [active]: next }))}
+      steps={questions.map((_, index) => ({ number: index + 1, answered: !!answers[String(index)], current: index === active }))}
+      notices={<>
+        {progressError && <p role="alert" className="mb-3 text-sm text-rose-500">{progressError}</p>}
+        {completedAt && <section aria-label="Resultado del ensayo entregado" className="mb-5 rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] p-4">
+          <h2 className="text-lg font-extrabold">Ensayo entregado</h2><p className="mt-2 text-sm">{Object.keys(finalAnswers).length} respondidas · {questions.length - Object.keys(finalAnswers).length} omitidas. Tus respuestas entregadas están guardadas.</p>
+          {evaluated.length > 0 ? <p className="mt-2 text-sm">{evaluated.filter(q => q.correct).length} correctas y {evaluated.filter(q => !q.correct).length} incorrectas entre {evaluated.length} preguntas con clave verificada del banco Default.</p> : <p className="mt-2 text-sm">Este archivo no tiene respuestas evaluables con clave verificada del banco Default.</p>}
+          <p className="mt-2 text-xs">Las primeras respuestas nuevas sin ayuda aportan evidencia al perfil. Este resultado no se convierte en puntaje PAES.</p>
+          {!evidenceDelivered && <button type="button" disabled={delivering} onClick={() => void deliver()} className="mt-3 min-h-11 rounded-lg border px-3 font-bold">{delivering ? "Guardando evidencia…" : "Reintentar registro de evidencia"}</button>}
+        </section>}
+      </>}
+      renderAiHelp={onOpenChange => <AskAiButton onOpenChange={onOpenChange} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={delivering || (!!completedAt && !evidenceDelivered)} onHelp={requestHelp} />}
+      tools={<div className="space-y-3">
+        <label className="block text-sm font-bold">Ir a pregunta<select aria-label="Ir a pregunta" value={active} onChange={event => setQuestion(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--pg-border)] bg-[var(--pg-bg)] px-3 text-base">{questions.map((question, index) => <option key={index} value={index}>{getQuestionId(question, index)}{answers[String(index)] ? " · respondida" : ""}{bookmarks.includes(index) ? " · marcada" : ""}</option>)}</select></label>
+        <button type="button" onClick={toggleBookmark} aria-pressed={marked} className="min-h-11 w-full rounded-lg border border-[var(--pg-border)] px-3 text-left text-base">{marked ? "Quitar marca de revisión" : "Marcar para revisar"}</button>
+        <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
+        {!completedAt && <button type="button" disabled={!restored || delivering} onClick={() => setDeliveryOpen(true)} className="tactile-primary min-h-12 w-full rounded-xl px-4 font-bold disabled:opacity-40">Entregar ensayo</button>}
+      </div>}
+      footer={(drawing, aiHelp) => <div className="flex w-full flex-wrap items-center gap-2">
+        {aiHelp}
+        <button type="button" disabled={active <= 0 || drawing || delivering} onClick={() => setQuestion(active - 1)} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-3 font-bold disabled:opacity-40" aria-label="Pregunta anterior"><ChevronLeft size={20} /></button>
+        <button type="button" disabled={drawing || delivering || (!!completedAt && active >= questions.length - 1)} onClick={() => active < questions.length - 1 ? setQuestion(active + 1) : setDeliveryOpen(true)} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40">{active < questions.length - 1 ? "Siguiente" : "Entregar ensayo"}</button>
+      </div>}
+    />
+    {deliveryOpen && <QuestionDialog title="¿Entregar este ensayo?" onClose={() => { if (!delivering) setDeliveryOpen(false); }} paperStyle={paperStyle} wide>
+      <p className="text-base leading-relaxed">{questions.length - answered} preguntas quedarán omitidas. Se guardarán tus respuestas actuales y la entrega no se podrá modificar.</p>
+      <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={delivering} onClick={() => setDeliveryOpen(false)} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-4 font-bold">Seguir revisando</button><button type="button" disabled={delivering} onClick={() => void deliver()} className="tactile-primary min-h-12 rounded-xl px-4 font-bold">{delivering ? "Guardando…" : "Confirmar entrega"}</button></div>
+    </QuestionDialog>}
+  </> : <section className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
+    <h2 className="text-lg font-bold">{loading ? "Abriendo ensayo importado…" : !record ? loadError ? "No se pudo abrir este ensayo" : "No se encontró este ensayo" : "No hay preguntas reconocibles en este paquete."}</h2>
+    {!loading && <Link href="/app/ensayos" className="soft-button rounded-xl px-4 py-3">Volver a Ensayos</Link>}
+  </section>;
+  return <AppShell title="Ensayo importado" eyebrow="Biblioteca local" wide immersive immersiveSidebarOpen={sidebarVisible} onImmersiveSidebarToggle={() => setSidebarVisible(previous => !previous)}>{body}</AppShell>;
 }

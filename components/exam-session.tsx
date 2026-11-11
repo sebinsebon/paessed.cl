@@ -1,20 +1,21 @@
 "use client";
 
+import { AiHelpSettings,AskAiButton,useAiSettings } from "@/components/ask-ai";
+import { ExternalQuestionWorkspace } from "@/components/learning/workspace/external-question-workspace";
+import { QuestionDialog } from "@/components/learning/workspace/question-dialog";
+import { usePersistentAppShell } from "@/components/persistent-app-shell";
+import { type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { clearDemoExamProgress,DEMO_EXAM_DURATION_SECONDS,readDemoExamProgress,writeDemoExamProgress } from "@/lib/demo-exam-progress";
+import { getM1Unit,type M1UnitId } from "@/lib/m1-curriculum";
+import type { BankQuestion } from "@/lib/playground-imports";
+import { readQuestionPaperTheme } from "@/lib/question-paper";
+import {
+ArrowLeft,ArrowRight,Check,ChevronLeft,
+Trophy
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Clock3,
-  Eraser, Flag, Grid3X3, Pencil, RotateCcw, Settings, Trash2, Trophy, X,
-} from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, ViewTransition, type CSSProperties } from "react";
-import { usePersistentAppShell } from "@/components/persistent-app-shell";
-import { DEMO_EXAM_DURATION_SECONDS, clearDemoExamProgress, readDemoExamProgress, writeDemoExamProgress } from "@/lib/demo-exam-progress";
-import { getM1Unit, type M1UnitId } from "@/lib/m1-curriculum";
-import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
-import { useDrawingTools } from "@/components/use-drawing-tools";
-import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
-import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
-import { QuestionTopicTags } from "@/components/question-topic-tags";
+import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties } from "react";
 
 type DemoQuestion = {
   domain: string;
@@ -71,20 +72,15 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   const [flagged, setFlagged] = useState<boolean[]>(() => Array(QUESTIONS.length).fill(false));
   const [seconds, setSeconds] = useState(DEMO_EXAM_DURATION_SECONDS);
   const [restored, setRestored] = useState(false);
+  const [inkSessionId, setInkSessionId] = useState("");
+  const inkSessionKey = `paessed-demo-ink-session:${sourceId ?? "practice"}`;
   const finishedRef = useRef(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
   const { aiSettings, updateAiSettings } = useAiSettings();
-  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
-  const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
-  const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<number, PlaygroundInkStroke[]>>({});
-  const paperScrollRef = useRef<HTMLDivElement>(null);
   const q = QUESTIONS[index];
   const answered = answers.filter((value) => value !== null).length;
-  const markedCount = flagged.filter(Boolean).length;
   const pendingCount = QUESTIONS.length - answered;
   const inkStrokes = strokesByQuestion[index] ?? [];
 
@@ -92,6 +88,12 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   // initial route tree so React can pair it with the clicked essay card.
   useLayoutEffect(() => {
     const saved = readDemoExamProgress();
+    let nextInkSessionId = crypto.randomUUID();
+    try {
+      if (saved) nextInkSessionId = localStorage.getItem(inkSessionKey) || nextInkSessionId;
+      localStorage.setItem(inkSessionKey, nextInkSessionId);
+    } catch { /* The sheet reports persistence failures and keeps its ink in memory. */ }
+    setInkSessionId(nextInkSessionId);
     if (saved) {
       setIndex(saved.questionIndex);
       setAnswers(saved.answers);
@@ -127,26 +129,6 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
     setPaperTheme(readQuestionPaperTheme());
   }, []);
 
-  useEffect(() => {
-    paperScrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-    setPaletteOpen(false);
-    setSettingsOpen(false);
-    setDrawingEnabled(false);
-  }, [index, setDrawingEnabled]);
-
-  useEffect(() => {
-    if (!paletteOpen && !settingsOpen && !confirmFinish) return;
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setPaletteOpen(false);
-        setSettingsOpen(false);
-        setConfirmFinish(false);
-      }
-    };
-    window.addEventListener("keydown", onEscape);
-    return () => window.removeEventListener("keydown", onEscape);
-  }, [paletteOpen, settingsOpen, confirmFinish]);
-
   const paperPalette = paperTheme === "dark"
     ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", footer: "#151d2c" }
     : paperTheme === "light"
@@ -170,6 +152,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
     }));
     finishedRef.current = true;
     clearDemoExamProgress();
+    try { localStorage.removeItem(inkSessionKey); } catch { /* A new empty exam gets a fresh identity even if removal fails. */ }
     router.push("/app/ensayos/resultado");
   };
 
@@ -182,269 +165,41 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   const updateStrokes = (next: PlaygroundInkStroke[]) => {
     setStrokesByQuestion((previous) => ({ ...previous, [index]: next }));
   };
-  const changePaperTheme = (next: "auto" | "light" | "dark") => {
-    setPaperTheme(next);
-    saveQuestionPaperTheme(next);
-    setSettingsOpen(false);
+  const bankQuestion: BankQuestion = {
+    id: `demo-exam:${sourceId ?? "practice"}:${index + 1}`, number: index + 1,
+    year: null, collection: sourceTitle, sourceId: sourceId ?? "demo", axis: q.domain,
+    topic: getM1Unit(q.unitId)?.name ?? q.domain, unitId: q.unitId,
+    stem: q.prompt, options: q.options, correct: String.fromCharCode(65 + q.answer), explanation: "",
   };
+  return <>
+    <ExternalQuestionWorkspace key={bankQuestion.id} question={bankQuestion} assetUrls={new Map()} ready={restored}
+      context="exam" sessionKey={`demo-exam:${inkSessionId}`} number={index + 1} total={QUESTIONS.length}
+      subtitle={`${sourceTitle} · ${answered}/${QUESTIONS.length} respondidas`}
+      selected={answers[index] === null ? "" : String.fromCharCode(65 + answers[index]!)}
+      onSelect={answer => setAnswers(previous => previous.map((value, position) => position === index ? answer ? answer.charCodeAt(0) - 65 : null : value))}
+      locked={!restored} onClose={() => { saveProgress(); router.push("/app/ensayos"); }}
+      initialStrokes={inkStrokes} onStrokesChange={updateStrokes}
+      steps={QUESTIONS.map((_, position) => ({ number: position + 1, answered: answers[position] !== null, current: position === index }))}
+      renderAiHelp={onOpenChange => <AskAiButton onOpenChange={onOpenChange} settings={aiSettings} onChange={updateAiSettings} question={{ number: index + 1, stem: q.prompt, options: q.options.map((content, position) => ({ label: String.fromCharCode(65 + position), content })) }} />}
+      tools={<div className="space-y-3">
+        <p className="text-sm font-semibold">Tiempo restante: {formatTime(seconds)}</p>
+        <label className="block text-sm font-bold">Ir a pregunta<select aria-label="Ir a pregunta" value={index} onChange={event => goToQuestion(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-lg border border-[var(--pg-border)] bg-[var(--pg-bg)] px-3 text-base">{QUESTIONS.map((_, position) => <option key={position} value={position}>{position + 1}{answers[position] !== null ? " · respondida" : ""}{flagged[position] ? " · marcada" : ""}</option>)}</select></label>
+        <button type="button" className="min-h-11 w-full rounded-lg border border-[var(--pg-border)] px-3 text-left text-base" aria-pressed={flagged[index]} onClick={toggleFlag}>{flagged[index] ? "Quitar marca de revisión" : "Marcar para revisar"}</button>
+        <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
+        <button type="button" className="tactile-primary min-h-12 w-full rounded-xl px-4 font-bold" onClick={() => setConfirmFinish(true)}>Finalizar ensayo</button>
+      </div>}
+      footer={(drawing, aiHelp) => <div className="flex w-full flex-wrap items-center gap-2">
+        {aiHelp}
+        <button type="button" disabled={index === 0 || drawing} onClick={() => goToQuestion(index - 1)} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-3 font-bold disabled:opacity-40" aria-label="Pregunta anterior"><ChevronLeft size={20} /></button>
+        <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={() => index < QUESTIONS.length - 1 ? goToQuestion(index + 1) : setConfirmFinish(true)}>{index < QUESTIONS.length - 1 ? "Siguiente" : "Finalizar ensayo"}</button>
+      </div>}
+    />
+    {confirmFinish && <QuestionDialog title="¿Finalizar el ensayo?" onClose={() => setConfirmFinish(false)} paperStyle={paperStyle} wide>
+      <p className="text-base leading-relaxed">Llevas {answered} de {QUESTIONS.length} preguntas respondidas. {pendingCount} quedarán omitidas. Puedes seguir revisando tus respuestas antes de entregar.</p>
+      <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => setConfirmFinish(false)} className="soft-button min-h-12 rounded-xl px-4 font-bold">Seguir respondiendo</button><button type="button" onClick={finish} className="tactile-primary min-h-12 rounded-xl px-4 font-bold">Entregar ensayo</button></div>
+    </QuestionDialog>}
+  </>;
 
-  return (
-    <div
-      style={paperStyle}
-      className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)] transition-[padding-left] duration-[240ms] ease-[cubic-bezier(.22,1,.36,1)] lg:pl-[var(--sidebar-width)]"
-      aria-label="Ensayo M1 · 65 preguntas"
-      aria-busy={!restored}
-    >
-      <header style={paperStyle} className="relative z-30 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-        <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
-          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
-          <Link
-            href="/app/ensayos"
-            onClick={saveProgress}
-            className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]"
-            aria-label="Volver a Ensayos"
-          >
-            <ChevronLeft size={18} />
-            <span className="hidden sm:inline">Volver a ensayos</span>
-            <span className="hidden min-[440px]:inline sm:hidden">Volver</span>
-          </Link>
-            <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {q.number}</span>
-            <QuestionTopicTags axis={q.domain} topic={getM1Unit(q.unitId)?.name} />
-            {flagged[index] && <span className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-600">Marcada</span>}
-          </div>
-
-          <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
-            <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
-              <span className="whitespace-nowrap">Matemática M1 <span className="text-amber-700 dark:text-amber-400">Ensayos</span></span>
-            </div>
-            <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
-              {sourceId ? (
-                <ViewTransition name={`paessed-essay-${sourceId}`} share="paessed-essay-open" default="none">
-                  <span className="inline-block font-semibold">{sourceTitle}</span>
-                </ViewTransition>
-              ) : <span>Ensayo de práctica</span>}
-              {" · "}{answered}/{QUESTIONS.length} respondidas
-            </p>
-          </div>
-
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
-             <AskAiButton key={index} settings={aiSettings} onChange={updateAiSettings}
-               question={{ number: q.number, stem: q.prompt, options: q.options.map((content, i) => ({ label: String.fromCharCode(65 + i), content })) }} />
-            <button
-              type="button"
-              aria-label={drawingButtonLabel}
-              title={drawingButtonLabel}
-              aria-pressed={drawingEnabled}
-              aria-expanded={drawingMenuOpen}
-              onClick={() => { toggleDrawing(); setPaletteOpen(false); setSettingsOpen(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
-            >
-              <Pencil size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={toggleFlag}
-              aria-label={flagged[index] ? "Desmarcar pregunta para revisar" : "Marcar pregunta para revisar"}
-              title={flagged[index] ? "Quitar marca de revisión" : "Marcar para revisar"}
-              aria-pressed={flagged[index]}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (flagged[index] ? "border-amber-500/40 bg-amber-500/10 text-amber-500" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
-            >
-              <Flag size={18} fill={flagged[index] ? "currentColor" : "none"} />
-            </button>
-            <button
-              type="button"
-              aria-label="Abrir mapa de preguntas"
-              title="Mapa de preguntas"
-              aria-expanded={paletteOpen}
-              onClick={() => { setPaletteOpen((previous) => !previous); setSettingsOpen(false); setDrawingEnabled(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (paletteOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
-            >
-              <Grid3X3 size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label="Ajustes de apariencia de la hoja"
-              title="Ajustes de la hoja"
-              aria-expanded={settingsOpen}
-              onClick={() => { setSettingsOpen((previous) => !previous); setPaletteOpen(false); setDrawingEnabled(false); }}
-              className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " + (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] hover:bg-[var(--pg-soft)]")}
-            >
-              <Settings size={18} />
-            </button>
-            <div
-              role="timer"
-              aria-label="Tiempo restante del ensayo"
-              className="ml-1 inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] px-2.5 text-[11px] font-extrabold tabular-nums sm:px-3"
-            >
-              <Clock3 size={14} className={seconds < 600 ? "text-rose-500" : "text-[var(--primary)]"} />
-              <span className={seconds < 600 ? "text-rose-500" : "text-[var(--pg-fg)]"}>{formatTime(seconds)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div role="progressbar" aria-label="Avance por el ensayo" aria-valuemin={0} aria-valuemax={QUESTIONS.length} aria-valuenow={index + 1} className={"h-[3px] overflow-hidden " + (paperTheme === "light" ? "bg-slate-200" : paperTheme === "dark" ? "bg-slate-700" : "bg-slate-200 dark:bg-slate-700")}>
-          <div className="h-full bg-[var(--primary)] transition-[width] duration-200" style={{ width: ((index + 1) / QUESTIONS.length) * 100 + "%" }} />
-        </div>
-
-        {drawingMenuOpen && (
-          <div className="text-[var(--text)] absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 shadow-lg sm:right-6">
-            <button type="button" onClick={() => setDrawingTool("pen")} aria-label="Dibujar" aria-pressed={drawingTool === "pen"}
-              className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
-              <Pencil size={16} />
-            </button>
-            <button type="button" onClick={() => setDrawingTool("eraser")} aria-label="Borrar trazo" aria-pressed={drawingTool === "eraser"}
-              className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}>
-              <Eraser size={16} />
-            </button>
-            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
-            {(["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827"] as const).map((ink) => (
-              <button key={ink} type="button" title={ink} aria-label={"Color de tinta " + ink}
-                aria-pressed={drawingColor === ink && drawingTool === "pen"}
-                onClick={() => { setDrawingColor(ink); setDrawingTool("pen"); }}
-                className={"grid h-8 w-8 place-items-center rounded-lg border " + (drawingColor === ink && drawingTool === "pen" ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "border-transparent hover:border-[var(--border)]")}>
-                <span className="h-4 w-4 rounded-full border border-slate-400/40" style={{ backgroundColor: ink }} />
-              </button>
-            ))}
-            <span aria-hidden="true" className="mx-1 h-5 w-px bg-[var(--border)]" />
-            <button type="button" onClick={() => updateStrokes(inkStrokes.slice(0, -1))} disabled={!inkStrokes.length} title="Deshacer trazo" aria-label="Deshacer trazo"
-              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"><RotateCcw size={16} /></button>
-            <button type="button" onClick={() => updateStrokes([])} disabled={!inkStrokes.length} title="Borrar trazos" aria-label="Borrar todos los trazos"
-              className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"><Trash2 size={16} /></button>
-            <span className="hidden text-[10px] text-[var(--muted)] md:inline">Cierra el lápiz para responder</span>
-          </div>
-        )}
-
-        {(paletteOpen || settingsOpen) && (
-          <button type="button" aria-label="Cerrar panel" className="fixed inset-0 z-30 cursor-default" onClick={() => { setPaletteOpen(false); setSettingsOpen(false); }} />
-        )}
-        {paletteOpen && (
-          <section role="dialog" aria-modal="false" aria-label="Mapa del ensayo" className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(76dvh,690px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[13px] font-extrabold">Mapa de preguntas</h2>
-              <button type="button" onClick={() => setPaletteOpen(false)} aria-label="Cerrar mapa" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
-              <div className="rounded-lg bg-emerald-500/10 px-1 py-2 text-emerald-600 dark:text-emerald-400">{answered} respondidas</div>
-              <div className="rounded-lg bg-amber-500/10 px-1 py-2 text-amber-600 dark:text-amber-400">{markedCount} marcadas</div>
-              <div className="rounded-lg bg-[var(--surface-2)] px-1 py-2 text-[var(--muted)]">{pendingCount} pendientes</div>
-            </div>
-            <div className="mt-3 grid grid-cols-10 gap-1.5">
-              {QUESTIONS.map((item, i) => {
-                const active = i === index;
-                const hasAnswer = answers[i] !== null;
-                const marked = flagged[i];
-                const tone = active ? "border-orange-500 bg-[var(--primary-soft)] text-[var(--primary)] ring-2 ring-orange-500/30"
-                  : marked ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                  : hasAnswer ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                  : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--muted)]";
-                return (
-                  <button type="button" key={item.number} onClick={() => { goToQuestion(i); setPaletteOpen(false); }}
-                    aria-label={"Ir a pregunta " + item.number + (marked ? ", marcada" : hasAnswer ? ", respondida" : ", pendiente")}
-                    aria-current={active ? "step" : undefined}
-                    className={"aspect-square min-w-0 rounded-md border text-[10px] font-extrabold transition-colors hover:border-[var(--primary)] " + tone}>
-                    {item.number}
-                  </button>
-                );
-              })}
-            </div>
-            <p className="mt-3 text-[10px] leading-4 text-[var(--muted)]">Puedes cambiar de pregunta sin perder tus respuestas. Las marcadas se destacan en amarillo.</p>
-            <button type="button" onClick={() => { setPaletteOpen(false); setConfirmFinish(true); }}
-              className="mt-4 flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] text-[11px] font-extrabold hover:border-[var(--primary)]">
-              <Trophy size={15} /> Finalizar ensayo
-            </button>
-          </section>
-        )}
-        {settingsOpen && (
-          <section role="group" aria-label="Apariencia de la hoja" className="text-[var(--text)] absolute right-3 top-[calc(100%+9px)] z-40 max-h-[min(78dvh,650px)] w-[min(340px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl sm:right-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-[13px] font-extrabold">Apariencia de la hoja</h2>
-              <button type="button" onClick={() => setSettingsOpen(false)} aria-label="Cerrar ajustes" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={16} /></button>
-            </div>
-            {([
-              { value: "auto", title: "Según PAESSED" },
-              { value: "light", title: "Hoja clara" },
-              { value: "dark", title: "Hoja oscura" },
-            ] as const).map((item) => (
-              <button type="button" key={item.value} onClick={() => changePaperTheme(item.value)}
-                aria-pressed={paperTheme === item.value}
-                className={"mb-1 flex min-h-10 w-full items-center justify-between rounded-xl border px-3 text-left text-[11px] font-bold " + (paperTheme === item.value ? "border-[var(--primary)] bg-[var(--primary-soft)]" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}>
-                {item.title}
-                {paperTheme === item.value && <Check size={15} className="text-[var(--primary)]" />}
-              </button>
-            ))}
-            <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
-          </section>
-        )}
-      </header>
-
-      <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta del ensayo">
-        <article style={paperStyle} className="paessed-essay-paper-entry flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-          <div ref={paperScrollRef} key={q.number} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
-            <div className="relative flex min-h-full flex-col">
-              <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
-                {q.prompt}
-              </h2>
-              <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
-                {q.options.map((option, optionIndex) => {
-                  const active = answers[index] === optionIndex;
-                  const letter = String.fromCharCode(65 + optionIndex);
-                  return (
-                    <button type="button" key={letter} aria-pressed={active} onClick={() => setAnswers((previous) => previous.map((value, i) => i === index ? optionIndex : value))}
-                      className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:min-h-[36px] sm:px-3 " + (active ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]")}>
-                      <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                      <span style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{option}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <PlaygroundScratchpad key={index} enabled={drawingEnabled} onInteractionStart={hideDrawingTools} mode={drawingTool} color={drawingColor} strokes={inkStrokes} onChange={updateStrokes} />
-            </div>
-          </div>
-
-          <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button type="button" onClick={() => goToQuestion(index - 1)} disabled={index === 0}
-                className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40">
-                <ChevronLeft size={16} /> Anterior
-              </button>
-              <span className="hidden text-[10px] font-semibold text-[var(--pg-muted)] sm:inline">Pregunta {index + 1} de {QUESTIONS.length}</span>
-              <div className="ml-auto flex items-center gap-2">
-                {index < QUESTIONS.length - 1 ? (
-                  <button type="button" onClick={() => goToQuestion(index + 1)}
-                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)]">
-                    Siguiente <ChevronRight size={16} />
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setConfirmFinish(true)}
-                    className="tactile-primary inline-flex min-h-10 items-center gap-1.5 rounded-lg px-4 text-[11px] font-bold">
-                    <Trophy size={16} /> Finalizar ensayo
-                  </button>
-                )}
-              </div>
-            </div>
-          </footer>
-        </article>
-      </main>
-
-      {confirmFinish && (
-        <div role="presentation" className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/65 px-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmFinish(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="exam-finish-title" className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <h2 id="exam-finish-title" className="text-lg font-extrabold">¿Finalizar el ensayo?</h2>
-              <button type="button" onClick={() => setConfirmFinish(false)} aria-label="Volver al ensayo" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)]"><X size={17} /></button>
-            </div>
-            <p className="mt-3 text-[12px] leading-5 text-[var(--muted)]">
-              Llevas {answered} de {QUESTIONS.length} preguntas respondidas. {pendingCount} quedarán omitidas. Puedes seguir revisando tus respuestas antes de entregar.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirmFinish(false)} className="soft-button min-h-10 rounded-xl px-4 text-[11px] font-bold">Seguir respondiendo</button>
-              <button type="button" onClick={finish} className="tactile-primary min-h-10 rounded-xl px-4 text-[11px] font-extrabold">Entregar ensayo</button>
-            </div>
-          </section>
-        </div>
-      )}
-    </div>
-  );
 }
 
 type ResultData = { correct: number; wrong: number; omitted: number; score: number; secondsLeft: number };

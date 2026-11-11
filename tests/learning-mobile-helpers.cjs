@@ -52,8 +52,17 @@ async function writeState(page, value) {
 async function readState(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open('paessed-learning', 1);
+    // Imports unrelated to Default correctly leave learning evidence untouched.
+    // Reading that absence must not create a database with an incomplete schema.
+    request.onupgradeneeded = () => { request.transaction.abort(); resolve(null); };
     request.onerror = () => reject(request.error);
-    request.onsuccess = () => { const db = request.result; const read = db.transaction('state').objectStore('state').get('current'); read.onsuccess = () => { db.close(); resolve(read.result); }; };
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('state')) { db.close(); resolve(null); return; }
+      const read = db.transaction('state').objectStore('state').get('current');
+      read.onerror = () => { db.close(); reject(read.error); };
+      read.onsuccess = () => { db.close(); resolve(read.result ?? null); };
+    };
   }));
 }
 

@@ -22,6 +22,7 @@ export interface QuestionWorkspaceProps {
   children: ReactNode;
   paperStyle: CSSProperties;
   contentKey: string;
+  modeLabel?: string;
   mobile?: { steps: { number: number; answered: boolean; current: boolean }[]; menu: ReactNode; footer: ReactNode };
 }
 
@@ -50,8 +51,16 @@ export function QuestionWorkspace({
   paperStyle,
   contentKey,
   mobile,
+  modeLabel = "Aprender",
 }: QuestionWorkspaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (document.body.style.overflow === "hidden") return;
+    const previous = document.body.style.overflow;
+    const gutter = document.documentElement.style.scrollbarGutter;
+    document.body.style.overflow = "hidden"; document.documentElement.style.scrollbarGutter = "auto";
+    return () => { document.body.style.overflow = previous; document.documentElement.style.scrollbarGutter = gutter; };
+  }, []);
 
   // Reseteo automático de scroll al cambiar de pregunta
   useEffect(() => {
@@ -61,13 +70,18 @@ export function QuestionWorkspace({
   }, [contentKey]);
 
   const progressPercent = progressMax > 0 ? Math.min(100, Math.max(0, (progress / progressMax) * 100)) : 0;
+  const segments = mobile && mobile.steps.length > 5 ? Array.from({ length: 5 }, (_, index) => {
+    const start = Math.floor(index * mobile.steps.length / 5), end = Math.floor((index + 1) * mobile.steps.length / 5);
+    const group = mobile.steps.slice(start, end);
+    return { number: start + 1, answered: group.every(step => step.answered), current: group.some(step => step.current) };
+  }) : mobile?.steps ?? [];
 
   return (
     <div
       style={paperStyle}
       data-testid="learning-session"
       className={`${mobile ? styles.viewport : ""} fixed inset-0 z-[60] flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]`}
-      aria-label="Sesión de aprendizaje M1"
+      aria-label={`Sesión de ${modeLabel} M1`}
     >
       {/* ==========================================================================
           HEADER: TOOLBAR DE 3 COLUMNAS IDÉNTICA A ENSAYOS / PLAYGROUND (MAX-W 1740px)
@@ -78,7 +92,7 @@ export function QuestionWorkspace({
       >
         {mobile && <div className={styles.mobileHeader}>
           <button type="button" className={styles.iconButton} aria-label="Guardar y cerrar sesión" disabled={closeDisabled} onClick={onClose}><X size={22} /></button>
-          <div className={styles.segments} role="group" aria-label={subtitle}>{mobile.steps.map(step => <span key={step.number} className={styles.segment} data-answered={step.answered} aria-current={step.current ? "step" : undefined} aria-label={`Pregunta ${step.number}: ${step.current ? "actual" : step.answered ? "respondida" : "pendiente"}`} />)}</div>
+          <div className={styles.segments} role="group" aria-label={subtitle}>{segments.map(step => <span key={step.number} className={styles.segment} data-answered={step.answered} aria-current={step.current ? "step" : undefined} aria-label={`Pregunta ${step.number}: ${step.current ? "actual" : step.answered ? "respondida" : "pendiente"}`} />)}</div>
           <span className={styles.position} aria-label={subtitle}>{mobile.steps.find(step => step.current)?.number ?? mobile.steps.length}/{mobile.steps.length}</span>
           {mobile.menu}
         </div>}
@@ -93,7 +107,7 @@ export function QuestionWorkspace({
               className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft size={18} />
-              <span className="hidden sm:inline">Volver a mi ruta</span>
+              <span className="hidden sm:inline">{modeLabel === "Aprender" ? "Volver a mi ruta" : "Guardar y salir"}</span>
               <span className="sm:hidden">Volver</span>
             </button>
 
@@ -108,7 +122,7 @@ export function QuestionWorkspace({
           <div className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto">
             <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
               <span className="whitespace-nowrap">
-                Matemática M1 <span className="text-[var(--primary)]">Aprender</span>
+                Matemática M1 <span className="text-[var(--primary)]">{modeLabel}</span>
               </span>
             </div>
             <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">

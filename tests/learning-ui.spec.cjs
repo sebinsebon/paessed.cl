@@ -17,9 +17,11 @@ async function choose(page, id, correct = true) {
   const meta = catalog.find((question) => question.id === id);
   if (!meta) throw new Error(`Unknown catalog question ${id}`);
   const letter = correct ? meta.correct : meta.correct === "A" ? "B" : "A";
+  await expect(page.getByTestId("learning-paper-stem")).toHaveAttribute("data-question-id", id);
   const radio = page.getByRole("radio").nth(letter.charCodeAt(0) - 65);
   await expect(radio).toBeVisible();
-  await radio.click();
+  if (await radio.getAttribute("aria-checked") !== "true" || await radio.getAttribute("data-answer-status") !== "neutral") await radio.click();
+  await expect(radio).toHaveAttribute("aria-checked", "true");
 }
 async function noHorizontalOverflow(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
@@ -128,8 +130,10 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   await essay.getByRole("button", { name: "Ajustes de apariencia de la hoja", exact: true }).click();
   await expect(essay.getByRole("button", { name: "Hoja oscura", exact: true })).toHaveAttribute("aria-pressed", "true");
   await essay.close();
-  await page.getByRole("button", { name: "Activar lápiz", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir menú de la pregunta", exact: true }).click();
+  await page.getByRole("button", { name: "Lápiz sobre la pregunta", exact: true }).click();
   await page.getByRole("button", { name: "Color de tinta #e11d48", exact: true }).click();
+  await page.getByRole("button", { name: "Listo, dibujar", exact: true }).click();
   await expect(page.getByRole("radio").first()).toBeDisabled();
   const canvas = page.locator("canvas");
   const canvasBox = await canvas.boundingBox();
@@ -140,10 +144,12 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   const inkKey = `paessed-learning-ink:${firstNodeId}:${current.questionIds[0]}`;
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(1);
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)).strokes[0].color, inkKey)).toBe("#e11d48");
-  await expect(page.getByRole("group", { name: "Herramientas de dibujo", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Abrir herramientas del lápiz", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Herramientas de dibujo", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Abrir menú de la pregunta", exact: true }).click();
+  await page.getByRole("button", { name: "Lápiz sobre la pregunta", exact: true }).click();
   await page.getByRole("button", { name: "Deshacer último trazo", exact: true }).click();
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{"strokes":[]}').strokes.length, inkKey)).toBe(0);
+  await page.getByRole("button", { name: "Listo, dibujar", exact: true }).click();
   await page.mouse.move(canvasBox.x + 35, canvasBox.y + 35);
   await page.mouse.down();
   await page.mouse.move(canvasBox.x + 80, canvasBox.y + 60, { steps: 5 });

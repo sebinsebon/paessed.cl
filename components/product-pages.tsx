@@ -1,51 +1,36 @@
 "use client";
 
-import Link from "next/link";
-import { PaessedBlocks } from "@/components/paessed-blocks";
-import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
-import { blockAssetIds } from "@/lib/imported-resources";
-import type { ImportedExamRecord } from "@/lib/local-imports";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import {
-  ArrowRight,
-  BookOpen,
-  Bookmark,
-  Check,
-  Eraser,
-  Pencil,
-  RotateCcw,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Flame,
-  Lock,
-  Play,
-  Search,
-  Settings,
-  SlidersHorizontal,
-  Sparkles,
-  Target,
-  Trophy,
-  UserRound,
-  Upload,
-} from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition } from "@/components/app-page-transition";
-import { ImportedExamSummary, listImportedExams } from "@/lib/local-imports";
-import { M1_AXES, M1_UNITS, M1_CURRICULUM_SOURCE, type M1UnitId } from "@/lib/m1-curriculum";
-import { ALL_M1_UNIT_IDS, PlaygroundTopicPicker } from "@/components/playground-topic-picker";
-import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
-import { useDrawingTools } from "@/components/use-drawing-tools";
-import { QUESTION_PAPER_FONT, readQuestionPaperTheme, saveQuestionPaperTheme } from "@/lib/question-paper";
+import { AppShell } from "@/components/app-shell";
+import { AiHelpSettings,AskAiButton,useAiSettings } from "@/components/ask-ai";
+import { ExternalQuestionWorkspace } from "@/components/learning/workspace/external-question-workspace";
+import { QuestionDialog } from "@/components/learning/workspace/question-dialog";
 import { PlaygroundAdvancedPicker } from "@/components/playground-advanced-picker";
-import { LocalStorageDashboard } from "@/components/local-storage-dashboard";
-import { loadPlaygroundImports, type BankQuestion, type BankSource } from "@/lib/playground-imports";
-import { AiHelpSettings, AskAiButton, useAiSettings } from "@/components/ask-ai";
-import { QuestionTopicTags } from "@/components/question-topic-tags";
+import { type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { ALL_M1_UNIT_IDS,PlaygroundTopicPicker } from "@/components/playground-topic-picker";
+import { useImportedResourceUrls } from "@/components/use-imported-resource-urls";
 import { DEFAULT_EXAMS } from "@/lib/default-exams";
-import { DEFAULT_QUESTION_INDEX, defaultBankPlaceholders, loadQuestionContent } from "@/lib/learning/catalog";
+import { blockAssetIds } from "@/lib/imported-resources";
+import { DEFAULT_QUESTION_INDEX,defaultBankPlaceholders,loadQuestionContent } from "@/lib/learning/catalog";
 import { recordEvidence } from "@/lib/learning/evidence";
+import type { ImportedExamRecord } from "@/lib/local-imports";
+import { ImportedExamSummary,listImportedExams } from "@/lib/local-imports";
+import { type M1UnitId } from "@/lib/m1-curriculum";
+import { loadPlaygroundImports,type BankQuestion,type BankSource } from "@/lib/playground-imports";
+import {
+ArrowRight,
+Bookmark,
+ChevronLeft,
+ChevronRight,
+Play,
+Search,
+Settings,
+SlidersHorizontal,
+Upload
+} from "lucide-react";
+import { AnimatePresence,motion } from "motion/react";
+import Link from "next/link";
+import { useEffect,useRef,useState } from "react";
 
 type ExamListRow = {
   id: string;
@@ -396,7 +381,6 @@ function playgroundUnitCounts(year: string, savedOnly: boolean, savedIds: readon
   return counts;
 }
 
-const playgroundAnswerLetters = ["A", "B", "C", "D", "E"] as const;
 
 function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
   const ids = questions.map((question) => question.id);
@@ -434,16 +418,12 @@ export function PlaygroundExperience() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isPracticing, setIsPracticing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { drawingEnabled, drawingMenuOpen, drawingButtonLabel, toggleDrawing, setDrawingEnabled, hideDrawingTools } = useDrawingTools();
-  const [drawingTool, setDrawingTool] = useState<"pen" | "eraser">("pen");
-  const [drawingColor, setDrawingColor] = useState("#2563eb");
   const [strokesByQuestion, setStrokesByQuestion] = useState<Record<string, PlaygroundInkStroke[]>>({});
   const [draftYear, setDraftYear] = useState("all");
   const [draftUnitIds, setDraftUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
   const [draftQuestionIds, setDraftQuestionIds] = useState<string[]>(() => playgroundQuestions.map((question)=>question.id));
   const [draftSavedOnly, setDraftSavedOnly] = useState(false);
   const [draftQuestion, setDraftQuestion] = useState("random");
-  const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
   const { aiSettings, updateAiSettings } = useAiSettings();
   const settingsRef = useRef<HTMLDivElement>(null);
   const [order, setOrder] = useState<string[]>([]);
@@ -451,6 +431,9 @@ export function PlaygroundExperience() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [pendingAction, setPendingAction] = useState<"check" | null>(null);
+  const [sheetReady, setSheetReady] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const checkingRef = useRef(false);
 
   const questionBank = [...defaultQuestions, ...playgroundQuestions, ...importedQuestions].filter((q,i,all)=>all.findIndex(other=>other.id===q.id)===i);
   const sources: BankSource[] = [
@@ -469,7 +452,6 @@ export function PlaygroundExperience() {
   const selectedAnswer = current ? answers[current.id] : undefined;
   const isRevealed = current ? Boolean(revealed[current.id]) : false;
   const isCorrect = Boolean(current && selectedAnswer === current.correct);
-  const currentSaved = Boolean(current && savedQuestionIds.includes(current.id));
   const currentStrokes = current ? strokesByQuestion[current.id] ?? [] : [];
   const draftQuestions = filterPlaygroundQuestions({ year: draftYear, unitIds: draftUnitIds, questionIds: draftQuestionIds, savedOnly: draftSavedOnly }, savedQuestionIds, questionBank);
   const draftTopicCounts = playgroundUnitCounts(draftYear, draftSavedOnly, savedQuestionIds, questionBank, draftQuestionIds);
@@ -515,7 +497,6 @@ export function PlaygroundExperience() {
   }))];
   const displayedResourceError = resourceError || currentResourceErrors[0];
 
-  useEffect(() => { setDrawingEnabled(false); }, [current?.id, setDrawingEnabled]);
 
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
     if (!current) return;
@@ -533,7 +514,6 @@ export function PlaygroundExperience() {
     setDraftSavedOnly(queuedFilters?.savedOnly ?? sessionFilters.savedOnly);
     setDraftQuestion(queuedFilters?.question ?? "random");
     setFilterDecisionOpen(false);
-    setDrawingEnabled(false);
     setSettingsOpen(true);
   };
   const commitPracticeFilters = (
@@ -610,34 +590,19 @@ export function PlaygroundExperience() {
   }, [isPracticing, current?.id]);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
-      if (Array.isArray(stored)) {
-        const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
-        setSavedQuestionIds(stored.filter((id): id is string => typeof id === "string" && validIds.has(id)));
-      }
-    } catch {
-      setSaveError("No se pudieron cargar las preguntas guardadas de este navegador.");
-    }
+    const syncSaved = () => {
+      try {
+        const stored: unknown = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
+        const validIds = new Set([...defaultBankPlaceholders(), ...playgroundQuestions, ...importedQuestions].map(question => question.id));
+        setSavedQuestionIds(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string" && validIds.has(id)) : []);
+      } catch { setSaveError("No se pudieron cargar las preguntas guardadas de este navegador."); }
+    };
+    const onStorage = (event: StorageEvent) => { if (event.key === "paessed-playground-saved-questions" || event.key === null) syncSaved(); };
+    syncSaved();
+    window.addEventListener("paessed-saved-questions-change", syncSaved);
+    window.addEventListener("storage", onStorage);
+    return () => { window.removeEventListener("paessed-saved-questions-change", syncSaved); window.removeEventListener("storage", onStorage); };
   }, [importedQuestions]);
-
-  const toggleSavedQuestion = () => {
-    if (!current) return;
-    const updated = currentSaved
-      ? savedQuestionIds.filter((id) => id !== current.id)
-      : [...savedQuestionIds, current.id];
-    try {
-      localStorage.setItem("paessed-playground-saved-questions", JSON.stringify(updated));
-      setSavedQuestionIds(updated);
-      setSaveError(null);
-    } catch {
-      setSaveError("No se pudo guardar la pregunta en este navegador.");
-    }
-  };
-
-  useEffect(() => {
-    setPaperTheme(readQuestionPaperTheme());
-  }, []);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -658,34 +623,6 @@ export function PlaygroundExperience() {
     };
   }, [settingsOpen]);
 
-  const choosePaperTheme = (theme: "auto" | "light" | "dark") => {
-    setPaperTheme(theme);
-    saveQuestionPaperTheme(theme);
-    setSettingsOpen(false);
-  };
-
-  // Semantic paper colors are independent from the global interface colors.
-  // Automatic mode tracks the PAESSED theme through CSS variables.
-  const paperPalette = paperTheme === "dark"
-    ? { bg: "#111827", fg: "#f8fafc", muted: "#94a3b8", border: "#334155", soft: "#1e293b", option: "#1a2536", optionHover: "#25344b", selected: "#3b261b", good: "#093d30", bad: "#441e2a", footer: "#151d2c" }
-    : paperTheme === "light"
-      ? { bg: "#ffffff", fg: "#111827", muted: "#64748b", border: "#e2e8f0", soft: "#f1f5f9", option: "#f8fafc", optionHover: "#fff7ed", selected: "#fff7ed", good: "#ecfdf5", bad: "#fff1f2", footer: "#fcfcfd" }
-      : { bg: "var(--surface)", fg: "var(--text)", muted: "var(--muted)", border: "var(--border)", soft: "var(--surface-2)", option: "var(--surface-2)", optionHover: "var(--surface-3)", selected: "var(--primary-soft)", good: "color-mix(in srgb, #10b981 14%, var(--surface))", bad: "color-mix(in srgb, #ef4444 14%, var(--surface))", footer: "var(--surface)" };
-
-  const paperStyle = {
-    "--pg-bg": paperPalette.bg,
-    "--pg-fg": paperPalette.fg,
-    "--pg-muted": paperPalette.muted,
-    "--pg-border": paperPalette.border,
-    "--pg-soft": paperPalette.soft,
-    "--pg-option": paperPalette.option,
-    "--pg-option-hover": paperPalette.optionHover,
-    "--pg-selected": paperPalette.selected,
-    "--pg-good": paperPalette.good,
-    "--pg-bad": paperPalette.bad,
-    "--pg-footer": paperPalette.footer,
-  } as CSSProperties;
-
   // The whole practice session occupies the viewport; only exceptionally long
   // question content scrolls inside the paper, never behind its fixed footer.
   useEffect(() => {
@@ -696,7 +633,7 @@ export function PlaygroundExperience() {
     // Full-screen practice should not retain the dark scrollbar gutter from the app shell.
     document.documentElement.style.scrollbarGutter = "auto";
     const onEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !settingsOpen) setIsPracticing(false);
+      if (event.key === "Escape" && !settingsOpen && !document.querySelector("dialog[open]")) setIsPracticing(false);
     };
     window.addEventListener("keydown", onEscape);
     return () => {
@@ -736,7 +673,6 @@ export function PlaygroundExperience() {
     setFilterDecisionOpen(false);
     setFilterNotice(null);
     setSettingsOpen(false);
-    setDrawingEnabled(false);
     setSidebarVisible(false);
     window.scrollTo({ top: 0, behavior: "instant" });
     setIsPracticing(true);
@@ -783,16 +719,18 @@ export function PlaygroundExperience() {
   };
 
   const confirmAnswer = async () => {
-    if (!current || !selectedAnswer || isRevealed) return;
+    if (!current || !selectedAnswer || isRevealed || !sheetReady || checkingRef.current) return;
     if (pendingAction !== "check") {
       setPendingAction("check");
       return;
     }
     setPendingAction(null);
+    checkingRef.current = true; setChecking(true);
     try {
       await recordEvidence({type:"external-attempt",questionId:current.id,answer:selectedAnswer,mode:"playground",sessionId:evidenceSession.current});
       setSaveError(null);
     } catch (e) { setSaveError(e instanceof Error?e.message:"No se pudo guardar la respuesta.");return; }
+    finally { checkingRef.current = false; setChecking(false); }
     setRevealed((previous) => ({ ...previous, [current.id]: true }));
   };
 
@@ -979,133 +917,38 @@ export function PlaygroundExperience() {
         
       </motion.div>
       ) : (
-        <motion.div
-          key="playground-practice"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          style={paperStyle}
-          className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]"
-          aria-label="Modo práctica de Playground"
-        >
-          <motion.header
-            layout
-            style={paperStyle}
-            className="relative z-20 w-full shrink-0 border-b border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)]"
-            transition={{ duration: 0.25 }}
-          >
-            <div className="mx-auto flex min-h-[68px] w-full max-w-[1740px] flex-wrap items-center gap-2 px-4 py-2.5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)] lg:px-7">
-              <div className="flex max-w-full min-w-0 flex-wrap items-center gap-1.5 lg:flex-nowrap">
-              <button
-                type="button"
-                onClick={() => { setPendingAction(null); setSettingsOpen(false); setIsPracticing(false); }}
-                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-bold text-[var(--pg-muted)] transition-colors hover:bg-[var(--pg-soft)] hover:text-[var(--pg-fg)]"
-              >
-                <ChevronLeft size={18} /> <span className="hidden sm:inline">Volver a configuración</span><span className="sm:hidden">Volver</span>
-              </button>
-                {current && <span className="shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold leading-4">N.º {current.number}</span>}
-                {current && <QuestionTopicTags axis={current.axis} topic={current.topic} />}
-                {current && <span className="hidden shrink-0 rounded-md bg-[var(--pg-soft)] px-2 py-1 text-[10px] font-bold sm:inline">{current.year ?? "Sin año"}</span>}
-              </div>
-              <motion.div
-                layoutId="playground-config"
-                transition={{ type: "spring", stiffness: 280, damping: 35 }}
-                className="order-3 min-w-0 w-full text-center lg:order-none lg:w-auto"
-              >
-                <div className="flex min-w-0 flex-wrap items-center justify-center gap-1.5 text-[12px] font-extrabold tracking-tight sm:text-[13px]">
-                  <span className="whitespace-nowrap">Matemática M1 <span className="text-[var(--secondary)]">Playground</span></span>
-                </div>
-                <p className="mt-0.5 truncate text-center text-[9px] font-medium leading-tight text-[var(--pg-muted)]">
-                  {sessionFilters.year === "all" ? "Todos los años" : sessionFilters.year} · {sessionFilters.unitIds.length === ALL_M1_UNIT_IDS.length ? "Todos los subejes" : sessionFilters.unitIds.length === 1 ? (M1_UNITS.find((unit) => unit.id === sessionFilters.unitIds[0])?.name ?? "Un subeje") : sessionFilters.unitIds.length + " subejes"}{sessionFilters.savedOnly ? " · Guardadas" : ""}{current ? ` · ${current.collection}` : ""}
-                </p>
-                {queuedFilters && <p className="truncate text-[10px] font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
-              </motion.div>
-
-              <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1 lg:ml-0 lg:justify-self-end">
-                {current && <AskAiButton key={current.id} settings={aiSettings} onChange={updateAiSettings} onHelp={() => { void recordEvidence({type:"expose",questionId:current.id,mode:"playground",sessionId:evidenceSession.current,assisted:true}).catch(e=>setSaveError(e.message)); }}
-                  question={{
-                    number: current.number,
-                    stem: current.stemBlocks ?? current.stem,
-                    options: current.options.map((option, index) => ({
-                      label: current.optionLabels?.[index] ?? String.fromCharCode(65 + index),
-                      content: current.optionBlocks?.[index] ?? option,
-                    })),
-                  }} />}
-                <button
-                  type="button"
-                  aria-label={drawingButtonLabel}
-                  aria-pressed={drawingEnabled}
-                  aria-expanded={drawingMenuOpen}
-                  title={drawingButtonLabel}
-                  onClick={() => { setSettingsOpen(false); toggleDrawing(); }}
-                  className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                    (drawingEnabled ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
-                >
-                  <Pencil size={18} aria-hidden="true" />
-                </button>
-              <button
-                type="button"
-                onClick={toggleSavedQuestion}
-                disabled={!current}
-                aria-label={currentSaved ? "Quitar pregunta de guardadas" : "Guardar esta pregunta"}
-                aria-pressed={currentSaved}
-                title={currentSaved ? "Pregunta guardada · Quitar" : "Guardar pregunta"}
-                className={"grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors disabled:opacity-40 " +
-                  (currentSaved ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
-              >
-                <Bookmark size={19} fill={currentSaved ? "currentColor" : "none"} aria-hidden="true" />
-              </button>
-              <div className="relative shrink-0" ref={settingsRef}>
-                <button
-                  type="button"
-                  aria-label="Ajustes de apariencia y filtros de preguntas"
-                  aria-expanded={settingsOpen}
-                  aria-controls="playground-paper-settings"
-                  onClick={openPracticeSettings}
-                  className={"grid h-10 w-10 place-items-center rounded-xl border transition-colors " +
-                    (settingsOpen ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-bg)] text-[var(--pg-fg)] hover:bg-[var(--pg-soft)]")}
-                >
-                  <Settings size={19} aria-hidden="true" />
-                </button>
-
-                <AnimatePresence>
-                  {settingsOpen && (
-                    <motion.section
-                      id="playground-paper-settings"
-                      role="group"
-                      aria-label="Ajustes de la práctica"
-                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                      transition={{ duration: 0.16 }}
-                      className="surface-raised text-[var(--text)] absolute right-0 top-[calc(100%+10px)] z-50 max-h-[min(80dvh,680px)] w-[min(440px,calc(100vw-24px))] overflow-y-auto rounded-2xl p-4 shadow-xl"
-                    >
-                      <h2 className="text-[14px] font-extrabold">Ajustes de práctica</h2>
-                      <h3 className="mt-3 text-[12px] font-extrabold">Apariencia de la hoja</h3>
-                      <p className="mt-1 text-[11px] leading-5 text-[var(--muted)]">Cambia solo la hoja de preguntas. La interfaz mantiene su tema.</p>
-                      <div className="mt-3 space-y-2">
-                        {([
-                          { value: "auto", label: "Según PAESSED", description: "Sigue el tema de la interfaz" },
-                          { value: "light", label: "Hoja clara", description: "Blanco, incluso con interfaz oscura" },
-                          { value: "dark", label: "Hoja oscura", description: "Oscuro, incluso con interfaz clara" },
-                        ] as const).map((item) => (
-                          <button
-                            key={item.value}
-                            type="button"
-                            aria-pressed={paperTheme === item.value}
-                            onClick={() => choosePaperTheme(item.value)}
-                            className={"flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors " +
-                              (paperTheme === item.value ? "border-[var(--primary)] bg-[var(--primary-soft)]" : "border-[var(--border)] hover:bg-[var(--surface-2)]")}
-                          >
-                            <span>
-                              <span className="block text-[12px] font-bold text-[var(--text)]">{item.label}</span>
-                              <span className="block text-[10px] leading-4 text-[var(--muted)]">{item.description}</span>
-                            </span>
-                            {paperTheme === item.value && <Check size={16} className="shrink-0 text-[var(--primary)]" aria-hidden="true" />}
-                          </button>
-                        ))}
-                      </div>
+        <div key="playground-practice" aria-label="Modo práctica de Playground">
+          {current ? <ExternalQuestionWorkspace key={current.id}
+            question={!current.stemBlocks && questionAssets.length ? { ...current, stemBlocks: [{ type: "text", text: current.stem }, ...questionAssets.map(asset => ({ type: "image", asset_id: asset.path, alt: `Ilustración de la pregunta ${current.number}` }))] } : current}
+            assetUrls={new Map([...resourceUrls.byPath, ...resourceUrls.byId])}
+            ready={!resourcesLoading && !displayedResourceError && (!DEFAULT_QUESTION_INDEX.some(question => question.id === current.id) || !!defaultRecords[current.sourceId])}
+            error={displayedResourceError} retry={() => { if (sourceRecord) { if (current.sourceId.startsWith("default:")) setDefaultRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } })); else setImportedRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } })); } }}
+            context="playground" sessionKey={`playground:${evidenceSession.current}`} number={position + 1} total={visibleOrder.length}
+            subtitle={`${current.collection} · ${position + 1} de ${visibleOrder.length}`}
+            selected={selectedAnswer ?? ""} onSelect={answer => setAnswers(previous => ({ ...previous, [current.id]: answer }))}
+            locked={isRevealed || checking} checkedAnswer={isRevealed && current.correct !== null ? selectedAnswer : undefined} revealSolution={isRevealed && current.correct !== null}
+            onReady={setSheetReady} busy={checking} onClose={() => { if (checkingRef.current) return; setPendingAction(null); setSettingsOpen(false); setIsPracticing(false); }}
+            initialStrokes={currentStrokes} onStrokesChange={updateCurrentStrokes}
+            steps={visibleOrder.map((id, index) => ({ number: index + 1, answered: !!revealed[id], current: id === current.id }))}
+            notices={<>
+              {saveError && <p role="alert" className="mb-3 text-sm text-rose-500">{saveError}</p>}
+              {filterNotice && <p role="status" className="mb-3 text-sm text-amber-700">{filterNotice}</p>}
+              {queuedFilters && <p className="mb-3 text-sm font-bold text-[var(--primary)]">Filtros nuevos en la próxima pregunta</p>}
+              {isRevealed && <p role="status" className="mb-3 text-sm font-bold">{current.correct === null ? "Respuesta registrada; esta pregunta no tiene clave verificada." : isCorrect ? "¡Respuesta correcta!" : "Todavía no es correcta. Revisa la solución."}</p>}
+              {pendingAction && <p role="status" className="mb-3 text-sm">Confirma para revisar. Se cancela en 5 segundos.</p>}
+            </>}
+            renderAiHelp={onOpenChange => <AskAiButton onOpenChange={onOpenChange} settings={aiSettings} onChange={updateAiSettings} disabled={!sheetReady || checking} onHelp={() => { void recordEvidence({type:"expose",questionId:current.id,mode:"playground",sessionId:evidenceSession.current,assisted:true}).catch(error => setSaveError(error.message)); }} question={{ number: current.number, stem: current.stemBlocks ?? current.stem, options: current.options.map((option, index) => ({ label: current.optionLabels?.[index] ?? String.fromCharCode(65 + index), content: current.optionBlocks?.[index] ?? option })) }} />}
+            tools={<div className="space-y-3">
+              <button type="button" aria-label="Ajustes de apariencia y filtros de preguntas" className="min-h-11 w-full rounded-lg border border-[var(--pg-border)] px-3 text-left text-base" onClick={openPracticeSettings}>Filtros de preguntas y ayuda</button>
+              {isRevealed && <button type="button" onClick={() => { setPendingAction(null); setRevealed(previous => ({ ...previous, [current.id]: false })); }} className="min-h-11 w-full rounded-lg border border-[var(--pg-border)] px-3 text-left text-base">Reintentar</button>}
+            </div>}
+            footer={(drawing, aiHelp) => <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <button type="button" aria-label="Pregunta anterior" disabled={position === 0 || drawing || checking} onClick={() => { setPendingAction(null); setPosition(previous => Math.max(0, previous - 1)); }} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-3 disabled:opacity-40"><ChevronLeft size={20} /></button>
+              {isRevealed && aiHelp}
+              {current.options.length === 0 && !isRevealed ? <button type="button" className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold" onClick={() => setRevealed(previous => ({ ...previous, [current.id]: true }))}>Saltar pregunta</button> : !isRevealed ? <button type="button" aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"} disabled={!selectedAnswer || !sheetReady || checking || drawing} onClick={() => void confirmAnswer()} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40">{checking ? "Guardando…" : pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}</button> : <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={advanceQuestion}>Siguiente</button>}
+            </div>}
+          /> : <section role="status" className="grid min-h-[60vh] place-items-center">Preparando tu práctica…</section>}
+          {settingsOpen && <QuestionDialog title="Ajustes de la práctica" wide onClose={() => setSettingsOpen(false)}><div ref={settingsRef}>
                       <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
                       <div className="mt-4 border-t border-[var(--border)] pt-4">
                         <h3 className="text-[12px] font-extrabold">Filtros de preguntas</h3>
@@ -1212,208 +1055,9 @@ export function PlaygroundExperience() {
                           </div>
                         )}
                       </div>
-                    </motion.section>
-                  )}
-                </AnimatePresence>
-              </div>
-              </div>
-            </div>
-            {drawingMenuOpen && current && (
-              <div className="absolute right-3 top-[calc(100%+7px)] z-40 flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 py-2 text-[var(--text)] shadow-lg sm:right-6">
-                <button
-                  type="button"
-                  onClick={() => setDrawingTool("pen")}
-                  aria-pressed={drawingTool === "pen"}
-                  aria-label="Dibujar"
-                  title="Dibujar"
-                  className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "pen" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
-                ><Pencil size={16} /></button>
-                <button
-                  type="button"
-                  onClick={() => setDrawingTool("eraser")}
-                  aria-pressed={drawingTool === "eraser"}
-                  aria-label="Borrar trazo"
-                  title="Borrar trazo"
-                  className={"grid h-8 w-8 place-items-center rounded-lg " + (drawingTool === "eraser" ? "bg-[var(--primary-soft)] text-[var(--primary)]" : "hover:bg-[var(--surface-2)]")}
-                ><Eraser size={16} /></button>
-                <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden="true" />
-                {(["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827", "#ffffff"] as const).map((ink) => (
-                  <button
-                    key={ink}
-                    type="button"
-                    onClick={() => { setDrawingColor(ink); setDrawingTool("pen"); }}
-                    aria-label={"Color de tinta " + ink}
-                    aria-pressed={drawingColor === ink && drawingTool === "pen"}
-                    title={ink}
-                    className={"grid h-8 w-8 place-items-center rounded-lg border " + (drawingColor === ink && drawingTool === "pen" ? "border-[var(--primary)] ring-1 ring-[var(--primary)]" : "border-transparent hover:border-[var(--border)]")}
-                  >
-                    <span className="h-4 w-4 rounded-full border border-slate-400/40" style={{ backgroundColor: ink }} />
-                  </button>
-                ))}
-                <span className="mx-1 h-5 w-px bg-[var(--border)]" aria-hidden="true" />
-                <button
-                  type="button"
-                  onClick={() => updateCurrentStrokes(currentStrokes.slice(0, -1))}
-                  disabled={!currentStrokes.length}
-                  title="Deshacer último trazo"
-                  aria-label="Deshacer último trazo"
-                  className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"
-                ><RotateCcw size={16} /></button>
-                <button
-                  type="button"
-                  onClick={() => updateCurrentStrokes([])}
-                  disabled={!currentStrokes.length}
-                  title="Borrar todos los trazos"
-                  aria-label="Borrar todos los trazos"
-                  className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[var(--surface-2)] disabled:opacity-30"
-                ><Trash2 size={16} /></button>
-                <span className="hidden text-[10px] text-[var(--muted)] sm:inline">Cierra el lápiz para responder</span>
-              </div>
-            )}
-            {saveError && <p role="alert" className="px-4 pb-2 text-right text-[11px] text-rose-500">{saveError}</p>}
-            {filterNotice && <p role="status" className="px-4 pb-2 text-right text-[11px] text-amber-600">{filterNotice}</p>}
-          </motion.header>
 
-          <main className="flex min-h-0 w-full flex-1 flex-col" aria-label="Pregunta de práctica">
-            {current ? (
-              <motion.article layout style={paperStyle} transition={{ duration: 0.25 }} className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--pg-bg)] text-[var(--pg-fg)]">
-                <div key={current.id} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12">
-                  <div className="relative flex min-h-full flex-col">
-                  {displayedResourceError && <p role="alert" className="mb-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-800">{displayedResourceError}</p>}
-                  {current.stemBlocks ? <div style={QUESTION_PAPER_FONT} className="max-w-[1060px] text-[18px] leading-[1.55] sm:text-[21px]">
-                    <PaessedBlocks blocks={current.stemBlocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} />
-                  </div> : <h2 style={QUESTION_PAPER_FONT} className="max-w-[1060px] whitespace-pre-line text-[18px] font-normal leading-[1.55] text-[var(--pg-fg)] sm:text-[21px]">
-                    {current.stem}
-                  </h2>}
-
-                  {!current.stemBlocks && questionAssets.length > 0 && (
-                    <div className="mt-5 flex max-w-[1060px] flex-wrap items-start gap-3">
-                      {questionAssets.map((asset) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={asset.path} src={asset.url} alt={"Ilustración de la pregunta " + current.number}
-                          className="max-h-[350px] max-w-full rounded-lg object-contain" />
-                      ))}
-                    </div>
-                  )}
-                  {current.options.length === 0 && (
-                    <p className="mt-6 text-[12px] text-[var(--pg-muted)]">
-                      No se reconocieron alternativas en el archivo importado. Puedes saltar la pregunta.
-                    </p>
-                  )}
-                  <div role="group" aria-label="Alternativas de respuesta" className="flex max-w-[1060px] flex-col items-start gap-1.5 pt-5 sm:pt-7">
-                    {current.options.map((option, index) => {
-                      const letter = current.optionLabels?.[index] ?? playgroundAnswerLetters[index];
-                      const selected = selectedAnswer === letter;
-                      const correct = isRevealed && current.correct !== null && current.correct === letter;
-                      const wrong = isRevealed && current.correct !== null && selected && !correct;
-                      const tone = correct
-                        ? "border-emerald-500 bg-[var(--pg-good)]"
-                        : wrong
-                          ? "border-rose-500 bg-[var(--pg-bad)]"
-                          : selected
-                            ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]"
-                            : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)] hover:shadow-sm";
-                      return (
-                        <button
-                          key={letter}
-                          type="button"
-                          aria-pressed={selected}
-                          disabled={isRevealed || drawingEnabled}
-                          onClick={() => setAnswers((previous) => ({ ...previous, [current.id]: letter }))}
-                          className={"inline-flex min-h-[34px] w-fit max-w-full min-w-[72px] cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] disabled:cursor-default sm:min-h-[36px] sm:px-3 " + tone}
-                        >
-                          <span style={QUESTION_PAPER_FONT} className="shrink-0 text-[15px] font-semibold leading-6 text-[var(--pg-fg)] sm:text-[16px]">{letter})</span>
-                          <div style={QUESTION_PAPER_FONT} className="min-w-0 break-words text-[15px] leading-6 text-[var(--pg-fg)] sm:text-[16px]">{current.optionBlocks?.[index] ? <PaessedBlocks blocks={current.optionBlocks[index]} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : option}</div>
-                          {correct && <Check size={17} aria-label="Alternativa correcta" className="ml-auto mt-1 shrink-0 text-emerald-600" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {isRevealed && current.correct !== null && (
-                    <div role="status" className={"mt-4 max-w-[1060px] rounded-lg border px-4 py-3 text-[12px] leading-5 text-[var(--pg-fg)] sm:text-[13px] " + (isCorrect
-                      ? "border-emerald-500/50 bg-[var(--pg-good)]"
-                      : "border-rose-500/50 bg-[var(--pg-bad)]")}>
-                      <p className="font-extrabold">{isCorrect ? "¡Respuesta correcta!" : "La respuesta correcta es " + current.correct + ")"}</p>
-                      <div style={QUESTION_PAPER_FONT} className="mt-1">{current.explanationBlocks ? <PaessedBlocks blocks={current.explanationBlocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : current.explanation}</div>
-                    </div>
-                  )}
-                  {isRevealed && current.correct === null && (
-                    <p role="status" className="mt-4 max-w-[1060px] rounded-xl border border-[var(--pg-border)] bg-[var(--pg-soft)] px-4 py-3 text-[12px] text-[var(--pg-fg)]">
-                      Respuesta registrada. Este archivo no contiene un solucionario verificable para esta pregunta.
-                    </p>
-                  )}
-                  <PlaygroundScratchpad key={current.id}
-                    enabled={drawingEnabled}
-                    onInteractionStart={hideDrawingTools}
-                    mode={drawingTool}
-                    color={drawingColor}
-                    strokes={currentStrokes}
-                    onChange={updateCurrentStrokes}
-                  />
-                  </div>
-                </div>
-
-                <footer className="shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setPendingAction(null); setPosition((previous) => Math.max(0, previous - 1)); }}
-                      disabled={position === 0}
-                      className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-3 text-[11px] font-bold text-[var(--pg-fg)] transition-colors hover:bg-[var(--pg-option-hover)] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronLeft size={16} /> Anterior
-                    </button>
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                      {current.options.length === 0 && !isRevealed ? (
-                        <button type="button" onClick={() => setRevealed((old)=>({...old,[current.id]:true}))}
-                          className="min-h-10 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)]">
-                          Saltar pregunta
-                        </button>
-                      ) : !isRevealed ? (
-                        <button
-                          type="button"
-                          onClick={confirmAnswer}
-                          disabled={!selectedAnswer}
-                          aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"}
-                          className="tactile-primary min-h-10 rounded-lg px-4 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-45"
-                        >
-                          {pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => { setPendingAction(null); setRevealed((previous) => ({ ...previous, [current.id]: false })); }}
-                          className="min-h-10 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)]"
-                        >
-                          Reintentar
-                        </button>
-                      )}
-                      {isRevealed && (
-                        <button
-                          type="button"
-                          onClick={advanceQuestion}
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[var(--pg-border)] bg-[var(--pg-option)] px-4 text-[11px] font-bold text-[var(--pg-fg)] hover:bg-[var(--pg-option-hover)]"
-                        >
-                          Siguiente <ChevronRight size={16} aria-hidden="true" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {pendingAction && (
-                    <p role="status" className="mt-1.5 text-right text-[10px] font-medium text-[var(--pg-muted)]">
-                      Confirma para revisar. Se cancela en 5 segundos.
-                    </p>
-                  )}
-                </footer>
-              </motion.article>
-            ) : (
-              <section className="flex flex-1 items-center justify-center rounded-xl border border-[#d9dde5] bg-white p-5 text-center text-sm text-[#64748b]">
-                Preparando tu práctica…
-              </section>
-            )}
-          </main>
-        </motion.div>
+          </div></QuestionDialog>}
+        </div>
       )}
       </AnimatePresence>
     </AppShell>

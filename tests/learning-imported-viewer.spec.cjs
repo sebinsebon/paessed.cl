@@ -17,14 +17,14 @@ async function seed(page, { legacy = false, unrelated = false } = {}) {
     if (legacy) localStorage.setItem(prefix + id, JSON.stringify({ index: 0, answers: { 0: metas[0].correct }, bookmarks: [], strokes: {} }));
   }, { metas, legacy, unrelated, prefix });
   await page.goto("/app/ensayos/importado/evidence-import");
-  await expect(page.getByRole("button", { name: "Entregar ensayo", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^A\)/ })).toBeVisible();
+  await expect(page.getByRole("radio").first()).toBeVisible();
 }
 async function state(page) {
   return page.evaluate(() => new Promise(resolve => { const request = indexedDB.open("paessed-learning", 1); request.onsuccess = () => { const db = request.result; if (!db.objectStoreNames.contains("state")) { db.close(); resolve(null); return; } const get = db.transaction("state").objectStore("state").get("current"); get.onsuccess = () => { db.close(); resolve(get.result ?? null); }; }; }));
 }
-async function choose(page, letter) { await page.getByRole("button", { name: new RegExp(`^${letter}\\)`) }).click(); }
+async function choose(page, letter) { await page.getByRole("radio").nth(letter.charCodeAt(0) - 65).click(); }
 async function deliver(page) {
+  if (!await page.getByRole("button", { name: "Entregar ensayo", exact: true }).isVisible()) await page.getByRole("button", { name: "Abrir menú de la pregunta", exact: true }).click();
   await page.getByRole("button", { name: "Entregar ensayo", exact: true }).click();
   await page.getByRole("button", { name: "Confirmar entrega", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ensayo entregado", exact: true })).toBeVisible();
@@ -49,9 +49,9 @@ test("original delivered answers only; assistance excludes, unverified keys igno
   const originals = saved.attempts;
   await page.reload();
   await expect(page.getByRole("heading", { name: "Ensayo entregado", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^A\)/ })).toBeDisabled();
-  await page.getByRole("button", { name: "Anterior", exact: true }).click();
-  await page.getByRole("button", { name: "Anterior", exact: true }).click();
+  await expect(page.getByRole("radio").first()).toBeDisabled();
+  await page.getByRole("button", { name: "Pregunta anterior", exact: true }).click();
+  await page.getByRole("button", { name: "Pregunta anterior", exact: true }).click();
   await page.getByRole("button", { name: "Preguntar a la IA", exact: true }).click();
   await page.getByRole("button", { name: "Cerrar", exact: true }).click();
   saved = await state(page);

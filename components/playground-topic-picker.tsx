@@ -75,6 +75,7 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
         <div className="flex items-center gap-1.5">
           <motion.button
             type="button"
+            tabIndex={0}
             onClick={() => update(ALL_M1_UNIT_IDS)}
             disabled={allSelected}
             whileHover={reduceMotion ? undefined : { y: -1 }}
@@ -86,6 +87,7 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
           </motion.button>
           <motion.button
             type="button"
+            tabIndex={0}
             onClick={() => update([])}
             disabled={selected.length === 0}
             whileHover={reduceMotion ? undefined : { y: -1 }}
@@ -260,6 +262,7 @@ export function PlaygroundTopicPicker({ selected, onChange, questionCounts, comp
                 return (
                   <motion.button
                     type="button"
+                    tabIndex={0}
                     key={id}
                     initial={reduceMotion ? false : { opacity: 0, scale: 0.85, y: 3 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
