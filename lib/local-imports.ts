@@ -1,4 +1,8 @@
+import { scopedStorageKey, devSandboxActive } from "./sync/local.ts";
+import { personalSourceHash } from "./personal-source.ts";
+
 export type ImportedExamSummary = {
+  sourceHash?: string;
   id: string;
   title: string;
   fileName: string;
@@ -63,7 +67,7 @@ export type ImportedExamProgressSummary = {
 export function readImportedExamProgress(id: string, questionCount: number): ImportedExamProgressSummary {
   const empty: ImportedExamProgressSummary = { answeredCount: 0, status: "not-started" };
   try {
-    const stored = localStorage.getItem(IMPORTED_EXAM_PROGRESS_PREFIX + id);
+    const stored = localStorage.getItem(scopedStorageKey(IMPORTED_EXAM_PROGRESS_PREFIX + id));
     if (!stored) return empty;
     const parsed: unknown = JSON.parse(stored);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return empty;
@@ -86,7 +90,7 @@ export function readImportedExamProgress(id: string, questionCount: number): Imp
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(`${devSandboxActive() ? "paessed-dev:" : ""}${DB_NAME}`, DB_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(STORE)) {
@@ -99,7 +103,8 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 export async function saveImportedExam(record: ImportedExamRecord): Promise<void> {
-  const value: StoredImportedExam = { ...refreshed(record), archive: record.archive ? await record.archive.arrayBuffer() : undefined, archiveType: record.archive?.type };
+  const sourceHash = await personalSourceHash(record);
+  const value: StoredImportedExam = { ...refreshed(record), summary: { ...refreshed(record).summary, sourceHash }, archive: record.archive ? await record.archive.arrayBuffer() : undefined, archiveType: record.archive?.type };
   const database = await openDatabase();
   try { await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction(STORE, "readwrite");
@@ -151,7 +156,7 @@ export async function deleteImportedExam(id: string): Promise<void> {
     database.close();
   }
   // Delete the corresponding answers, bookmarks and drawings after the package is gone.
-  try { localStorage.removeItem(IMPORTED_EXAM_PROGRESS_PREFIX + id); } catch { /* Storage may be unavailable. */ }
+  try { localStorage.removeItem(scopedStorageKey(IMPORTED_EXAM_PROGRESS_PREFIX + id)); } catch { /* Storage may be unavailable. */ }
 }
 
 export type ImportedExamStorageUsage = {

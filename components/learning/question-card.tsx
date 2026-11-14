@@ -1,4 +1,5 @@
 "use client";
+import { scopedStorageKey } from "@/lib/sync/local";
 
 import { useEffect, useState } from "react";
 import { AlertCircle, Eraser, LoaderCircle, Pencil, RotateCcw, Trash2 } from "lucide-react";
@@ -29,7 +30,7 @@ export function LearningQuestionCard({ meta, selected, onSelect, locked, revealS
   const drawing = useDrawingTools();
   const [strokes, setStrokes] = useState<PlaygroundInkStroke[]>([]);
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
-  const inkKey = `paessed-learning-ink:${scratchpadKey ?? meta.id}`;
+  const inkKey = scopedStorageKey(`paessed-learning-ink:${scratchpadKey ?? meta.id}`);
   useEffect(() => {
     try { const saved: unknown = JSON.parse(localStorage.getItem(inkKey) ?? "[]"); setStrokes(Array.isArray(saved) ? saved.filter((stroke): stroke is PlaygroundInkStroke => !!stroke && typeof stroke === "object" && typeof stroke.color === "string" && Array.isArray(stroke.points) && stroke.points.every((point: { x?: unknown; y?: unknown }) => typeof point?.x === "number" && typeof point?.y === "number")) : []); } catch { setStrokes([]); }
     drawing.setDrawingEnabled(false);

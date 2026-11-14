@@ -3,6 +3,7 @@ import { exportLearningState, restoreLearningState, validateLearningState } from
 import { listExamSessions, restoreExamSessions, validateExamSessions } from "@/lib/learning/exam-repository";
 import type { LearningState } from "@/lib/learning/types";
 import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
+import { listPracticeSessions, listSavedQuestions, savePracticeSession, saveQuestion, scopedStorageKey, validatePracticeSession, type PracticeSession } from "@/lib/sync/local";
 import {
   DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_EVENT,
   DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY,
@@ -22,8 +23,8 @@ type StoredSlice = { category: BackupCategory; key: string; value: string };
 type ExamDescriptor = { id: string; jsonPath: string; archivePath?: string; archiveMime?: string };
 type BackupManifest = {
   format: "paessed-browser-backup";
-  version: 1 | 2;
-  learning?: { state: LearningState; sessions: Record<string,SavedDefaultExamSession> };
+  version: 1 | 2 | 3;
+  learning?: { state: LearningState; sessions: Record<string,SavedDefaultExamSession>; practice?: Array<{mode:"exam"|"playground";sourceId:string;session:PracticeSession}>; savedQuestions?: string[] };
   createdAt: string;
   categories: BackupCategory[];
   items: StoredSlice[];
@@ -165,19 +166,18 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
   const { default: JSZipModule } = await import("jszip");
   const zip = new JSZipModule();
   const manifest: BackupManifest = {
-    format: "paessed-browser-backup", version: 1,
+    format: "paessed-browser-backup", version: 3,
     createdAt: new Date().toISOString(), categories: selected, items: [], exams: [],
   };
   if (selected.includes("learning")) {
-    manifest.version=2;
-    manifest.learning={state:await exportLearningState(),sessions:await listExamSessions()};
+    manifest.learning={state:await exportLearningState(),sessions:await listExamSessions(),practice:await listPracticeSessions(),savedQuestions:await listSavedQuestions()};
   }
   for (const category of selected) {
     if (category === "exams" || category === "learning") continue;
     const savedKeys = report.categories.find((item) => item.id === category)?.keys ?? [];
     for (const key of [...new Set(savedKeys)]) {
       if (!categoryMatchesKey(category, key)) continue;
-      const raw = localStorage.getItem(key);
+      const raw = localStorage.getItem(scopedStorageKey(key));
       if (raw === null) continue;
       manifest.items.push({
         category, key,
@@ -206,7 +206,7 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
 }
 
 function validateManifest(value: unknown): BackupManifest {
-  if (!isObject(value) || value.format !== "paessed-browser-backup" || ![1,2].includes(Number(value.version))) {
+  if (!isObject(value) || value.format !== "paessed-browser-backup" || ![1,2,3].includes(Number(value.version))) {
     throw new Error("El archivo no es un respaldo PAESSED compatible (versión 1).");
   }
   if (typeof value.createdAt !== "string" || Number.isNaN(Date.parse(value.createdAt))) {
@@ -253,10 +253,16 @@ function validateManifest(value: unknown): BackupManifest {
   }
   let learning: BackupManifest["learning"];
   if (cats.includes("learning")) {
-    if(value.version!==2||!isObject(value.learning)) throw new Error("Falta el progreso de Aprender en el respaldo.");
+    if(![2,3].includes(Number(value.version))||!isObject(value.learning)) throw new Error("Falta el progreso de Aprender en el respaldo.");
     learning={state:validateLearningState(value.learning.state),sessions:validateExamSessions(value.learning.sessions)};
+    if(value.version===3) {
+      const practice=value.learning.practice??[],saved=value.learning.savedQuestions??[];
+      if(!Array.isArray(practice)||practice.length>1000||!Array.isArray(saved)||saved.length>10000||saved.some(id=>typeof id!=="string"||!/^(?:demre|personal):[a-f\d]{64}:\d+$/.test(id)))throw new Error("El respaldo contiene práctica inválida.");
+      for(const record of practice){if(!isObject(record)||!["exam","playground"].includes(String(record.mode))||typeof record.sourceId!=="string"||record.sourceId.length>160)throw new Error("Fuente de práctica inválida.");validatePracticeSession(record.session as PracticeSession);}
+      learning.practice=practice as NonNullable<BackupManifest["learning"]>["practice"];learning.savedQuestions=saved as string[];
+    }
   }
-  return { format: "paessed-browser-backup", version: value.version as 1|2, createdAt: value.createdAt,
+  return { format: "paessed-browser-backup", version: value.version as 1|2|3, createdAt: value.createdAt,
     categories: cats, items, exams, learning };
 }
 
@@ -339,6 +345,8 @@ export async function restoreLocalBackup(
   if(selected.includes("learning")&&preview.manifest.learning){
     await restoreLearningState(preview.manifest.learning.state);
     await restoreExamSessions(preview.manifest.learning.sessions);
+    for(const record of preview.manifest.learning.practice??[])await savePracticeSession(record.mode,record.sourceId,record.session);
+    for(const id of preview.manifest.learning.savedQuestions??[])await saveQuestion(id,true);
     result.entriesApplied++;
   }
   if (selected.includes("exams")) {
@@ -351,10 +359,11 @@ export async function restoreLocalBackup(
   }
   for (const item of preview.manifest.items) {
     if (!selected.includes(item.category)) continue;
-    const original = localStorage.getItem(item.key);
+    const original = localStorage.getItem(scopedStorageKey(item.key));
     if (!isProgressKey(item.key)) {
       if (original !== null && !overwrite) { result.entriesSkipped++; continue; }
-      localStorage.setItem(item.key, item.value);
+      localStorage.setItem(scopedStorageKey(item.key), item.value);
+      if(item.key==="paessed-playground-saved-questions"){const ids:unknown=JSON.parse(item.value);if(Array.isArray(ids))for(const id of ids)if(typeof id==="string"&&/^(?:demre|personal):[a-f\d]{64}:\d+$/.test(id))await saveQuestion(id,true);}
       result.entriesApplied++;
       continue;
     }
@@ -376,7 +385,7 @@ export async function restoreLocalBackup(
     for (const field of allowedFields(item.key, item.category)) {
       if (Object.prototype.hasOwnProperty.call(incoming, field)) current[field] = incoming[field];
     }
-    localStorage.setItem(item.key, JSON.stringify(current));
+    localStorage.setItem(scopedStorageKey(item.key), JSON.stringify(current));
     if (demo) window.dispatchEvent(new Event(DEMO_EXAM_EVENT));
     result.entriesApplied++;
   }

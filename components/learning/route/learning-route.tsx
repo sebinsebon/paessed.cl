@@ -20,8 +20,9 @@ import {
   Zap,
 } from "lucide-react";
 import { M1_AXES, getM1Unit } from "@/lib/m1-curriculum";
-import { getLearningStats } from "@/lib/learning/engine";
+import { getLearningStats, hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
 import { masteryPresentation } from "@/lib/learning/presentation";
+import { useDevMode } from "@/components/dev-context";
 import type {
   DailyGoal,
   LearningAction,
@@ -152,7 +153,8 @@ export function LearningRouteDashboard({
   // Nodos y estado
   const current = state.nodes.find((node) => node.state !== "completed");
   const completed = state.nodes.filter((node) => node.state === "completed");
-  const diagnosticDone = !!state.diagnostic?.completedAt;
+  const { active: devMode } = useDevMode();
+  const diagnosticDone = devMode || hasCompletedInitialDiagnostic(state);
 
   // Cálculo del bloque de 7 nodos
   const currentPosition = current ? current.position : Math.max(0, state.nodes.length - 1);

@@ -21,7 +21,7 @@ test("Default exam delivers real evidence, resumes, and backup restores into a f
   await expect(page.getByRole("heading",{name:"Copias de seguridad"})).toBeVisible();
   const download=page.waitForEvent("download");await page.getByRole("button",{name:"Descargar respaldo"}).click();
   const bytes=fs.readFileSync(await(await download).path());
-  const zip=await JSZip.loadAsync(bytes);const manifest=JSON.parse(await zip.file("manifest.json").async("string"));expect(manifest.version).toBe(2);expect(manifest.learning.state.attempts).toHaveLength(1);
+  const zip=await JSZip.loadAsync(bytes);const manifest=JSON.parse(await zip.file("manifest.json").async("string"));expect(manifest.version).toBe(3);expect(manifest.learning.state.attempts).toHaveLength(1);
   const fresh=await browser.newContext();const target=await fresh.newPage();await target.goto("/app/perfil");
   await expect(target.getByTestId("backup-panel")).toHaveAttribute("data-ready","true");
   await target.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({name:"PAESSED.zip",mimeType:"application/zip",buffer:bytes});

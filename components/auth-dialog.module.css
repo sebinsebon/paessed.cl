@@ -1,0 +1,7 @@
+.dialog { padding:24px 28px; }
+.dialog>section { border:0; box-shadow:none; padding:24px 0 0; max-width:none; }
+.back,.later { min-height:40px; cursor:pointer; font-size:13px; color:var(--muted); font-weight:700; }
+.back:hover,.later:hover { color:var(--text); }
+.later { display:block; margin:14px auto 0; }
+.explanation { margin:-10px 0 24px; font-size:14px; line-height:1.75; color:var(--muted); text-align:center; }
+@media(max-width:480px) { .dialog { padding:20px 24px; } }

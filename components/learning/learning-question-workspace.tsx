@@ -20,6 +20,7 @@ import { useQuestionTimer } from "./workspace/use-question-timer";
 import { MobilePenButton } from "./workspace/mobile-pen-button";
 import { AnswerEffects } from "./workspace/answer-effects";
 import styles from "./workspace/mobile-question.module.css";
+import { listSavedQuestions, saveQuestion, scopedStorageKey, LOCAL_CHANGED } from "@/lib/sync/local";
 
 const SAVED_QUESTIONS = "paessed-playground-saved-questions";
 const INKS = ["#2563eb", "#e11d48", "#16a34a", "#f97316", "#111827"] as const;
@@ -37,7 +38,7 @@ function paperStyle(theme: QuestionPaperTheme): CSSProperties {
 }
 
 function readSavedIds(): string[] {
-  const parsed: unknown = JSON.parse(localStorage.getItem(SAVED_QUESTIONS) ?? "[]");
+  const parsed: unknown = JSON.parse(localStorage.getItem(scopedStorageKey(SAVED_QUESTIONS)) ?? "[]");
   return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
 }
 
@@ -114,23 +115,25 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   useEffect(() => {
     setTheme(readQuestionPaperTheme());
     const syncSaved = () => {
-      try { setSaved(readSavedIds().includes(meta.id)); }
-      catch { setStorageError("No se pudieron leer tus preguntas guardadas."); }
+      void listSavedQuestions().then(ids => setSaved(ids.includes(meta.id)))
+        .catch(() => setStorageError("No se pudieron leer tus preguntas guardadas."));
     };
     syncSaved();
     const onStorage = (event: StorageEvent) => { if (event.key === SAVED_QUESTIONS) syncSaved(); };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener(LOCAL_CHANGED, syncSaved);
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener(LOCAL_CHANGED, syncSaved); };
   }, [meta.id]);
   useEffect(() => {
     if (!sheetReady) return;
     setFigures(Array.from(sheetRef.current?.querySelectorAll<HTMLImageElement>("img") ?? []).map(img => ({ src: img.currentSrc || img.src, alt: img.alt || "Figura del ejercicio", width: img.naturalWidth })));
   }, [sheetReady, content?.question]);
-  const toggleSaved = () => {
+  const toggleSaved = async () => {
     try {
-      const ids = readSavedIds();
+      const ids = await listSavedQuestions();
       const next = ids.includes(meta.id) ? ids.filter(id => id !== meta.id) : [...ids, meta.id];
-      localStorage.setItem(SAVED_QUESTIONS, JSON.stringify(next));
+      await saveQuestion(meta.id, next.includes(meta.id));
+      localStorage.setItem(scopedStorageKey(SAVED_QUESTIONS), JSON.stringify(next));
       setSaved(next.includes(meta.id)); setStorageError("");
       window.dispatchEvent(new Event("paessed-saved-questions-change"));
     } catch { setStorageError("No se pudo guardar la pregunta en este navegador."); }
@@ -193,7 +196,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     {timer.enabled && <span className={`${styles.timer} ${styles.bodyTimer}`} data-testid="learning-question-timer" aria-label={`Tiempo activo: ${timer.label}`}>{timer.label}</span>}
     {error ? <LearningError message={error} retry={retry} /> : !question || !ready ? <LearningLoading label="Cargando la pregunta original…" /> : <>
       <div className="min-w-0" onPointerDownCapture={() => { if (panel === "drawing") setPanel(null); }}>
-      <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={`paessed-learning-ink:${scratchpadKey}`} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
+      <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={scopedStorageKey(`paessed-learning-ink:${scratchpadKey}`)} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
         <div ref={sheetRef} className={styles.sheet}>
           <div ref={stemRef} tabIndex={-1} data-testid="learning-paper-stem" data-question-id={meta.id} style={QUESTION_PAPER_FONT} className={`${styles.stem} max-w-[1060px] text-[18px] leading-[1.55] text-[var(--pg-fg)] focus:outline-none sm:text-[21px]`}>{question.stemBlocks?.length ? <PaessedBlocks blocks={question.stemBlocks} assetUrls={resourceUrls.byId} /> : <p className="whitespace-pre-line">{question.stem}</p>}</div>
           <AdaptiveAlternatives frozen={!!checkedAnswer || inkLocked} contentKey={meta.id}>

@@ -25,6 +25,7 @@ import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
 import { type ImportedExamSummary, type ImportedExamProgressSummary, deleteImportedExam, getImportedExam, listImportedExams, readImportedExamProgress } from "@/lib/local-imports";
 import { DEFAULT_EXAMS } from "@/lib/default-exams";
+import { listPracticeSessions, LOCAL_CHANGED } from "@/lib/sync/local";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
 
 type ExamRow = {
@@ -423,6 +424,7 @@ export function ExamsExperience() {
   const [source, setSource] = useState<ExamSource>("default");
   const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
   const [importError, setImportError] = useState(false);
+  const [personalSources, setPersonalSources] = useState<Array<{ hash: string; answers: number }>>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOrder>("recent");
   const [page, setPage] = useState(1);
@@ -446,6 +448,15 @@ export function ExamsExperience() {
       .then((items) => { if (active) setImportedExams(items); })
       .catch(() => { if (active) setImportError(true); });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    const refresh = () => { void listPracticeSessions().then(items => {
+      if (live) setPersonalSources(items.filter(item => item.mode === "exam" && item.sourceId.startsWith("sha256:")).map(item => ({ hash: item.sourceId.slice(7), answers: Object.keys(item.session.answers).length })));
+    }).catch(() => { if (live) setImportError(true); }); };
+    refresh(); window.addEventListener(LOCAL_CHANGED, refresh);
+    return () => { live = false; window.removeEventListener(LOCAL_CHANGED, refresh); };
   }, []);
 
   useEffect(() => {
@@ -569,6 +580,7 @@ export function ExamsExperience() {
 
   return (
     <AppShell title="Ensayos" eyebrow="Historial y práctica" wide>
+      {personalSources.filter(item => !importedExams.some(exam => exam.sourceHash === item.hash)).map(item => <section key={item.hash} className="surface mx-auto mb-4 max-w-[1460px] rounded-xl p-4"><h2 className="font-bold">Requiere importar el archivo</h2><p className="mt-2 text-sm text-[var(--muted)]">{item.answers} respuestas guardadas de una fuente personal. Importa el mismo archivo para continuar.</p><p className="mt-2 break-all font-mono text-xs text-[var(--muted)]">{item.hash.slice(0, 16)}…</p><button type="button" className="soft-button mt-3 rounded-xl px-4 py-3 text-sm font-bold" onClick={() => setShowImportPanel(true)}>Importar archivo coincidente</button></section>)}
       <AnimatePresence initial={false} mode="popLayout">
         {!showImportPanel ? (
           <motion.div

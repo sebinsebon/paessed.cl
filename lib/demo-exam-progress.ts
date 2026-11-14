@@ -2,6 +2,7 @@
  * Resumable progress for the prototype 65-question M1 essay.
  * Local-only by design: the imported .paessed viewer has a separate data flow.
  */
+import { scopedStorageKey } from "./sync/local.ts";
 export const DEMO_EXAM_STORAGE_KEY = "paessed-demo-exam-progress-v1";
 export const DEMO_EXAM_EVENT = "paessed-demo-exam-progress-changed";
 export const DEMO_EXAM_QUESTION_COUNT = 65;
@@ -72,7 +73,7 @@ export function parseDemoExamProgress(value: unknown): DemoExamProgress | null {
 export function readDemoExamProgress(): DemoExamProgress | null {
   if (typeof window === "undefined") return null;
   try {
-    const stored = window.localStorage.getItem(DEMO_EXAM_STORAGE_KEY);
+    const stored = window.localStorage.getItem(scopedStorageKey(DEMO_EXAM_STORAGE_KEY));
     return stored ? parseDemoExamProgress(JSON.parse(stored)) : null;
   } catch {
     return null;
@@ -82,13 +83,13 @@ export function readDemoExamProgress(): DemoExamProgress | null {
 export function writeDemoExamProgress(progress: DemoExamProgress): boolean {
   if (typeof window === "undefined") return false;
   try {
-    window.localStorage.setItem(DEMO_EXAM_STORAGE_KEY, JSON.stringify(progress));
+    window.localStorage.setItem(scopedStorageKey(DEMO_EXAM_STORAGE_KEY), JSON.stringify(progress));
     window.dispatchEvent(new Event(DEMO_EXAM_EVENT));
     return true;
   } catch {
     // Ink can exceed browser storage limits; keep answers and timer if so.
     try {
-      window.localStorage.setItem(DEMO_EXAM_STORAGE_KEY,
+      window.localStorage.setItem(scopedStorageKey(DEMO_EXAM_STORAGE_KEY),
         JSON.stringify({ ...progress, strokesByQuestion: {} }));
       window.dispatchEvent(new Event(DEMO_EXAM_EVENT));
       return true;
@@ -101,7 +102,7 @@ export function writeDemoExamProgress(progress: DemoExamProgress): boolean {
 export function clearDemoExamProgress() {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(DEMO_EXAM_STORAGE_KEY);
+    window.localStorage.removeItem(scopedStorageKey(DEMO_EXAM_STORAGE_KEY));
     window.dispatchEvent(new Event(DEMO_EXAM_EVENT));
   } catch {
     // Storage may be disabled.

@@ -13,6 +13,7 @@ import { DEFAULT_EXAMS } from "@/lib/default-exams";
 import { blockAssetIds } from "@/lib/imported-resources";
 import { DEFAULT_QUESTION_INDEX,defaultBankPlaceholders,loadQuestionContent } from "@/lib/learning/catalog";
 import { recordEvidence } from "@/lib/learning/evidence";
+import { readPlaygroundSession, savePlaygroundSession, listSavedQuestions, scopedStorageKey, LOCAL_CHANGED, type PracticeSession } from "@/lib/sync/local";
 import type { ImportedExamRecord } from "@/lib/local-imports";
 import { ImportedExamSummary,listImportedExams } from "@/lib/local-imports";
 import { type M1UnitId } from "@/lib/m1-curriculum";
@@ -396,6 +397,9 @@ export function PlaygroundExperience() {
   const [defaultQuestions, setDefaultQuestions] = useState<BankQuestion[]>(defaultBankPlaceholders);
   const [defaultRecords, setDefaultRecords] = useState<Record<string, ImportedExamRecord>>({});
   const evidenceSession = useRef("");
+  const [resumable, setResumable] = useState<PracticeSession | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const lastSavedPractice = useRef("");
   const [year, setYear] = useState("all");
   const [selectedUnitIds, setSelectedUnitIds] = useState<M1UnitId[]>(() => [...ALL_M1_UNIT_IDS]);
   const [importedQuestions, setImportedQuestions] = useState<PlaygroundQuestion[]>([]);
@@ -435,10 +439,23 @@ export function PlaygroundExperience() {
   const [checking, setChecking] = useState(false);
   const checkingRef = useRef(false);
 
-  const questionBank = [...defaultQuestions, ...playgroundQuestions, ...importedQuestions].filter((q,i,all)=>all.findIndex(other=>other.id===q.id)===i);
+  useEffect(() => {
+    void readPlaygroundSession("playground").then(session => { setResumable(session); setSessionReady(true); })
+      .catch(error => { setSaveError(error.message); setSessionReady(true); });
+  }, []);
+  useEffect(() => {
+    if (!sessionReady || !isPracticing || !evidenceSession.current || !order.length) return;
+    const session: PracticeSession = { id: evidenceSession.current, index: position, questionIds: order,
+      answers, confirmed: Object.keys(revealed).filter(id => revealed[id]) };
+    const signature = JSON.stringify(session);
+    if (signature === lastSavedPractice.current) return;
+    void savePlaygroundSession("playground", session).then(() => { lastSavedPractice.current = signature; setResumable(session); })
+      .catch(error => setSaveError(error.message));
+  }, [sessionReady, isPracticing, order, position, answers, revealed]);
+
+  const questionBank = [...defaultQuestions, ...importedQuestions].filter((q,i,all)=>all.findIndex(other=>other.id===q.id)===i);
   const sources: BankSource[] = [
     ...DEFAULT_EXAMS.map(e => ({id:"default:"+e.id,name:e.title,count:e.questionCount,imported:false})),
-    { id: "demo", name: "Preguntas de demostración", count: playgroundQuestions.length, imported: false },
     ...importedSources,
   ];
   const questions = filterPlaygroundQuestions({ year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }, savedQuestionIds, questionBank);
@@ -516,12 +533,18 @@ export function PlaygroundExperience() {
     setFilterDecisionOpen(false);
     setSettingsOpen(true);
   };
-  const commitPracticeFilters = (
+  const closePreviousPractice = async () => {
+    const previous = await readPlaygroundSession("playground");
+    if (previous && !previous.completedAt) await savePlaygroundSession("playground", { ...previous, completedAt: new Date().toISOString() });
+  };
+  const commitPracticeFilters = async (
     filters: QueuedTopicFilters,
     matching: PlaygroundQuestion[],
     avoidId?: string
   ) => {
     if (!matching.length) return;
+    try { await closePreviousPractice(); } catch (error) { setSaveError(error instanceof Error ? error.message : "No se pudo cerrar la práctica anterior."); return; }
+    evidenceSession.current = crypto.randomUUID();
     const shuffled = shufflePlaygroundQuestions(matching);
     const chosenIndex = filters.question === "random" ? -1 : shuffled.indexOf(filters.question);
     if (chosenIndex > 0) {
@@ -562,7 +585,7 @@ export function PlaygroundExperience() {
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("paessed-playground-recent-questions") ?? "[]");
+      const stored = JSON.parse(localStorage.getItem(scopedStorageKey("paessed-playground-recent-questions")) ?? "[]");
       if (!Array.isArray(stored)) return;
       const validIds = new Set([...playgroundQuestions, ...importedQuestions].map((question) => question.id));
       const unique = Array.from(new Set(stored.filter((id): id is string => typeof id === "string" && validIds.has(id))));
@@ -581,7 +604,7 @@ export function PlaygroundExperience() {
         return previous;
       }
       try {
-        localStorage.setItem("paessed-playground-recent-questions", JSON.stringify(updated));
+        localStorage.setItem(scopedStorageKey("paessed-playground-recent-questions"), JSON.stringify(updated));
       } catch {
         // History remains available in memory if browser storage is unavailable.
       }
@@ -591,17 +614,17 @@ export function PlaygroundExperience() {
 
   useEffect(() => {
     const syncSaved = () => {
-      try {
-        const stored: unknown = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
+      void listSavedQuestions().then(stored => {
         const validIds = new Set([...defaultBankPlaceholders(), ...playgroundQuestions, ...importedQuestions].map(question => question.id));
         setSavedQuestionIds(Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string" && validIds.has(id)) : []);
-      } catch { setSaveError("No se pudieron cargar las preguntas guardadas de este navegador."); }
+      }).catch(() => setSaveError("No se pudieron cargar las preguntas guardadas de este navegador."));
     };
     const onStorage = (event: StorageEvent) => { if (event.key === "paessed-playground-saved-questions" || event.key === null) syncSaved(); };
     syncSaved();
     window.addEventListener("paessed-saved-questions-change", syncSaved);
+    window.addEventListener(LOCAL_CHANGED, syncSaved);
     window.addEventListener("storage", onStorage);
-    return () => { window.removeEventListener("paessed-saved-questions-change", syncSaved); window.removeEventListener("storage", onStorage); };
+    return () => { window.removeEventListener("paessed-saved-questions-change", syncSaved); window.removeEventListener("storage", onStorage); window.removeEventListener(LOCAL_CHANGED, syncSaved); };
   }, [importedQuestions]);
 
   useEffect(() => {
@@ -654,10 +677,11 @@ export function PlaygroundExperience() {
     setPendingAction(null);
   }, [current?.id, selectedAnswer]);
 
-  const beginSession = (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }) => {
+  const beginSession = async (pool: PlaygroundQuestion[], firstId: string, filters: TopicFilters = { year, unitIds: selectedUnitIds, questionIds: chosenQuestionIds, savedOnly }) => {
+    if (!pool.length) return;
+    try { await closePreviousPractice(); } catch (error) { setSaveError(error instanceof Error ? error.message : "No se pudo cerrar la práctica anterior."); return; }
     evidenceSession.current = crypto.randomUUID();
     setSessionFilters({ year: filters.year, unitIds: [...filters.unitIds], questionIds: [...filters.questionIds], savedOnly: filters.savedOnly });
-    if (!pool.length) return;
     const randomizedIds = shufflePlaygroundQuestions(pool);
     const chosenIndex = randomizedIds.indexOf(firstId);
     if (chosenIndex > 0) {
@@ -679,6 +703,14 @@ export function PlaygroundExperience() {
   };
 
   const startPractice = () => beginSession(questions, selectedStartQuestion);
+  const resumePractice = () => {
+    if (!resumable?.questionIds?.length) return;
+    evidenceSession.current = resumable.id;
+    setOrder(resumable.questionIds); setPosition(resumable.index); setAnswers(resumable.answers);
+    setRevealed(Object.fromEntries((resumable.confirmed ?? []).map(id => [id, true])));
+    setSessionFilters({ year: "all", unitIds: [...ALL_M1_UNIT_IDS], questionIds: resumable.questionIds, savedOnly: false });
+    setIsPracticing(true);
+  };
 
   const revisitQuestion = (questionId: string) => {
     // A history entry must always be reachable, even if the current filters exclude it.
@@ -692,7 +724,7 @@ export function PlaygroundExperience() {
 
   // Advance deliberately only after checking an answer. Deferred filters take
   // effect here, never while the student is working on the current question.
-  const advanceQuestion = () => {
+  const advanceQuestion = async () => {
     if (!isRevealed) return;
     if (queuedFilters) {
       const matching = filterPlaygroundQuestions(queuedFilters, savedQuestionIds, questionBank);
@@ -712,6 +744,8 @@ export function PlaygroundExperience() {
     if (nextOrder.length > 1 && nextOrder[0] === current?.id) {
       [nextOrder[0], nextOrder[1]] = [nextOrder[1], nextOrder[0]];
     }
+    try { await closePreviousPractice(); } catch (error) { setSaveError(error instanceof Error ? error.message : "No se pudo cerrar la práctica anterior."); return; }
+    evidenceSession.current = crypto.randomUUID();
     setOrder(nextOrder);
     setPosition(0);
     setAnswers({});
@@ -727,6 +761,7 @@ export function PlaygroundExperience() {
     setPendingAction(null);
     checkingRef.current = true; setChecking(true);
     try {
+      await savePlaygroundSession("playground", { id: evidenceSession.current, index: position, questionIds: order, answers, confirmed: [...Object.keys(revealed).filter(id => revealed[id]), current.id] });
       await recordEvidence({type:"external-attempt",questionId:current.id,answer:selectedAnswer,mode:"playground",sessionId:evidenceSession.current});
       setSaveError(null);
     } catch (e) { setSaveError(e instanceof Error?e.message:"No se pudo guardar la respuesta.");return; }
@@ -757,6 +792,7 @@ export function PlaygroundExperience() {
             </p>
           </div>
         </header>
+        {resumable && <section className="surface mb-5 rounded-2xl p-4"><h2 className="font-bold">Tu última sesión</h2><p className="mt-2 text-sm text-[var(--muted)]">{Object.keys(resumable.answers).length} respuestas guardadas.</p><button className="soft-button mt-3 rounded-xl px-4 py-3 font-bold" onClick={resumePractice}>Continuar práctica</button>{resumable.questionIds?.some(id => !questionBank.some(q => q.id === id)) && <p className="mt-2 text-sm">Requiere importar el archivo para recuperar todas las preguntas.</p>}</section>}
 
         
         <div>

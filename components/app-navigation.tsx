@@ -7,6 +7,7 @@ import { sileo } from "sileo";
 import { Bell, Check, ChevronLeft, ChevronRight, CircleHelp, Clock3, Play, Sun, Moon, Target, X } from "lucide-react";
 import { DEMO_EXAM_EVENT, DEMO_EXAM_QUESTION_COUNT, answeredDemoExamCount, readDemoExamProgress, type DemoExamProgress } from "@/lib/demo-exam-progress";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
+import { getSyncOwner } from "@/lib/sync/local";
 
 export function announce(title: string, subtitle: string, variant: "info" | "success" = "info") {
   sileo.clear();
@@ -396,7 +397,7 @@ function HomeActions({
           onClick={() => setProfileOpen((value) => !value)}
           className="soft-button grid h-10 w-10 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[11px] font-extrabold text-[var(--text)]"
         >
-          SB
+          MI
         </motion.button>
 
         <AnimatePresence>
@@ -420,10 +421,10 @@ function HomeActions({
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-full border text-[11px] font-extrabold"
                   style={{ borderColor: "color-mix(in srgb, var(--primary) 28%, var(--border))", background: "var(--surface-2)", color: "var(--text)" }}
                 >
-                  SB
+                  MI
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-extrabold text-[var(--text)]">Mi perfil local</div>
+                  <div className="text-sm font-extrabold text-[var(--text)]">Mi perfil</div>
                   <div className="mt-0.5 text-[11px] font-medium text-[var(--muted)]">Estudiante · Matemática M1</div>
                 </div>
               </Link>
@@ -440,7 +441,7 @@ function HomeActions({
                 Recorrido de ayuda
               </button>
 
-              <div className="mt-2 px-2.5 pt-2 text-[10px] font-medium text-[var(--muted-2)]">Perfil de demostración</div>
+              <div className="mt-2 px-2.5 pt-2 text-[10px] font-medium text-[var(--muted-2)]">{getSyncOwner() ? "Cuenta personal" : "Modo invitado · Solo este dispositivo"}</div>
             </motion.div>
           )}
         </AnimatePresence>

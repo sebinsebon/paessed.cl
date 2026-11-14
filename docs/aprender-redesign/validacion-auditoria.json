@@ -1,0 +1,34 @@
+{
+  "mode": "reproductions-only-no-application-changes",
+  "reinforcementWeakGroupMissing": {
+    "confirmed": true,
+    "algebraReinforcement": [
+      {
+        "position": 2,
+        "unitId": "expresiones-algebraicas",
+        "percent": 0
+      },
+      {
+        "position": 7,
+        "unitId": "proporcionalidad",
+        "percent": 100
+      },
+      {
+        "position": 13,
+        "unitId": "ecuaciones-inecuaciones-primer-grado",
+        "percent": 100
+      }
+    ]
+  },
+  "sparseNodeMixedUnits": {
+    "confirmed": true,
+    "labelUnit": "numeros-enteros-racionales",
+    "contents": [
+      "numeros-enteros-racionales",
+      "numeros-enteros-racionales",
+      "numeros-enteros-racionales",
+      "semejanza-proporcionalidad-figuras",
+      "potencias-raices-enesimas"
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { scopedStorageKey } from "@/lib/sync/local";
 
 const PREFERENCE = "paessed-learning-timer-enabled";
 type TimerRecord = { version: 1; elapsedMs: number; frozen: boolean };
@@ -21,7 +22,7 @@ export function useQuestionTimer({ timerKey, ready, paused, frozen }: {
     catch { setError("No se pudo leer la preferencia del cronómetro."); }
   }, []);
   useEffect(() => {
-    const key = `paessed-learning-timer:${timerKey}`;
+    const key = scopedStorageKey(`paessed-learning-timer:${timerKey}`);
     let value = memory.get(key);
     try {
       if (!value) {
@@ -37,7 +38,7 @@ export function useQuestionTimer({ timerKey, ready, paused, frozen }: {
 
   useEffect(() => {
     if (loadedKey !== timerKey) return;
-    const key = `paessed-learning-timer:${timerKey}`;
+    const key = scopedStorageKey(`paessed-learning-timer:${timerKey}`);
     let start: number | null = null;
     const persist = () => {
       memory.set(key, { ...record.current });

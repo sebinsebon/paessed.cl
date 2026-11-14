@@ -13,6 +13,8 @@ import { recordEvidence } from "@/lib/learning/evidence";
 import { IMPORTED_EXAM_PROGRESS_PREFIX,getImportedExam,type ImportedExamRecord } from "@/lib/local-imports";
 import { convertImportedExamQuestions } from "@/lib/playground-imports";
 import { canonicalQuestionId } from "@/lib/question-identity";
+import { personalSourceHash, personalQuestionReference, personalSourceRevision, originalQuestionNumber } from "@/lib/personal-source";
+import { readPracticeSession, savePracticeSession, scopedStorageKey } from "@/lib/sync/local";
 import { readQuestionPaperTheme } from "@/lib/question-paper";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +38,7 @@ type SavedImportedProgress = {
 function readSavedProgress(id: string, questionCount: number): SavedImportedProgress {
   const empty: SavedImportedProgress = { sessionId: crypto.randomUUID(), assisted: [], legacyExposed: [], index: 0, answers: {}, bookmarks: [], strokes: {} };
   try {
-    const stored = localStorage.getItem(PROGRESS_PREFIX + id);
+    const stored = localStorage.getItem(scopedStorageKey(PROGRESS_PREFIX + id));
     if (!stored) return empty;
     const candidate: unknown = JSON.parse(stored);
     if (!isRecord(candidate)) return empty;
@@ -57,14 +59,15 @@ function readSavedProgress(id: string, questionCount: number): SavedImportedProg
       : [];
     const strokes = isRecord(candidate.strokes) ? candidate.strokes as Record<number, PlaygroundInkStroke[]> : {};
     const validIndices = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((i): i is number => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < questionCount))] : [];
-    const sessionId = typeof candidate.sessionId === "string" && candidate.sessionId ? candidate.sessionId : empty.sessionId;
+    const validSessionId = typeof candidate.sessionId === "string" && /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(candidate.sessionId);
+    const sessionId = validSessionId ? candidate.sessionId as string : empty.sessionId;
     const completedAt = typeof candidate.completedAt === "string" && Number.isFinite(Date.parse(candidate.completedAt)) ? candidate.completedAt : undefined;
     const submittedAnswers = completedAt && isRecord(candidate.submittedAnswers)
       ? Object.fromEntries(Object.entries(candidate.submittedAnswers).filter(([key, answer]) => /^\d+$/.test(key) && Number(key) < questionCount && typeof answer === "string")) as Record<string, string> : undefined;
     return { index, answers: submittedAnswers ?? answers, bookmarks, strokes, sessionId, completedAt, submittedAnswers,
       evidenceDelivered: candidate.evidenceDelivered === true,
       assisted: validIndices(candidate.assisted),
-      legacyExposed: typeof candidate.sessionId === "string" ? validIndices(candidate.legacyExposed) : Array.from({ length: questionCount }, (_, i) => i) };
+      legacyExposed: validSessionId ? validIndices(candidate.legacyExposed) : Array.from({ length: questionCount }, (_, i) => i) };
   } catch {
     return empty;
   }
@@ -73,6 +76,9 @@ function readSavedProgress(id: string, questionCount: number): SavedImportedProg
 export function ImportedExamViewer({ id }: { id: string }) {
   const router = useRouter();
   const [record, setRecord] = useState<ImportedExamRecord | null>(null);
+  const [sourceHash, setSourceHash] = useState("");
+  const [sourceRevision, setSourceRevision] = useState("");
+  const lastProjection = useRef("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [active, setActive] = useState(0);
@@ -115,12 +121,27 @@ export function ImportedExamViewer({ id }: { id: string }) {
       return;
     }
     void getImportedExam(id)
-      .then((value) => {
+      .then(async (value) => {
         if (cancelled) return;
-        setRecord(value);
         if (value) {
-          const count = getQuestions(value.finalJson).length;
+          const items = getQuestions(value.finalJson);
+          const count = items.length;
+          const [hash, revision] = await Promise.all([personalSourceHash(value), personalSourceRevision(value)]);
+          const references = items.map((question, i) => personalQuestionReference(value, hash, originalQuestionNumber(question, i)));
+          const synced = await readPracticeSession("exam", `sha256:${hash}`);
+          if (cancelled) return;
+          setSourceHash(hash);
+          setSourceRevision(revision);
           const previous = readSavedProgress(id, count);
+          if (synced) {
+            previous.sessionId = synced.id;
+            previous.index = Math.min(synced.index, count - 1);
+            previous.answers = Object.fromEntries(references.flatMap((key, i) => synced.answers[key] ? [[String(i), synced.answers[key]]] : []));
+            previous.completedAt = synced.completedAt;
+            previous.submittedAnswers = synced.completedAt ? previous.answers : undefined;
+            previous.assisted = references.flatMap((key, i) => synced.assisted?.includes(key) ? [i] : []);
+            previous.evidenceDelivered = synced.evidenceDelivered;
+          }
           setActive(previous.index);
           setAnswers(previous.answers);
           setBookmarks(previous.bookmarks);
@@ -132,6 +153,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
           setAssisted(previous.assisted); assistedRef.current = previous.assisted;
           setLegacyExposed(previous.legacyExposed);
         }
+        setRecord(value);
         setRestored(true);
       })
       .catch(() => {
@@ -147,17 +169,17 @@ export function ImportedExamViewer({ id }: { id: string }) {
   useEffect(() => {
     if (!restored || !record) return;
     try {
-      const saved = JSON.parse(localStorage.getItem(PROGRESS_PREFIX + id) ?? "null") as SavedImportedProgress | null;
+      const saved = JSON.parse(localStorage.getItem(scopedStorageKey(PROGRESS_PREFIX + id)) ?? "null") as SavedImportedProgress | null;
       if (saved?.completedAt && !completedAt) {
         setCompletedAt(saved.completedAt); setSubmittedAnswers(saved.submittedAnswers ?? saved.answers); setAnswers(saved.submittedAnswers ?? saved.answers); setEvidenceDelivered(!!saved.evidenceDelivered); return;
       }
       const next: SavedImportedProgress = { index: active, answers, bookmarks, strokes, sessionId, completedAt, submittedAnswers, evidenceDelivered, assisted, legacyExposed };
-      localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify(next));
+      localStorage.setItem(scopedStorageKey(PROGRESS_PREFIX + id), JSON.stringify(next));
       setProgressError("");
     } catch {
       // Large drawings may exceed localStorage quota. Preserve answers when possible.
       try {
-        localStorage.setItem(PROGRESS_PREFIX + id,
+        localStorage.setItem(scopedStorageKey(PROGRESS_PREFIX + id),
           JSON.stringify({ index: active, answers, bookmarks, strokes: {}, sessionId, completedAt, submittedAnswers, evidenceDelivered, assisted, legacyExposed }));
       } catch {
         setProgressError("No se pudo guardar tu progreso. Libera espacio o habilita el almacenamiento antes de entregar.");
@@ -170,6 +192,17 @@ export function ImportedExamViewer({ id }: { id: string }) {
   }, []);
 
   const questions = useMemo(() => getQuestions(record?.finalJson), [record]);
+  useEffect(() => {
+    if (!restored || !record || !sourceHash || !sessionId) return;
+    const refs = questions.map((question, i) => personalQuestionReference(record, sourceHash, originalQuestionNumber(question, i)));
+    const session = { id: sessionId, index: active, questionIds: refs,
+      answers: Object.fromEntries(Object.entries(submittedAnswers ?? answers).flatMap(([index, answer]) => refs[Number(index)] && /^[A-E]$/.test(answer) ? [[refs[Number(index)], answer]] : [])),
+      assisted: assisted.map(i => refs[i]).filter(Boolean), ...(completedAt ? { completedAt } : {}), evidenceDelivered, sourceRevision };
+    const signature = JSON.stringify(session);
+    if (signature === lastProjection.current) return;
+    void savePracticeSession("exam", `sha256:${sourceHash}`, session).then(() => { lastProjection.current = signature; })
+      .catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo guardar la sesión."));
+  }, [restored, record, sourceHash, sourceRevision, sessionId, active, questions, answers, submittedAnswers, assisted, completedAt, evidenceDelivered]);
   const current = questions[active];
   const currentOptions = useMemo(() => getOptions(current), [current]);
   const aiQuestion = {
@@ -244,7 +277,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
     assistedRef.current = next; setAssisted(next);
     try {
       const saved = readSavedProgress(id, questions.length);
-      localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify({ ...saved, assisted: next }));
+      localStorage.setItem(scopedStorageKey(PROGRESS_PREFIX + id), JSON.stringify({ ...saved, assisted: next }));
     } catch { setProgressError("No se pudo guardar el uso de ayuda. No cierres esta pestaña antes de entregar."); }
     if (meta) void recordEvidence({ type: "expose", questionId: meta.id, sessionId, mode: "exam", assisted: true }).catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo guardar el uso de ayuda."));
   };
@@ -259,7 +292,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
       const completion = saved.completedAt ?? new Date().toISOString();
       const helped = [...new Set([...assistedRef.current, ...saved.assisted])];
       const locked: SavedImportedProgress = { index: active, answers: snapshot, bookmarks, strokes, sessionId: saved.sessionId, completedAt: completion, submittedAnswers: snapshot, evidenceDelivered: !!saved.evidenceDelivered, assisted: helped, legacyExposed };
-      localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify(locked));
+      localStorage.setItem(scopedStorageKey(PROGRESS_PREFIX + id), JSON.stringify(locked));
       setAnswers(snapshot); setSubmittedAnswers(snapshot); setCompletedAt(completion); setDeliveryOpen(false);
       await exposeLegacy();
       if (!locked.evidenceDelivered) {
@@ -268,7 +301,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
           if (!meta || !answer) continue;
           await recordEvidence({ type: "external-attempt", questionId: meta.id, sessionId: locked.sessionId, mode: "exam", answer, assisted: helped.includes(i) });
         }
-        localStorage.setItem(PROGRESS_PREFIX + id, JSON.stringify({ ...locked, evidenceDelivered: true }));
+        localStorage.setItem(scopedStorageKey(PROGRESS_PREFIX + id), JSON.stringify({ ...locked, evidenceDelivered: true }));
       }
       setEvidenceDelivered(true); setProgressError("");
     } catch (error) { setProgressError(error instanceof Error ? error.message : "No se pudo registrar la entrega. Reintenta para conservar tu evidencia."); }

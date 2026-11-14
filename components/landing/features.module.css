@@ -1,0 +1,58 @@
+.features { width:100%; max-width:1280px; margin:0 auto; padding:20px 32px 88px; }
+.heading { max-width:600px; margin-bottom:32px; }
+.heading h2 { margin:0; color:var(--text); font-size:clamp(27px,3vw,36px); font-weight:800; line-height:1.25; letter-spacing:-.035em; }
+.heading p { margin:12px 0 0; color:var(--muted); font-size:15px; line-height:1.8; }
+.modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.mode { padding:30px; border:1px solid var(--border); border-bottom-width:3px; border-radius:24px; background:var(--surface); transition:transform .45s cubic-bezier(.22,1.5,.36,1),border-color .25s; }
+.mode img { width:64px; height:64px; margin-bottom:24px; object-fit:contain; transition:transform .5s cubic-bezier(.22,1.5,.36,1); }
+.mode h3 { margin:0 0 8px; color:var(--text); font-size:22px; font-weight:800; letter-spacing:-.035em; }
+.detail { color:var(--primary); font-size:13px; font-weight:800; }
+.mode p { max-width:31ch; margin:14px 0 0; color:var(--muted); font-size:14px; line-height:1.8; }
+.morePractice { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; gap:clamp(32px,5vw,72px); margin-top:64px; padding-top:56px; border-top:1px solid var(--border); }
+.importFeature { padding:36px 40px; border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border)); border-radius:28px; background:color-mix(in srgb,var(--primary) 5%,var(--surface)); }
+.importEmoji { display:block; width:56px; height:56px; margin-bottom:24px; object-fit:contain; }
+.importFeature h2 { max-width:19ch; margin:0; color:var(--text); font-size:clamp(28px,2.8vw,36px); font-weight:800; line-height:1.2; letter-spacing:-.04em; text-wrap:balance; }
+.importFeature h2 span { color:var(--primary-pressed); }
+:global(html.dark) .importFeature h2 span { color:var(--primary-accent); }
+.importFeature p { max-width:47ch; margin:20px 0 0; color:var(--text); font-size:14px; line-height:1.85; }
+.importFeature strong { font-weight:700; }
+.importFeature .importNote { margin-top:12px; color:var(--muted); }
+.importFeature .compatibility { margin-top:24px; padding-top:16px; border-top:1px solid color-mix(in srgb,var(--primary) 15%,var(--border)); color:var(--muted); font-size:12px; line-height:1.8; }
+.advantages { display:grid; gap:32px; }
+.advantage { display:grid; grid-template-columns:40px minmax(0,1fr); align-items:start; gap:18px; }
+.advantage+.advantage { padding-top:32px; border-top:1px solid var(--border); }
+.advantage img { display:block; width:40px; height:40px; object-fit:contain; }
+.advantage h3 { margin:0; color:var(--text); font-size:20px; font-weight:800; line-height:1.4; letter-spacing:-.03em; text-wrap:balance; }
+.advantage p { max-width:38ch; margin:10px 0 0; color:var(--muted); font-size:14px; line-height:1.85; }
+@media(hover:hover) and (prefers-reduced-motion:no-preference) {
+  .mode:hover { transform:translateY(-5px); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); }
+  .mode:hover img { transform:translateY(-3px) rotate(-5deg) scale(1.07); }
+}
+@supports(animation-timeline:view()) {
+  @media(prefers-reduced-motion:no-preference) {
+    .mode,.importFeature,.advantage { animation:appear both; animation-timeline:view(); animation-range:entry 0% entry 65%; }
+    @keyframes appear { from { translate:0 14px; } to { translate:0 0; } }
+  }
+}
+@media(max-width:1100px) { .mode { padding:25px; } .importFeature { padding:32px; } .advantage { gap:14px; } }
+@media(max-width:760px) {
+  .features { max-width:568px; padding:16px 24px 56px; }
+  .heading { margin-bottom:24px; }
+  .heading p { font-size:14px; }
+  .modes { grid-template-columns:1fr; gap:16px; }
+  .mode { display:grid; grid-template-columns:56px minmax(0,1fr); column-gap:20px; padding:24px; border-radius:20px; }
+  .mode img { grid-row:1 / 4; width:56px; height:56px; margin:0; }
+  .mode h3 { font-size:21px; }
+  .mode p { grid-column:2; max-width:none; margin-top:10px; }
+  .morePractice { grid-template-columns:1fr; gap:36px; margin-top:40px; padding-top:32px; }
+  .importFeature { padding:28px 24px; border-radius:24px; }
+  .importEmoji { width:48px; height:48px; margin-bottom:20px; }
+  .importFeature h2 { font-size:30px; }
+  .advantages { gap:28px; padding-inline:4px; }
+  .advantage { gap:16px; }
+  .advantage+.advantage { padding-top:28px; }
+  .advantage h3 { font-size:19px; }
+  .advantage p { max-width:none; }
+}
+@media(max-width:360px) { .features { padding-inline:20px; } .mode { padding:20px; column-gap:14px; grid-template-columns:44px minmax(0,1fr); } .mode img { width:44px; height:44px; } }
+@media(prefers-reduced-motion:reduce) { .features * { animation:none!important; transition:none!important; } }

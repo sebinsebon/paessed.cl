@@ -1,0 +1,144 @@
+.page {
+  --frame-space: 104px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  /* Equal outer tracks keep the card centered in the entire viewport. */
+  grid-template-rows: minmax(var(--frame-space), 1fr) auto minmax(var(--frame-space), 1fr);
+  background: var(--canvas);
+  color: var(--text);
+}
+
+.header {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-self: start;
+  align-items: center;
+  gap: 20px;
+  padding: 30px 32px;
+}
+
+.backLink { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--muted); font-size: 14px; font-weight: 700; text-decoration: none; }
+.backLink svg { flex-shrink: 0; }
+.backLink:hover { color: var(--text); }
+.brand { display: block; border-radius: 4px; }
+.header > button { justify-self: end; }
+.header img { display: block; width: 154px; height: auto; }
+.header .logoDark { display:none; }
+:global(html.dark) .header .logoLight { display:none; }
+:global(html.dark) .header .logoDark { display:block; }
+
+.layout {
+  /* Override global main flex sizing; the page grid owns its height. */
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px 20px;
+}
+
+.formCard {
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+  padding: 36px 32px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.formCard h1 {
+  margin: 0 0 28px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -.035em;
+}
+
+.formCard h1:focus { outline: none; }
+.formCard:has(.introduction) h1 { margin-bottom: 12px; }
+.introduction { margin-bottom: 28px; color: var(--muted); text-align: center; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.introduction > :first-child { margin-top: 0; }
+.introduction > :last-child { margin-bottom: 0; }
+
+.providers { display: grid; gap: 20px; }
+
+.button {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.button svg { flex-shrink: 0; }
+.button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.divider { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12px; }
+.divider::before, .divider::after { content: ""; height: 1px; background: var(--border); flex: 1; }
+
+.form { display: grid; gap: 20px; }
+.form:has(.fields) { margin-top: 20px; }
+.fields { display: grid; gap: 16px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.fields label { display: grid; gap: 8px; font-size: 13px; font-weight: 700; }
+
+.input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--canvas);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.input::placeholder { color: var(--muted); font-size: 13px; }
+.input:focus { border-color: var(--primary); }
+
+.links { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; margin-top: 24px; }
+.links button { min-height: 40px; padding: 6px 0; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; }
+.links button:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+.links button:disabled { opacity: .5; cursor: not-allowed; }
+
+.notice { display: grid; gap: 16px; padding: 16px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--canvas); }
+.notice p, .error, .message { margin: 0; font-size: 13px; line-height: 1.6; }
+.notice p { color: var(--muted); }
+.error, .message { margin-top: 20px; overflow-wrap: anywhere; }
+.error { color: var(--danger); }
+.message { color: var(--text); }
+
+.page :where(a, button, input, select, textarea):focus-visible,
+.formCard :where(a, button, input, select, textarea):focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+.copyright { align-self: end; padding:0 32px 24px; font-size:12px; line-height:1.6; color:var(--muted); }
+
+@media (max-width: 480px) {
+  .page { --frame-space: 84px; }
+  .header { padding: 20px; gap: 12px; }
+  .header img { width: 112px; }
+  .backLink { gap: 6px; font-size: 13px; }
+  .layout { padding: 24px 16px; }
+  .formCard { padding: 28px 24px; }
+  .formCard h1 { font-size: 26px; }
+  .copyright { padding: 0 20px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: none; transform: none; }
+}

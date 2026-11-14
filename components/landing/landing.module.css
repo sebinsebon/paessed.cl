@@ -1,0 +1,57 @@
+.page { min-height:100dvh; background:var(--canvas); color:var(--text); display:flex; flex-direction:column; overflow-x:clip; }
+.page :focus-visible { outline:3px solid var(--primary); outline-offset:5px; }
+.header { width:100%; max-width:1280px; padding:30px 32px; margin:auto; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.header img { width:166px; height:auto; }
+.logoDark { display:none; }
+:global(html.dark) .logoLight { display:none; }
+:global(html.dark) .logoDark { display:block; }
+.header nav { display:flex; align-items:center; gap:14px; }
+.accountButton { display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; min-height:44px; border-radius:12px; padding:10px 18px; font-size:13px; font-weight:800; }
+.profile { display:grid; place-items:center; min-width:44px; min-height:44px; border-radius:50%; font-size:22px; }
+.header .profile img { width:26px; height:26px; }
+.accountButton,.primaryButton,.footer button { cursor:pointer; }
+.accountButton:disabled,.primaryButton:disabled { opacity:.6; cursor:wait; }
+.footer button:hover { color:var(--primary); }
+.main { flex:1; }
+/* Preserve the first viewport's flex-grown hero when more content follows it.
+   The existing desktop header and footer occupy 106.75px and 80px. */
+.main>.hero { min-height:max(660px,calc(100dvh - 186.75px)); }
+.hero { width:100%; max-width:1280px; margin:auto; padding:70px 32px 100px; flex:1; display:grid; grid-template-columns:.9fr 1.1fr; gap:70px; align-items:center; min-height:660px; }
+.heroCopy h1 { max-width:510px; font-size:clamp(46px,4.5vw,62px); line-height:1.12; font-weight:800; letter-spacing:-.045em; margin:0; }
+.heroCopy h1>span { color:var(--primary); }
+.heroCopy>p { max-width:410px; color:var(--muted); font-size:17px; line-height:1.8; margin-top:25px; }
+.primaryButton { display:inline-flex; gap:23px; align-items:center; justify-content:center; min-height:54px; padding:14px 24px; margin-top:30px; border-radius:12px; font-size:14px; font-weight:800; }
+/* Retain the rail's original footprint after removing its 50px control row. */
+.domains { min-width:0; padding:24px 0 74px; }
+.domainHeading h2 { font-size:28px; font-weight:800; letter-spacing:-.035em; line-height:1.3; margin:0; }
+.domainHeading h2>span { color:var(--primary); }
+.domainHeading>p { color:var(--muted); font-size:14px; line-height:1.8; margin:15px 0 21px; }
+.carouselViewport { overflow:hidden; padding:8px 0; cursor:grab; touch-action:pan-y; border-radius:16px; }
+.carouselViewport:active { cursor:grabbing; }
+.domainTrack { display:flex; width:max-content; user-select:none; }
+.domainSet { display:flex; gap:12px; padding-right:12px; flex-shrink:0; }
+.domainCard { --axis-tint:var(--axis-tint-light); width:350px; border:1.5px solid var(--border); border-bottom-width:3px; background:var(--surface); border-radius:16px; padding:18px; flex-shrink:0; }
+:global(html.dark) .domainCard { --axis-tint:var(--axis-tint-dark); }
+.domainCardTop { display:flex; gap:11px; align-items:center; }
+.domainIcon { display:grid; place-items:center; width:40px; height:42px; flex-shrink:0; border-radius:12px; background:var(--axis-tint); color:var(--axis); border:1px solid color-mix(in srgb,var(--axis) 25%,var(--border)); }
+.domainCardTop>div { min-width:0; }
+.domainCardTop h3 { font-size:14px; line-height:1.5; font-weight:800; margin:0; letter-spacing:-.025em; }
+.domainCardTop p { font-size:12px; color:var(--muted); line-height:1.7; margin-top:3px; }
+.domainCardTop>strong { margin-left:auto; padding:5px 8px; border-radius:8px; color:var(--axis); background:var(--axis-tint); font-size:14px; font-weight:800; }
+.progressTrack { background:var(--surface-3); border-radius:9px; height:9px; overflow:hidden; margin-top:19px; }
+.progressTrack>div { height:100%; background:var(--progress-fill); border-radius:9px; }
+.domainCardBottom { margin-top:11px; display:flex; align-items:center; justify-content:space-between; gap:9px; font-size:10px; line-height:1.5; color:var(--muted); }
+.domainCardBottom>span:first-child { color:var(--axis); font-weight:800; white-space:nowrap; }
+.domainCardBottom>span:last-child { text-align:right; }
+.footer { width:100%; max-width:1216px; margin:0 auto; padding:25px 0 30px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:24px; color:var(--muted); font-size:12px; }
+.footer nav { display:flex; gap:24px; }
+.footer a:hover { color:var(--primary); }
+@media(max-width:1100px) { .hero { gap:35px; } .heroCopy h1 { font-size:48px; } .domainHeading h2 { font-size:25px; } .footer { width:calc(100% - 64px); } }
+@media(max-width:760px) { .header { padding:23px 24px; } .header img { width:145px; } .header nav { gap:10px; } .accountButton { font-size:11px; padding-inline:12px; } .hero { grid-template-columns:1fr; gap:34px; padding:35px 24px 55px; min-height:0; } .heroCopy { max-width:520px; width:100%; margin:auto; } .heroCopy h1 { font-size:46px; } .heroCopy>p { font-size:16px; margin-top:20px; } .primaryButton { margin-top:24px; } .domains { max-width:520px; width:100%; margin:auto; padding:10px 0 0; } .domainHeading h2 { font-size:27px; } .domainHeading>p { font-size:13px; } .domainCard { width:320px; } .domainCardTop h3 { font-size:12px; } .domainCardBottom { font-size:9px; } .footer { width:calc(100% - 48px); font-size:11px; padding:23px 0; } .footer nav { gap:16px; } }
+@media(max-width:360px) { .header { padding-inline:18px; } .header img { width:120px; } .header nav { gap:8px; } .accountButton { font-size:10px; padding-inline:10px; } .heroCopy h1 { font-size:40px; } .hero { padding-inline:20px; } .domainHeading h2 { font-size:24px; } .domainCard { width:280px; padding:15px; } .domainCardTop { gap:8px; } .domainIcon { width:34px; } .domainCardTop h3 { font-size:11px; } .footer nav { gap:12px; font-size:10px; } }
+@media(prefers-reduced-motion:reduce) { .page * { animation:none!important; transition:none!important; } }
+@media(max-width:760px) { .header img { width:130px; } }
+@media(max-width:360px) { .header { gap:12px; } .header img { width:120px; } }
+@media(max-width:760px) { .footer { flex-wrap:wrap; gap:12px; } .footer>span,.footer a { white-space:nowrap; } .domainCard { width:min(320px,calc(100vw - 64px)); } }
+@media(max-width:760px) { .domains { padding-bottom:50px; } .main>.hero { min-height:calc(100dvh - 163px); } }
+@media(max-width:360px) { .domainCard { width:calc(100vw - 64px); } }

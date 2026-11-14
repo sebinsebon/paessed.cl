@@ -1,5 +1,6 @@
 
 import { validatePaessed } from "@/lib/paessed-package";
+import { scopedStorageKey } from "./sync/local.ts";
 import { isJsonObject } from "@/lib/exam-editing";
 import { IMPORTED_EXAM_PROGRESS_PREFIX, type ImportedExamRecord } from "@/lib/local-imports";
 
@@ -24,7 +25,7 @@ const MAX_BACKUP_BYTES = 500 * 1024 * 1024;
 
 /** Preserves the exact source archive, current editable JSON and saved progress. */
 export async function createExamBackup(record: ImportedExamRecord): Promise<Blob> {
-  const progress = localStorage.getItem(IMPORTED_EXAM_PROGRESS_PREFIX + record.summary.id);
+  const progress = localStorage.getItem(scopedStorageKey(IMPORTED_EXAM_PROGRESS_PREFIX + record.summary.id));
   const manifest: ExamBackupManifest = {
     format: "paessed-exam-backup",
     version: 1,

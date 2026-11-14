@@ -1,0 +1,17 @@
+.emoji { display:block; margin-bottom:22px; }
+.title { margin:0; font-size:25px; font-weight:800; letter-spacing:-.035em; line-height:1.25; }
+.copy { color:var(--muted); font-size:14px; line-height:1.8; margin-top:16px; }
+.copy p+p { margin-top:12px; }
+.copy details { margin-top:14px; }
+.copy summary { cursor:pointer; color:var(--text); font-weight:700; }
+.actions { display:grid; gap:12px; margin-top:24px; }
+.button,.confirm { display:flex; align-items:center; justify-content:center; width:100%; border-radius:12px; padding:13px 18px; min-height:48px; font-size:13px; font-weight:800; cursor:pointer; }
+.back { display:block; margin:auto; padding:10px 16px; min-height:40px; color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
+.review { margin-top:24px; border-top:1px solid var(--border); padding-top:22px; }
+.review h3 { font-size:16px; font-weight:800; }
+.review p,.expired { font-size:13px; line-height:1.7; color:var(--muted); margin-top:10px; }
+.review .timer { color:var(--text); margin:18px 0; font-weight:700; }
+.confirm { background:#b91c1c; color:white; border:1px solid #991b1b; border-bottom-width:3px; }
+.confirm:hover:not(:disabled) { background:#991b1b; }
+.confirm:disabled,.button:disabled,.back:disabled { opacity:.5; cursor:default; }
+.error { color:var(--danger); margin-top:18px; font-size:13px; line-height:1.7; }

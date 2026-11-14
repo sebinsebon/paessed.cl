@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, BookOpen, Check, Play } from "lucide-react";
 import { getM1Unit } from "@/lib/m1-curriculum";
+import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
 import { useLearning } from "./use-learning";
 import styles from "./learning-entry-card.module.css";
 
@@ -10,13 +11,13 @@ import styles from "./learning-entry-card.module.css";
 export function LearningEntryCard({ tourFocus }: { tourFocus: boolean }) {
   const { state, loading, error } = useLearning();
   const diagnostic = state?.diagnostic;
-  const ready = !!diagnostic?.completedAt;
+  const ready = !!state && hasCompletedInitialDiagnostic(state);
   const current = ready ? state?.nodes.find(node => node.state !== "completed") : undefined;
   const completed = state?.nodes.filter(node => node.state === "completed").length ?? 0;
-  const title = loading ? "Tu ruta de Matemática M1" : error ? "Tu ruta de Matemática M1" : !diagnostic ? "Empieza con un diagnóstico" : !ready ? "Tu diagnóstico está pendiente" : current ? getM1Unit(current.unitId)?.name ?? "Continúa tu ruta" : "Tu ruta está al día";
-  const description = error ? "Entra a Aprender para revisar tu progreso." : !diagnostic ? "Responde 16 preguntas para saber qué repasar primero." : !ready ? `${Object.keys(diagnostic.answers).length} de 16 preguntas respondidas. Puedes seguir donde quedaste.` : current ? "Sesiones de 5 preguntas, con revisión de tus errores al terminar." : "Revisa tus sesiones completadas y tu progreso en M1.";
+  const title = loading || error ? "Tu ruta de Matemática M1" : ready ? current ? getM1Unit(current.unitId)?.name ?? "Continúa tu ruta" : "Tu ruta está al día" : !diagnostic ? "Empieza con un diagnóstico" : "Tu diagnóstico está pendiente";
+  const description = error ? "Entra a Aprender para revisar tu progreso." : ready ? current ? "Sesiones de 5 preguntas, con revisión de tus errores al terminar." : "Revisa tus sesiones completadas y tu progreso en M1." : !diagnostic ? "Responde 16 preguntas para saber qué repasar primero." : `${Object.keys(diagnostic.answers).length} de 16 preguntas respondidas. Puedes seguir donde quedaste.`;
   const href = diagnostic && !ready ? "/diagnostico" : "/app/aprender";
-  const cta = loading || error ? "Ir a Aprender" : !diagnostic ? "Preparar mi ruta" : !ready ? "Retomar diagnóstico" : "Ver mi ruta";
+  const cta = loading || error ? "Ir a Aprender" : ready ? "Ver mi ruta" : !diagnostic ? "Preparar mi ruta" : "Retomar diagnóstico";
   return <section id="tour-mission" className={`${styles.card} ${tourFocus ? "tour-focus" : ""}`}>
     <div className={styles.copy}>
       <p className={styles.section}>Aprender</p>

@@ -1,0 +1,137 @@
+{
+  "nodes": 7,
+  "popover": true,
+  "mobileOverflow": {
+    "width": 430,
+    "content": 430
+  },
+  "narrowOverflow": {
+    "width": 390,
+    "content": 390
+  },
+  "tabletOverflow": {
+    "width": 768,
+    "content": 768
+  },
+  "mobileControls": [
+    {
+      "label": "5 días",
+      "fits": true
+    },
+    {
+      "label": "1 / 2",
+      "fits": true
+    },
+    {
+      "label": "145 XP",
+      "fits": true
+    },
+    {
+      "label": "Mapa M1",
+      "fits": true
+    },
+    {
+      "label": "Inicio",
+      "fits": true
+    },
+    {
+      "label": "Aprender",
+      "fits": true
+    },
+    {
+      "label": "Ensayos",
+      "fits": true
+    },
+    {
+      "label": "Playground",
+      "fits": true
+    },
+    {
+      "label": "Perfil",
+      "fits": true
+    }
+  ],
+  "narrowControls": [
+    {
+      "label": "5 días",
+      "fits": true
+    },
+    {
+      "label": "1 / 2",
+      "fits": true
+    },
+    {
+      "label": "145 XP",
+      "fits": true
+    },
+    {
+      "label": "Mapa M1",
+      "fits": true
+    },
+    {
+      "label": "Inicio",
+      "fits": true
+    },
+    {
+      "label": "Aprender",
+      "fits": true
+    },
+    {
+      "label": "Ensayos",
+      "fits": true
+    },
+    {
+      "label": "Playground",
+      "fits": true
+    },
+    {
+      "label": "Perfil",
+      "fits": true
+    }
+  ],
+  "drawer": {
+    "open": true,
+    "left": 10,
+    "right": 390,
+    "width": 390
+  },
+  "drawerCloseVisible": true,
+  "drawerClosed": true,
+  "images": [
+    {
+      "src": "./paessed-logo.svg",
+      "loaded": true
+    },
+    {
+      "src": "./paessed-logo.svg",
+      "loaded": true
+    }
+  ],
+  "missingAssets": [],
+  "errors": [],
+  "buttons": [
+    "\n        \n        Escritorio (1140px)\n      ",
+    "\n        \n        Móvil (390px / 430px)\n      ",
+    "\n        \n        Modo Oscuro\n      ",
+    "\n        \n        Probar pregunta demo\n      ",
+    "\n              \n              1 / 2\n            ",
+    "\n              \n              Mapa M1\n            ",
+    "\n                \n                M\n              ",
+    "\n                \n                M\n              ",
+    "\n                \n                R\n              ",
+    "\n                \n                R\n              ",
+    "\n                \n                M\n              ",
+    "\n                \n                M\n              ",
+    "\n                \n                R\n              ",
+    "✕",
+    "\n        EMPEZAR SESIÓN →\n      ",
+    "✕ Cerrar vista previa",
+    "\n            A\n            5 / 30\n          ",
+    "\n            B\n            25 / 30\n          ",
+    "\n            C\n            1 / 6\n          ",
+    "\n            D\n            10 / 30\n          ",
+    "\n          Cerrar vista previa →\n        ",
+    "\n          Confirmar Respuesta\n        ",
+    "✕"
+  ]
+}

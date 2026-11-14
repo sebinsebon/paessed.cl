@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { usePathname, useRouter } from "next/navigation";
 import { sileo, Toaster } from "sileo";
 import { DashboardTopNav, MobileNav, Sidebar, SidebarToggle, useSidebarCollapsed } from "@/components/app-navigation";
+import { useTheme } from "@/components/theme-provider";
 
 type AppNavigationContextValue = {
   dark: boolean;
@@ -31,30 +32,21 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, toggleSidebar] = useSidebarCollapsed();
-  const [dark, setDarkState] = useState(false);
+  const { dark, setDark: setThemeDark } = useTheme();
   const [monthlyGoal, setMonthlyGoal] = useState(780);
   const [immersiveView, setImmersiveState] = useState({ immersive: false, sidebarOpen: false });
   const tourCallback = useRef<(() => void) | null>(null);
   const immersiveToggle = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem("paessed-theme");
-    const nextDark = storedTheme
-      ? storedTheme === "dark"
-      : window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setDarkState(nextDark);
-    document.documentElement.classList.toggle("dark", nextDark);
-
     const storedGoal = Number(localStorage.getItem("paessed-monthly-goal"));
     if (Number.isFinite(storedGoal) && storedGoal > 0) setMonthlyGoal(storedGoal);
   }, []);
 
   const setDark = useCallback((next: boolean) => {
     sileo.clear();
-    setDarkState(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("paessed-theme", next ? "dark" : "light");
-  }, []);
+    setThemeDark(next);
+  }, [setThemeDark]);
 
   const registerTour = useCallback((callback: () => void) => {
     tourCallback.current = callback;

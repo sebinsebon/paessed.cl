@@ -13,7 +13,7 @@ export function useLearning() {
   const refresh = useCallback(async () => {
     try {
       const [saved, questions] = await Promise.all([readLearningState(), loadLearningCatalog()]);
-      setCatalog(questions); setState(previous => previous && previous.revision > saved.revision ? previous : planLearning(saved, questions)); setError("");
+      setCatalog(questions); setState(previous => previous && previous.learnerId === saved.learnerId && previous.revision > saved.revision ? previous : planLearning(saved, questions)); setError("");
     } catch (e) { setError(e instanceof Error ? e.message : "No se pudo leer tu progreso."); }
     finally { setLoading(false); }
   }, []);

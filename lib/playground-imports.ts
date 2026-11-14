@@ -2,6 +2,7 @@ import Emphasis from "./paessed-runtime/block-renderer.js";
 import { getImportedExam, listImportedExams, type ImportedExamRecord } from "@/lib/local-imports";
 import { M1_UNITS, type M1UnitId } from "@/lib/m1-curriculum";
 import { canonicalQuestionId } from "@/lib/question-identity";
+import { personalSourceHash, personalQuestionReference } from "./personal-source.ts";
 
 type Data = Record<string, unknown>;
 const record = (x: unknown): x is Data => !!x && typeof x === "object" && !Array.isArray(x);
@@ -117,7 +118,8 @@ export async function loadPlaygroundImports() {
   const results = await Promise.all(summaries.map(async (item) => {
     try {
       const full = await getImportedExam(item.id);
-      return { summary:item, questions:full ? convertImportedExamQuestions(item.id,item.title,full.finalJson):[], record:full };
+      const hash = full ? await personalSourceHash(full) : null;
+      return { summary:item, questions:full ? convertImportedExamQuestions(item.id,item.title,full.finalJson).map(q => ({ ...q, id: personalQuestionReference(full, hash!, q.number) })):[], record:full };
     } catch {
       return { summary:item, questions:[] as BankQuestion[],record:null };
     }

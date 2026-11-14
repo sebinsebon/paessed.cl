@@ -894,7 +894,7 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
   );
 }
 
-export function Dashboard() {
+export function Dashboard({ suspendAutoTour = false }: { suspendAutoTour?: boolean }) {
   const { dark, setDark, monthlyGoal, registerTour } = usePersistentAppShell();
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
@@ -913,11 +913,12 @@ export function Dashboard() {
   useEffect(() => registerTour(startTour), [registerTour, startTour]);
 
   useEffect(() => {
+    if (suspendAutoTour) return;
     if (!localStorage.getItem("paessed-dashboard-tour-seen")) {
       const timer = window.setTimeout(() => { if (tourOrigin.current === null) startTour(); }, 650);
       return () => window.clearTimeout(timer);
     }
-  }, []);
+  }, [suspendAutoTour]);
 
   const closeTour = () => {
     const returnTo = tourOrigin.current;

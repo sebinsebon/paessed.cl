@@ -9,11 +9,14 @@ import { useLearning } from "./use-learning";
 import { LearningError, LearningLoading } from "./question-card";
 import { NodeSession } from "./node-session";
 import { LearningRouteDashboard } from "./route/learning-route";
+import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
+import { useDevMode } from "@/components/dev-context";
 import styles from "./learning.module.css";
 
 type Dispatch = (action: LearningAction) => Promise<LearningState | null>;
 
 export function LearnExperience() {
+  const { active: devMode } = useDevMode();
   const learning = useLearning();
   const [openNode, setOpenNode] = useState<string | null>(null);
   const [closedNode, setClosedNode] = useState<string | null>(null);
@@ -21,7 +24,7 @@ export function LearnExperience() {
   if (active) return <AppShell title="Tu sesión de aprendizaje" immersive><div className={`${styles.root} h-full`}><NodeSession key={active.id} node={active} state={learning.state!} catalog={learning.catalog} dispatch={learning.dispatch} error={learning.error} onClose={() => { setOpenNode(null); setClosedNode(active.id); }} /></div></AppShell>;
   return <AppShell title="Aprender" eyebrow="Tu ruta M1"><div className={styles.root}>
     {learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />}
-    {learning.loading || !learning.state ? <LearningLoading /> : !learning.catalog.length ? <EmptyBank /> : !learning.state.diagnostic ? <LearningSetup state={learning.state} dispatch={learning.dispatch} /> : <LearningRouteDashboard state={learning.state} profile={learning.profile} onOpen={setOpenNode} closedNode={closedNode} dispatch={learning.dispatch} />}
+    {learning.loading || !learning.state ? <LearningLoading /> : !learning.catalog.length ? <EmptyBank /> : !devMode && !learning.state.diagnostic && !hasCompletedInitialDiagnostic(learning.state) ? <LearningSetup state={learning.state} dispatch={learning.dispatch} /> : <LearningRouteDashboard state={learning.state} profile={learning.profile} onOpen={setOpenNode} closedNode={closedNode} dispatch={learning.dispatch} />}
   </div></AppShell>;
 }
 

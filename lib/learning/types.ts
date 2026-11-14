@@ -30,6 +30,10 @@ export type LearningState = {
   goal: DailyGoal; pendingGoal?: { goal: DailyGoal; effectiveDate: string };
   attempts: LearningAttempt[]; exposures: Exposure[]; nodes: LearningNode[];
   diagnostic: DiagnosticSession | null;
+  /** Initial diagnostic was handled; evidence may have been explicitly declined. */
+  initialDiagnostic?: { sourceId: string; completedAt: string; includeEvidence: boolean };
+  /** Bounded receipts retain both accepted and declined handoffs for safe replay. */
+  diagnosticHandoffs?: { sourceId: string; completedAt: string; includeEvidence: boolean }[];
 };
 export type UnitProfile = { unitId: M1UnitId; axisId: M1AxisId; count: number; percent: number | null };
 export type AxisProfile = {

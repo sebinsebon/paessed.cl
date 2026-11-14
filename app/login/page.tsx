@@ -1,5 +1,8 @@
-import { LoginGate } from "@/components/onboarding";
+import { AuthForm } from "@/components/auth-form";
+import { redirectSignedIn } from "@/lib/server/entry";
+import { authConfigured } from "@/lib/server/auth";
 
-export default function LoginPage() {
-  return <LoginGate />;
+export default async function LoginPage() {
+  await redirectSignedIn();
+  return <AuthForm mode="login" accountsAvailable={authConfigured()} />;
 }

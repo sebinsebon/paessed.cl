@@ -11,19 +11,22 @@ const timestamp = (now?: string) => {
   return date.toISOString();
 };
 
-/** Day boundaries follow the learner's local timezone, including DST. */
+export const LEARNING_TIME_ZONE = "America/Santiago";
+const learningCalendar = new Intl.DateTimeFormat("en-CA", { timeZone: LEARNING_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" });
+/** A shared calendar prevents travel or device timezone from changing goals and streaks. */
 export function localDate(now?: string): string {
   const date = new Date(timestamp(now));
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return learningCalendar.format(date);
 }
 function nextDay(now: string) {
-  const date = new Date(now);
-  date.setDate(date.getDate() + 1);
-  return localDate(date.toISOString());
+  const date = new Date(`${localDate(now)}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 function previousDay(day: string) {
-  const [y, m, d] = day.split("-").map(Number);
-  return localDate(new Date(y, m - 1, d - 1, 12).toISOString());
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
 }
 function hash(value: string): number {
   let h = 2166136261;
@@ -34,6 +37,11 @@ export function createLearningState(now?: string): LearningState {
   timestamp(now);
   const learnerId = globalThis.crypto?.randomUUID?.() ?? `learner-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return { version: 1, learnerId, seed: hash(learnerId), revision: 0, goal: 2, attempts: [], exposures: [], nodes: [], diagnostic: null };
+}
+
+/** Legacy completed diagnostics remain valid without a backfill. */
+export function hasCompletedInitialDiagnostic(state: LearningState): boolean {
+  return !!(state.initialDiagnostic?.completedAt || state.diagnostic?.completedAt);
 }
 
 export function getProfile(state: LearningState): LearningProfile {
@@ -191,7 +199,7 @@ export function reduceLearning(input: LearningState, action: LearningAction, cat
     if (action.assisted) expose(state, action.questionId, action.sessionId, action.mode, true, at);
     record(state, question(action.questionId), action.sessionId, action.mode, action.answer, at, action.assisted);
   } else if (action.type === "start-diagnostic") {
-    if (!state.diagnostic) {
+    if (!state.diagnostic && !hasCompletedInitialDiagnostic(state)) {
       const chosen = units.map(u => selectQuestions(state, catalog.filter(q => q.unitId === u.id), [], u.id, `diagnostic:${u.id}`).questionIds[0]);
       if (chosen.some(id => !id)) throw new Error("Faltan preguntas para el diagnóstico de 16 subejes.");
       state.diagnostic = { id: `${state.learnerId}:diagnostic`, questionIds: chosen, answers: {}, startedAt: at };
@@ -212,7 +220,7 @@ export function reduceLearning(input: LearningState, action: LearningAction, cat
     if (action.type === "start-node") {
       if (node.state === "future") {
         if (state.nodes.some(n => n.position < node.position && n.state !== "completed")) throw new Error("Completa el nodo anterior para continuar.");
-        if (state.diagnostic && !state.diagnostic.completedAt) throw new Error("Termina el diagnóstico antes de comenzar un nodo.");
+        if (state.diagnostic && !hasCompletedInitialDiagnostic(state)) throw new Error("Termina el diagnóstico antes de comenzar un nodo.");
         if (node.questionIds.length !== 5) throw new Error("No hay cinco preguntas disponibles para este nodo.");
         node.state = "active"; node.startedAt = at;
       }

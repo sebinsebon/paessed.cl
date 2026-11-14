@@ -1,11 +1,10 @@
 import { createLearningState, reduceLearning } from "./engine.ts";
 import { M1_AXES, M1_UNITS } from "../m1-curriculum.ts";
 import type { LearningAction, LearningQuestion, LearningState } from "./types";
+import { createAccountLearningState, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, notifyLocalChange, openLocalDatabase } from "../sync/local.ts";
 
-const DB = "paessed-learning";
 const STORE = "state";
 const KEY = "current";
-let connection: Promise<IDBDatabase> | undefined;
 const listeners = new Set<() => void>();
 let channel: BroadcastChannel | undefined;
 const bad = (): never => { throw new Error("El respaldo o los datos de Aprender están dañados o tienen un formato incompatible. Conserva una copia para recuperarlos."); };
@@ -59,35 +58,28 @@ export function validateLearningState(value: unknown): LearningState {
     if (n.state === "active" || n.state === "correction") inProgress++;
   }
   if (inProgress > 1) return bad();
+  const initial = value.initialDiagnostic;
+  if (initial !== undefined && (!object(initial) || !string(initial.sourceId) || !date(initial.completedAt) || !bool(initial.includeEvidence))) return bad();
+  if (value.diagnosticHandoffs !== undefined && (!Array.isArray(value.diagnosticHandoffs) || value.diagnosticHandoffs.length > 64 ||
+    value.diagnosticHandoffs.some(r => !object(r) || !string(r.sourceId) || !date(r.completedAt) || !bool(r.includeEvidence)) ||
+    new Set(value.diagnosticHandoffs.map(r => (r as { sourceId: string }).sourceId)).size !== value.diagnosticHandoffs.length)) return bad();
   const d = value.diagnostic;
   if (d !== null && (!object(d) || !string(d.id) || !strings(d.questionIds) || d.questionIds.length !== 16 || !answers(d.answers, d.questionIds) || !date(d.startedAt) || (d.completedAt !== undefined && (!date(d.completedAt) || Object.keys(d.answers!).length !== 16)))) return bad();
   return JSON.parse(JSON.stringify(value)) as LearningState;
 }
-function open(): Promise<IDBDatabase> {
-  if (!globalThis.indexedDB) return Promise.reject(new Error("Aprender necesita IndexedDB. Habilita el almacenamiento del navegador para conservar tu progreso."));
-  if (!connection) connection = new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB, 1);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE);
-      if (!request.result.objectStoreNames.contains("exam-sessions")) request.result.createObjectStore("exam-sessions");
-    };
-    request.onerror = () => { connection = undefined; reject(request.error ?? new Error("No se pudo abrir el progreso de Aprender.")); };
-    request.onblocked = () => { connection = undefined; reject(new Error("Otra pestaña bloquea el almacenamiento de Aprender. Ciérrala y vuelve a intentar.")); };
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onversionchange = () => { db.close(); connection = undefined; };
-      resolve(db);
-    };
-  });
-  return connection;
+function open(owner = getSyncOwner()): Promise<IDBDatabase> {
+  return openLocalDatabase(owner);
 }
-function broadcast() {
+function broadcast(owner = getSyncOwner()) {
   for (const listener of listeners) { try { listener(); } catch { /* A subscriber cannot roll back a committed transaction. */ } }
-  getChannel()?.postMessage("updated");
+  if (owner === getSyncOwner()) getChannel()?.postMessage("updated");
+  else if (typeof BroadcastChannel !== "undefined") { const scoped = new BroadcastChannel(databaseName(owner)); scoped.postMessage("updated"); scoped.close(); }
+  notifyLocalChange();
 }
 function getChannel() {
+  if (channel && channel.name !== databaseName()) { channel.close(); channel = undefined; }
   if (!channel && typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
-    channel = new BroadcastChannel(DB);
+    channel = new BroadcastChannel(databaseName());
     channel.onmessage = () => { for (const listener of listeners) { try { listener(); } catch { /* Isolate consumers. */ } } };
   }
   return channel;
@@ -96,33 +88,68 @@ export function subscribeLearning(cb: () => void): () => void {
   listeners.add(cb); getChannel();
   return () => { listeners.delete(cb); };
 }
-async function transaction(update?: (state: LearningState) => LearningState): Promise<LearningState> {
-  const db = await open();
+async function transaction(update?: (state: LearningState) => LearningState, action?: LearningAction, importOnly = false, at?: string, owner = getSyncOwner()): Promise<LearningState> {
+  const db = await open(owner);
   return new Promise((resolve, reject) => {
     // Read and reducer run within one write transaction; another tab cannot read
     // an old revision and overwrite an answer committed by this transaction.
-    const tx = db.transaction(STORE, "readwrite");
+    const tx = db.transaction(owner && update ? [STORE, "outbox", "meta"] : STORE, "readwrite");
     const store = tx.objectStore(STORE);
     const request = store.get(KEY);
     let result: LearningState, failure: unknown, changed = false;
     request.onsuccess = () => {
       try {
-        const before = request.result === undefined ? createLearningState() : validateLearningState(request.result);
+        const before = request.result === undefined ? owner ? createAccountLearningState(owner) : createLearningState() : validateLearningState(request.result);
         result = update ? validateLearningState(update(before)) : before;
         changed = request.result === undefined || JSON.stringify(before) !== JSON.stringify(result);
-        if (changed) store.put(result, KEY);
+        if (changed) {
+          store.put(result, KEY);
+          if (owner && update) {
+            if (importOnly) enqueueLearningRestore(tx, result);
+            else enqueueOperation(tx, { type: "learning", action: action! }, false, at);
+          }
+        }
       } catch (error) { failure = error; tx.abort(); }
     };
-    tx.oncomplete = () => { if (changed) broadcast(); resolve(result); };
+    tx.oncomplete = () => { if (changed) broadcast(owner); resolve(result); };
     tx.onabort = tx.onerror = () => reject(failure ?? tx.error ?? new Error("No se pudo guardar el progreso de Aprender. Vuelve a intentar."));
   });
 }
 export function readLearningState(): Promise<LearningState> { return transaction(); }
-export function dispatchLearning(action: LearningAction, catalog: LearningQuestion[]): Promise<LearningState> { return transaction(state => reduceLearning(state, action, catalog)); }
+export function dispatchLearning(action: LearningAction, catalog: LearningQuestion[]): Promise<LearningState> {
+  const at = new Date().toISOString();
+  return transaction(state => {
+    // Developer shortcuts bypass only the prerequisite. Keep the unfinished
+    // diagnostic intact so it can still be resumed from its own route.
+    if (devSandboxActive() && action.type === "start-node" && state.diagnostic && !state.diagnostic.completedAt) {
+      const next = reduceLearning({ ...state, diagnostic: null }, action, catalog, at);
+      next.diagnostic = state.diagnostic;
+      return next;
+    }
+    return reduceLearning(state, action, catalog, at);
+  }, action, false, at);
+}
 export function exportLearningState(): Promise<LearningState> { return readLearningState(); }
 
+/** Diagnostic drafts never contribute to account mastery before consent. The
+ * explicit scope avoids changing the active account or its running sync loop. */
+export function readDiagnosticState(): Promise<LearningState> { return transaction(undefined, undefined, false, undefined, null); }
+export function dispatchDiagnostic(action: LearningAction, catalog: LearningQuestion[]): Promise<LearningState> {
+  if (!["set-goal", "start-diagnostic", "answer-diagnostic", "complete-diagnostic"].includes(action.type) && !(action.type === "expose" && action.mode === "diagnostic")) {
+    return Promise.reject(new Error("Acción fuera del diagnóstico."));
+  }
+  const at = new Date().toISOString();
+  return transaction(state => reduceLearning(state, action, catalog, at), undefined, false, at, null);
+}
+export function subscribeDiagnostic(cb: () => void): () => void {
+  listeners.add(cb);
+  const scoped = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(databaseName(null)) : undefined;
+  if (scoped) scoped.onmessage = cb;
+  return () => { listeners.delete(cb); scoped?.close(); };
+}
+
 function mergeStates(current: LearningState, incoming: LearningState): LearningState {
-  const unused = !current.attempts.length && !current.exposures.length && !current.diagnostic && current.nodes.every(n => n.state === "future");
+  const unused = !current.initialDiagnostic && !current.attempts.length && !current.exposures.length && !current.diagnostic && current.nodes.every(n => n.state === "future");
   if (current.learnerId !== incoming.learnerId && unused) return validateLearningState(incoming);
   if (current.learnerId !== incoming.learnerId) throw new Error("Este respaldo pertenece a otro estudiante. No se puede mezclar con el progreso de este navegador.");
   if (current.seed !== incoming.seed) return bad();
@@ -172,6 +199,8 @@ function mergeStates(current: LearningState, incoming: LearningState): LearningS
     }
     result.diagnostic!.completedAt ??= incoming.diagnostic.completedAt;
   } else result.diagnostic = current.diagnostic ?? incoming.diagnostic;
+  result.initialDiagnostic = current.initialDiagnostic ?? incoming.initialDiagnostic;
+  result.diagnosticHandoffs = [...new Map([...(incoming.diagnosticHandoffs ?? []), ...(current.diagnosticHandoffs ?? [])].map(r => [r.sourceId, r])).values()];
   result.revision = Math.max(current.revision, incoming.revision) + 1;
   return validateLearningState(result);
 }
@@ -180,5 +209,5 @@ export function restoreLearningState(value: unknown): Promise<LearningState> {
   if (typeof value === "string") { try { parsed = JSON.parse(value); } catch { return Promise.reject(new Error("El archivo de respaldo no contiene JSON válido.")); } }
   let incoming: LearningState;
   try { incoming = validateLearningState(parsed); } catch (error) { return Promise.reject(error); }
-  return transaction(state => mergeStates(state, incoming));
+  return transaction(state => mergeStates(state, incoming), undefined, true);
 }

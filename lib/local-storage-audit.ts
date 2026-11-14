@@ -2,6 +2,7 @@ import { deleteImportedExam, listImportedExamStorageUsage, type ImportedExamStor
 import { DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY, DEMO_EXAM_EVENT } from "@/lib/demo-exam-progress";
 import { readLearningState } from "@/lib/learning/repository";
 import { listExamSessions, clearLearningState } from "@/lib/learning/exam-repository";
+import { devSandboxActive, getSyncOwner, scopedStorageKey, listSavedQuestions, saveQuestion } from "./sync/local.ts";
 
 export type StorageCategoryId =
   | "exams" | "sessions" | "drawings" | "marked"
@@ -111,10 +112,18 @@ export async function inspectLocalStorage(): Promise<LocalStorageReport> {
   let localError: string | null = null;
 
   try {
+    const devPrefix = devSandboxActive() ? "paessed-dev:" : "";
     const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key): key is string => typeof key === "string" && key.startsWith("paessed-"));
-    for (const key of keys) {
-      const value = localStorage.getItem(key);
+    const accountPrefix = getSyncOwner() ? `paessed-account:${getSyncOwner()}:` : null;
+    for (const rawKey of keys) {
+      if (devPrefix ? !rawKey.startsWith(devPrefix) : rawKey.startsWith("paessed-dev:")) continue;
+      const scopedKey = devPrefix ? rawKey.slice(devPrefix.length) : rawKey;
+      if (scopedKey.startsWith("paessed-account:") && (!accountPrefix || !scopedKey.startsWith(accountPrefix))) continue;
+      if (scopedKey === "paessed-sync-owner") continue;
+      const key = accountPrefix && scopedKey.startsWith(accountPrefix) ? scopedKey.slice(accountPrefix.length) : scopedKey;
+      if (accountPrefix && scopedKey === key && CATEGORY_KEYS[key] !== "preferences") continue;
+      const value = localStorage.getItem(rawKey);
       if (value === null) continue;
       const isProgress = key.startsWith(IMPORTED_EXAM_PROGRESS_PREFIX) || key === DEMO_EXAM_STORAGE_KEY;
       if (isProgress) {
@@ -176,7 +185,8 @@ export async function inspectLocalStorage(): Promise<LocalStorageReport> {
 }
 
 function editStoredProgress(key: string, category: "sessions" | "drawings" | "marked"): void {
-  const raw = localStorage.getItem(key);
+  const physicalKey = scopedStorageKey(key);
+  const raw = localStorage.getItem(physicalKey);
   if (!raw) return;
   let data: unknown;
   try { data = JSON.parse(raw); }
@@ -201,8 +211,8 @@ function editStoredProgress(key: string, category: "sessions" | "drawings" | "ma
   }
   const stillHasInk = hasDrawings(demo ? data.strokesByQuestion : data.strokes);
   const stillHasMarks = hasMarks(demo ? data.flagged : data.bookmarks, demo);
-  if (!hasActiveSession(data, demo) && !stillHasInk && !stillHasMarks) localStorage.removeItem(key);
-  else localStorage.setItem(key, JSON.stringify(data));
+  if (!hasActiveSession(data, demo) && !stillHasInk && !stillHasMarks) localStorage.removeItem(physicalKey);
+  else localStorage.setItem(physicalKey, JSON.stringify(data));
   if (demo) window.dispatchEvent(new Event(DEMO_EXAM_EVENT));
 }
 
@@ -210,6 +220,7 @@ function editStoredProgress(key: string, category: "sessions" | "drawings" | "ma
 export async function clearLocalStorageCategory(category: StorageCategoryId, report: LocalStorageReport): Promise<void> {
   if (category === "other") throw new Error("Las claves desconocidas se dejan intactas por seguridad.");
   if (category === "learning") { await clearLearningState(); return; }
+  if (category === "marked") for (const id of await listSavedQuestions()) await saveQuestion(id, false);
   if (category === "exams") {
     for (const exam of report.exams) await deleteImportedExam(exam.id);
     return;
@@ -221,7 +232,7 @@ export async function clearLocalStorageCategory(category: StorageCategoryId, rep
         editStoredProgress(key, category);
       }
     } else if (CATEGORY_KEYS[key] === category || (category === "drawings" && key.startsWith("paessed-learning-ink:"))) {
-      localStorage.removeItem(key);
+      localStorage.removeItem(CATEGORY_KEYS[key] === "preferences" ? key : scopedStorageKey(key));
     }
   }
 }

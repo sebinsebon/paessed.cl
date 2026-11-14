@@ -1,0 +1,5 @@
+const { defineConfig } = require("@playwright/test");
+module.exports = defineConfig({ testDir: __dirname, testMatch: "account-sync.spec.cjs", workers: 1, timeout: 90000,
+  expect: { timeout: 20000 }, reporter: "list", outputDir: "test-results/account-sync",
+  use: { baseURL: process.env.PAESSED_BASE_URL || "http://127.0.0.1:3100", viewport: { width: 1280, height: 960 }, reducedMotion: "reduce", trace: "retain-on-failure" },
+  projects: [{ name: "chromium", use: { browserName: "chromium" } }] });
