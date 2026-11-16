@@ -26,8 +26,8 @@ if (process.env.DATABASE_URL) {
   try {
     const rows = await sql`select to_regclass('paessed.profiles') is not null as profiles, to_regclass('paessed.auth_flows') is not null as flows`;
     check(rows[0].profiles && rows[0].flows, "Migración de cuentas aplicada");
-    await sql`select id from auth.sessions limit 0`;
-    check(true, "Conexión del servidor puede validar sesiones revocadas");
+    const sessionCheck = await sql`select paessed.session_is_valid('00000000-0000-0000-0000-000000000000'::uuid, '00000000-0000-0000-0000-000000000000'::uuid, false) as valid`;
+    check(sessionCheck[0]?.valid === false, "Conexión del servidor puede validar sesiones revocadas");
   } catch { check(false, "Conexión de datos, migración y permisos del servidor"); }
   finally { await sql.end({ timeout: 2 }); }
 }
