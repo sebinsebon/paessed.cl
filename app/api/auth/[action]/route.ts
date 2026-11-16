@@ -39,23 +39,40 @@ async function verifyOAuthCaptcha(token?: string) {
   if (!response.ok || result.success !== true) throw new HttpError(400, "La verificación venció. Vuelve a completarla.");
 }
 
+/** Emit only a fixed stage and a short technical error code; never log IPs, cookies, tokens or SQL details. */
+function logUnexpectedAuthFailure(method: "GET" | "POST", stage: string, error: unknown) {
+  if (error instanceof HttpError) return;
+  const rawCode = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
+  const code = typeof rawCode === "string" && /^[A-Za-z0-9_-]{1,32}$/.test(rawCode) ? rawCode : "unknown";
+  console.error("PAESSED_AUTH_DIAGNOSTIC", method, stage, code);
+}
+
 export async function GET(request: Request, context: { params: Promise<{ action: string }> }) {
+  let stage = "configuration";
   try {
     if ((await context.params).action !== "session") throw new HttpError(404, "Ruta no encontrada.");
     if (!authConfigured()) return json({ user: null, configured: false });
+    stage = "rate_limit";
     await enforceRequestLimit(request, "auth");
+    stage = "session";
     const jar = await cookies();
     if (!jar.getAll().some(c => c.name.startsWith("sb-") && c.name.includes("auth-token"))) return json({ user: null, configured: true });
     const { user } = await requireAccount(request);
     const profile = await db()`select display_name,timezone from paessed.profiles where owner_id=${user.id}::uuid`;
     return json({ configured: true, user: { id: user.id, email: user.email, providers: [...new Set(user.identities?.map(i => i.provider) ?? [])] }, profile: { displayName: profile[0]?.display_name ?? "", timezone: profile[0]?.timezone ?? "America/Santiago" } });
-  } catch (error) { return handleError(error); }
+  } catch (error) {
+    logUnexpectedAuthFailure("GET", stage, error);
+    return handleError(error);
+  }
 }
 
 export async function POST(request: Request, context: { params: Promise<{ action: string }> }) {
+  let stage = "origin";
   try {
     sameOrigin(request);
+    stage = "rate_limit";
     await enforceRequestLimit(request, "auth");
+    stage = "action";
     const action = (await context.params).action;
     if (!Object.hasOwn(schemas, action)) throw new HttpError(404, "Ruta no encontrada.");
     const value = await readJson(request, 8192);
@@ -138,5 +155,8 @@ export async function POST(request: Request, context: { params: Promise<{ action
       return json({ ok: true, message: "Cuenta eliminada. Tus archivos personales locales se conservan." });
     }
     throw new HttpError(404, "Ruta no encontrada.");
-  } catch (error) { return handleError(error); }
+  } catch (error) {
+    logUnexpectedAuthFailure("POST", stage, error);
+    return handleError(error);
+  }
 }
