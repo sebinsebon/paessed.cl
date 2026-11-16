@@ -31,7 +31,7 @@ function sessionId(token: string): string {
   try { const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")); if (typeof payload.session_id === "string" && /^[0-9a-f-]{36}$/i.test(payload.session_id)) return payload.session_id; } catch { /* Only inspect after Auth verifies the token. */ }
   throw new HttpError(401, "La sesión no es válida. Vuelve a iniciar sesión.");
 }
-/** getUser verifies identity; auth.sessions also rejects access tokens whose session was revoked. */
+/** getUser verifies identity; the private database function also rejects revoked sessions. */
 export async function requireAccount(_request: Request, readOnly = false): Promise<{ user: User; accessToken: string }> {
   const client = await authClient(readOnly);
   const { data: { user }, error } = await client.auth.getUser();
@@ -39,8 +39,8 @@ export async function requireAccount(_request: Request, readOnly = false): Promi
   const { data: { session } } = await client.auth.getSession();
   if (!session) throw new HttpError(401, "Tu sesión venció. Tu trabajo sigue guardado en este dispositivo.");
   const id = sessionId(session.access_token);
-  const rows = await db()`select id from auth.sessions where id = ${id}::uuid and user_id = ${user.id}::uuid and (not_after is null or not_after > now())`;
-  if (!rows.length) throw new HttpError(401, "La sesión fue revocada. Vuelve a iniciar sesión.");
+  const rows = await db()`select paessed.session_is_valid(${id}::uuid, ${user.id}::uuid, false) as valid`;
+  if (!rows[0]?.valid) throw new HttpError(401, "La sesión fue revocada. Vuelve a iniciar sesión.");
   return { user, accessToken: session.access_token };
 }
 export async function requireRecent(account: {user: {id: string}; accessToken: string }, recoveryOnly = false): Promise<void> {
@@ -48,8 +48,8 @@ export async function requireRecent(account: {user: {id: string}; accessToken: s
   const receipt = verifyValue(jar.get(REAUTH_COOKIE)?.value, flowSecret());
   if (receipt?.userId === account.user.id && receipt.sessionId === id && (!recoveryOnly || receipt.purpose === "recover")) return;
   if (!recoveryOnly) {
-    const rows = await db()`select id from auth.sessions where id=${id}::uuid and user_id=${account.user.id}::uuid and created_at > now() - interval '5 minutes'`;
-    if (rows.length) return;
+    const rows = await db()`select paessed.session_is_valid(${id}::uuid, ${account.user.id}::uuid, true) as valid`;
+    if (rows[0]?.valid) return;
   }
   throw new HttpError(403, recoveryOnly ? "Abre el enlace de recuperación para añadir o cambiar tu contraseña." : "Confirma tu identidad antes de continuar.");
 }
