@@ -44,27 +44,6 @@ function logUnexpectedAuthFailure(method: "GET" | "POST", stage: string, error: 
   if (error instanceof HttpError) return;
   const rawCode = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
   const code = typeof rawCode === "string" && /^[A-Za-z0-9_-]{1,32}$/.test(rawCode) ? rawCode : "unknown";
-  if (code === "28P01") {
-    // Report only structural yes/no checks; never emit a username, URL or password.
-    let shape = "malformed_url";
-    try {
-      const value = process.env.DATABASE_URL;
-      if (!value) shape = "missing_url";
-      else {
-        const uri = new URL(value);
-        shape = [
-          `user_v2=${uri.username === "paessed_app_v2.rqeuczrmkkehxzipkynq"}`,
-          `host_ok=${uri.hostname === "aws-1-us-east-2.pooler.supabase.com"}`,
-          `port_ok=${uri.port === "6543"}`,
-          `database_ok=${uri.pathname === "/postgres"}`,
-          `ssl_ok=${uri.searchParams.get("sslmode") === "require"}`,
-          `hex_password_ok=${/^[a-f0-9]{64}$/i.test(uri.password)}`,
-        ].join(" ");
-      }
-    } catch { /* Keep credentials and malformed URLs out of logs. */ }
-    console.error("PAESSED_AUTH_DIAGNOSTIC", method, stage, code, shape);
-    return;
-  }
   console.error("PAESSED_AUTH_DIAGNOSTIC", method, stage, code);
 }
 

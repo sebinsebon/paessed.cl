@@ -1,12 +1,13 @@
 import postgres from "postgres";
 import { HttpError } from "./http.ts";
+import { databaseTlsOptions } from "./db-tls.ts";
 
 let connection: ReturnType<typeof postgres> | undefined;
 /** Privileged server connection only. Never import this module in a client component. */
 export function db(): ReturnType<typeof postgres> {
   if (typeof window !== "undefined") throw new Error("Servidor únicamente.");
   if (!process.env.DATABASE_URL) throw new HttpError(503, "La sincronización aún no está configurada. Puedes seguir trabajando localmente.");
-  connection ??= postgres(process.env.DATABASE_URL, { max: 3, prepare: false, idle_timeout: 20, connect_timeout: 10, onnotice: () => undefined });
+  connection ??= postgres(process.env.DATABASE_URL, { max: 3, prepare: false, ssl: databaseTlsOptions(), idle_timeout: 20, connect_timeout: 10, onnotice: () => undefined });
   return connection;
 }
 export type Query = <T extends Record<string, unknown> = Record<string, unknown>>(text: string, params?: unknown[]) => Promise<T[]>;
