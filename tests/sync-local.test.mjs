@@ -78,7 +78,7 @@ test("IndexedDB keeps ordered atomic operations, account isolation, shadows and 
 
 test("guest import includes practice and saved references and partitions a large valid state", async () => harness(async page => {
   const result=await page.evaluate(async () => {
-    const guest=await window.repo.readLearningState();
+    const guest=await window.repo.dispatchLearning({type:"set-goal",goal:3},[]);
     await window.local.saveQuestion(window.q,true);
     await window.local.savePracticeSession("playground","playground",{id:crypto.randomUUID(),index:0,questionIds:[window.q],answers:{[window.q]:"C"}});
     const summary=await window.client.guestProgressSummary();window.local.setSyncOwner(window.A);await window.client.importGuestProgress();

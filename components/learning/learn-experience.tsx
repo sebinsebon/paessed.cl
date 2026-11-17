@@ -38,7 +38,7 @@ export function LearningSetup({ state, dispatch, onContinue }: { state: Learning
   const choose = async () => {
     setBusy(true);
     const saved = await dispatch({ type: "set-goal", goal });
-    if (saved) { if (onContinue) onContinue(); else { const started = await dispatch({ type: "start-diagnostic" }); if (started) window.location.assign("/diagnostico"); } }
+    if (saved) { if (onContinue) onContinue(); else window.location.assign("/diagnostico"); }
     setBusy(false);
   };
   return <section className={styles.setup}>

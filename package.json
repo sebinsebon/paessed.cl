@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "verify:mvp": "node scripts/verify-mvp.mjs",
+    "verify:mvp": "node --experimental-strip-types scripts/verify-mvp.mjs",
     "test:onboarding": "node --experimental-strip-types --test tests/diagnostic-onboarding.test.mjs tests/diagnostic-onboarding-local.test.mjs tests/diagnostic-onboarding-api.test.mjs tests/dev-mode.test.mjs tests/entry-navigation.test.mjs",
     "test:inicio-ui": "playwright test --config tests/inicio-cuentas.config.cjs",
     "dev": "next dev",
@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.16",
+    "@electric-sql/pglite-socket": "0.2.19",
     "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/node": "^22.0.0",

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { getSyncOwner, openLocalDatabase } from "@/lib/sync/local";
 import { getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, resolveSyncConflict, startSync, subscribeSyncStatus, synchronize, type SyncStatusValue } from "@/lib/sync/client";
 import { ProgressDialog, type ProgressChoice } from "./progress-dialog";
-import { ProgressPromptContext } from "./progress-prompt-context";
 import { Modal } from "./modal";
 
 function describeVersion(value: unknown): string {
@@ -100,7 +99,13 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
     } catch (err) { setError(err instanceof Error ? err.message : "No se pudo guardar tu elección."); }
     finally { setBusy(false); }
   }
-  return <ProgressPromptContext.Provider value={pending}>
+  return <>
+    {showError && <section aria-label="Estado de sincronización" className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 text-sm">
+      <p role="status" className="min-w-0 flex-1 basis-64 text-[var(--muted)]">{issue}</p>
+      <button type="button" className="soft-button min-h-11 rounded-lg px-3" onClick={() => { setError(""); void synchronize(true); }}>Reintentar</button>
+      {status.state === "paused" && <Link href="/login" className="soft-button inline-flex min-h-11 items-center rounded-lg px-3">Iniciar sesión</Link>}
+      <button type="button" className="min-h-11 px-3" onClick={() => setDismissedError(issue)}>Cerrar aviso</button>
+    </section>}
     <Fragment key={scope ?? "guest"}>{children}</Fragment>
     {conflict && <ProgressDialog key={conflict.id} title="Hay dos versiones de tu progreso" busy={busy} error={error} onDismiss={() => setDeferred(true)}
       saveExplanation="Continuarás con la versión recibida. La versión de tu cuenta se conservará como alternativa y no sumará métricas."
@@ -118,12 +123,7 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
       <p>{summary.attempts || summary.completedNodes || summary.sessions || summary.savedQuestions ? `${summary.attempts} respuestas, ${summary.completedNodes} nodos completados y ${summary.sessions} sesiones${summary.savedQuestions ? `, con ${summary.savedQuestions} preguntas guardadas` : ""}.` : "Tienes preferencias de práctica guardadas en este navegador."}</p>
       <p>Puedes guardarlo en tu cuenta. No guardar conserva tu cuenta como está; más tarde te permite decidir al volver.</p>
     </ProgressDialog>}
-    {showError && <Modal labelledBy="sync-issue-title" onDismiss={() => setDismissedError(issue)}>
-      <h2 id="sync-issue-title" tabIndex={-1} className="text-2xl font-extrabold">Tu progreso sigue guardado</h2>
-      <p role="alert" className="mt-4 text-sm leading-7 text-[var(--muted)]">{issue}</p>
-      <div className="mt-6 flex flex-wrap gap-4"><button type="button" className="soft-button rounded-xl px-4 py-3" onClick={() => { setDismissedError(issue); setError(""); void synchronize(); }}>Reintentar</button>{status.state === "paused" && <Link href="/login" className="soft-button rounded-xl px-4 py-3">Iniciar sesión</Link>}<button type="button" onClick={() => setDismissedError(issue)}>Más tarde</button></div>
-    </Modal>}
     {archived.length > 0 && !pending && <button type="button" className="soft-button fixed bottom-20 right-6 z-20 rounded-xl px-4 py-2 text-xs" onClick={() => setArchiveOpen(true)}>Ver versiones conservadas ({archived.length})</button>}
     {archiveOpen && !conflict && !importPrompt && !showError && <Modal labelledBy="archived-title" onDismiss={() => setArchiveOpen(false)}><h2 id="archived-title" tabIndex={-1} className="text-2xl font-extrabold">Versiones conservadas</h2><p className="mt-4 text-sm text-[var(--muted)]">Estas alternativas no suman métricas. Puedes descargarlas para recuperarlas.</p>{archived.map((item,index) => <article key={item.id} className="mt-4 border-t border-[var(--border)] pt-4 text-sm"><h3 className="font-bold">Versión conservada {index+1}</h3><p className="mt-2">Cuenta: {describeVersion(item.current)}</p><p className="mt-2">Recibida: {describeVersion(item.alternative)}</p><div className="mt-3 grid gap-3"><button type="button" onClick={() => void downloadVersion(item.current,"version-cuenta").catch(err=>setError(err.message))}>Descargar versión de la cuenta</button><button type="button" onClick={() => void downloadVersion(item.alternative,"version-recibida").catch(err=>setError(err.message))}>Descargar versión recibida</button></div></article>)}<button type="button" className="soft-button mt-6 rounded-xl px-4 py-3" onClick={() => setArchiveOpen(false)}>Volver</button></Modal>}
-  </ProgressPromptContext.Provider>;
+  </>;
 }

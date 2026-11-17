@@ -33,3 +33,6 @@ from public, anon, authenticated, service_role;
 grant execute on function
   paessed.session_is_valid(uuid, uuid, boolean)
 to paessed_server;
+
+revoke select on auth.sessions from paessed_server;
+revoke usage on schema auth from paessed_server;

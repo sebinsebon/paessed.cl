@@ -5,6 +5,7 @@ import { createAccountLearningState, databaseName, devSandboxActive, enqueueOper
 
 const STORE = "state";
 const KEY = "current";
+export const DIAGNOSTIC_DRAFT = "diagnostic-draft";
 const listeners = new Set<() => void>();
 let channel: BroadcastChannel | undefined;
 const bad = (): never => { throw new Error("El respaldo o los datos de Aprender están dañados o tienen un formato incompatible. Conserva una copia para recuperarlos."); };
@@ -88,23 +89,36 @@ export function subscribeLearning(cb: () => void): () => void {
   listeners.add(cb); getChannel();
   return () => { listeners.delete(cb); };
 }
-async function transaction(update?: (state: LearningState) => LearningState, action?: LearningAction, importOnly = false, at?: string, owner = getSyncOwner()): Promise<LearningState> {
+async function transaction(update?: (state: LearningState) => LearningState, action?: LearningAction, importOnly = false, at?: string, owner = getSyncOwner(), key = KEY): Promise<LearningState> {
   const db = await open(owner);
   return new Promise((resolve, reject) => {
     // Read and reducer run within one write transaction; another tab cannot read
     // an old revision and overwrite an answer committed by this transaction.
-    const tx = db.transaction(owner && update ? [STORE, "outbox", "meta"] : STORE, "readwrite");
+    const sync = owner && update && key === KEY;
+    const tx = db.transaction(sync ? [STORE, "outbox", "meta"] : STORE, "readwrite");
     const store = tx.objectStore(STORE);
-    const request = store.get(KEY);
+    const request = store.get(key);
+    const legacy = key === DIAGNOSTIC_DRAFT ? store.get(KEY) : null;
     let result: LearningState, failure: unknown, changed = false;
-    request.onsuccess = () => {
+    (legacy ?? request).onsuccess = () => {
       try {
-        const before = request.result === undefined ? owner ? createAccountLearningState(owner) : createLearningState() : validateLearningState(request.result);
+        let before = request.result === undefined
+          ? owner && key === KEY ? createAccountLearningState(owner) : createLearningState()
+          : validateLearningState(request.result);
+        if (request.result === undefined && legacy?.result) {
+          const previous = validateLearningState(legacy.result);
+          const draft = previous.diagnostic;
+          if (draft && !draft.completedAt && !previous.initialDiagnostic) {
+            before = { ...before, diagnostic: draft, goal: previous.goal,
+              attempts: previous.attempts.filter(a => a.sessionId === draft.id),
+              exposures: previous.exposures.filter(e => e.sessionId === draft.id) };
+          }
+        }
         result = update ? validateLearningState(update(before)) : before;
         changed = request.result === undefined || JSON.stringify(before) !== JSON.stringify(result);
         if (changed) {
-          store.put(result, KEY);
-          if (owner && update) {
+          store.put(result, key);
+          if (sync) {
             if (importOnly) enqueueLearningRestore(tx, result);
             else enqueueOperation(tx, { type: "learning", action: action! }, false, at);
           }
@@ -115,7 +129,7 @@ async function transaction(update?: (state: LearningState) => LearningState, act
     tx.onabort = tx.onerror = () => reject(failure ?? tx.error ?? new Error("No se pudo guardar el progreso de Aprender. Vuelve a intentar."));
   });
 }
-export function readLearningState(): Promise<LearningState> { return transaction(); }
+export function readLearningState(owner = getSyncOwner()): Promise<LearningState> { return transaction(undefined, undefined, false, undefined, owner); }
 export function dispatchLearning(action: LearningAction, catalog: LearningQuestion[]): Promise<LearningState> {
   const at = new Date().toISOString();
   return transaction(state => {
@@ -131,19 +145,29 @@ export function dispatchLearning(action: LearningAction, catalog: LearningQuesti
 }
 export function exportLearningState(): Promise<LearningState> { return readLearningState(); }
 
-/** Diagnostic drafts never contribute to account mastery before consent. The
- * explicit scope avoids changing the active account or its running sync loop. */
-export function readDiagnosticState(): Promise<LearningState> { return transaction(undefined, undefined, false, undefined, null); }
-export function dispatchDiagnostic(action: LearningAction, catalog: LearningQuestion[]): Promise<LearningState> {
+/** Keep drafts local and separate from the published learning projection. */
+export function readDiagnosticState(owner: string | null = null): Promise<LearningState> {
+  return transaction(undefined, undefined, false, undefined, owner, owner ? DIAGNOSTIC_DRAFT : KEY);
+}
+export async function clearAccountDiagnosticDraft(owner: string): Promise<void> {
+  const db = await openLocalDatabase(owner);
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(DIAGNOSTIC_DRAFT);
+    tx.oncomplete = () => { broadcast(owner); resolve(); };
+    tx.onerror = tx.onabort = () => reject(tx.error);
+  });
+}
+export function dispatchDiagnostic(action: LearningAction, catalog: LearningQuestion[], owner: string | null = null): Promise<LearningState> {
   if (!["set-goal", "start-diagnostic", "answer-diagnostic", "complete-diagnostic"].includes(action.type) && !(action.type === "expose" && action.mode === "diagnostic")) {
     return Promise.reject(new Error("Acción fuera del diagnóstico."));
   }
   const at = new Date().toISOString();
-  return transaction(state => reduceLearning(state, action, catalog, at), undefined, false, at, null);
+  return transaction(state => reduceLearning(state, action, catalog, at), undefined, false, at, owner, owner ? DIAGNOSTIC_DRAFT : KEY);
 }
-export function subscribeDiagnostic(cb: () => void): () => void {
+export function subscribeDiagnostic(cb: () => void, owner: string | null = null): () => void {
   listeners.add(cb);
-  const scoped = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(databaseName(null)) : undefined;
+  const scoped = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(databaseName(owner)) : undefined;
   if (scoped) scoped.onmessage = cb;
   return () => { listeners.delete(cb); scoped?.close(); };
 }

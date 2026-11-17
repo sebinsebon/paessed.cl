@@ -4,9 +4,14 @@ import Link from "next/link";
 import { LearningEntryCard } from "@/components/learning/learning-entry-card";
 import { PageHeadingTransition } from "@/components/app-page-transition";
 import { QuestionMapHoverCard, positionQuestionMapHover, type QuestionMapHoverData } from "@/components/question-map-hover";
-import { FloatingHomeActions, announce } from "@/components/app-navigation";
+import { FloatingHomeActions } from "@/components/app-navigation";
 import { usePersistentAppShell } from "@/components/persistent-app-shell";
 import { getM1UnitsForAxis, type M1AxisId, type M1UnitId } from "@/lib/m1-curriculum";
+import { DEFAULT_EXAMS } from "@/lib/default-exams";
+import { DEFAULT_QUESTION_INDEX } from "@/lib/learning/catalog";
+import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
+import type { LearningProfile, LearningState } from "@/lib/learning/types";
+import { Modal } from "./modal";
 
 import {
   AnimatePresence,
@@ -55,6 +60,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from "react";
 
 /** Sileo’s native header renders the bell and title; the body below holds the subtitle. */
@@ -73,41 +79,61 @@ type Axis = {
   name: string;
   shortName: string;
   state: MasteryState;
-  percentage: number;
+  percentage: number | null;
   correct: number;
   total: number;
   weakest: string;
   icon: ComponentType<{ className?: string; size?: number }>;
   evidence: string;
+  units: Partial<Record<M1UnitId, { count: number }>>;
 };
 
 type MasteryCSS = CSSProperties & { "--mastery": string };
 
-// Demonstration-only mastery; no fake scores for uncovered subejes.
-const demoSubejeProgress: Partial<Record<M1UnitId, { state: MasteryState; pct: number }>> = {
-  "numeros-enteros-racionales": { state: "Dominado", pct: 94 },
-  "porcentaje": { state: "Fuerte", pct: 84 },
-  "potencias-raices-enesimas": { state: "Regular", pct: 72 },
-  "expresiones-algebraicas": { state: "Dominado", pct: 90 },
-  "ecuaciones-inecuaciones-primer-grado": { state: "Fuerte", pct: 83 },
-  "figuras-geometricas": { state: "Regular", pct: 66 },
-  "transformaciones-isometricas": { state: "Débil", pct: 54 },
-  "semejanza-proporcionalidad-figuras": { state: "Crítico", pct: 34 },
-  "representacion-datos-tablas-graficos": { state: "Fuerte", pct: 80 },
-  "reglas-probabilidades": { state: "Débil", pct: 56 },
-};
+const axisDetails = [
+  { id: "numeros", name: "Números", shortName: "Números", icon: Calculator },
+  { id: "algebra", name: "Álgebra y funciones", shortName: "Álgebra y funciones", icon: Sigma },
+  { id: "geometria", name: "Geometría", shortName: "Geometría", icon: Triangle },
+  { id: "datos", name: "Probabilidad y estadística", shortName: "Probabilidad y estadística", icon: BarChart3 },
+] as const;
 
-const axes: Axis[] = [
-  { id: "numeros", name: "Números", shortName: "Números", state: "Dominado", percentage: 88, correct: 15, total: 17, weakest: "Potencias y raíces enésimas", icon: Calculator, evidence: "Datos ilustrativos · 47 respuestas recientes" },
-  { id: "algebra", name: "Álgebra y funciones", shortName: "Álgebra y funciones", state: "Fuerte", percentage: 82, correct: 21, total: 25, weakest: "Ecuaciones e inecuaciones de primer grado", icon: Sigma, evidence: "Datos ilustrativos · 51 respuestas recientes" },
-  { id: "geometria", name: "Geometría", shortName: "Geometría", state: "Crítico", percentage: 38, correct: 6, total: 16, weakest: "Semejanza y proporcionalidad de figuras", icon: Triangle, evidence: "Datos ilustrativos · 29 respuestas recientes" },
-  { id: "datos", name: "Probabilidad y estadística", shortName: "Probabilidad y estadística", state: "Regular", percentage: 64, correct: 11, total: 17, weakest: "Reglas de las probabilidades", icon: BarChart3, evidence: "Datos ilustrativos · 33 respuestas recientes" },
-];
-const exams = [
-  { id: 8, score: 742, date: "21 sep", answers: "ggrgggrogggrgggrggogrgggrgggrggogrgggrgggrggogrgggrgggrgggrgggrgg" },
-  { id: 7, score: 728, date: "12 sep", answers: "ggrggrgogrggrggrggorggrggrggrggorggrggrggrggorggrggrggrggoggggggg" },
-  { id: 6, score: 711, date: "03 sep", answers: "ggrggrgogrggrggrggorggrggrggrggorggrggrggrggorggrggrggrggorgggogg" },
-];
+function masteryLevel(percent: number | null): MasteryState {
+  if (percent === null) return "Sin suficiente evidencia";
+  if (percent >= 85) return "Dominado";
+  if (percent >= 75) return "Fuerte";
+  if (percent >= 60) return "Regular";
+  return percent >= 45 ? "Débil" : "Crítico";
+}
+
+function axisProgress(state: LearningState | null, profile: LearningProfile | null): Axis[] {
+  return axisDetails.map(axis => {
+    const evidence = profile?.axes.find(item => item.axisId === axis.id);
+    const percentage = evidence?.calibrated ? Math.round(evidence.percent ?? 0) : null;
+    const attempts = state?.attempts.filter(a => a.axisId === axis.id && a.eligible && !a.assisted) ?? [];
+    const units = profile?.units.filter(unit => unit.axisId === axis.id && unit.percent !== null) ?? [];
+    const weakest = [...units].sort((a, b) => a.percent! - b.percent!)[0];
+    return { ...axis, percentage, state: masteryLevel(percentage),
+      total: attempts.length, correct: attempts.filter(a => a.correct).length,
+      evidence: `${evidence?.count ?? 0} respuestas elegibles`,
+      weakest: percentage !== null && weakest ? getM1UnitsForAxis(axis.id).find(unit => unit.id === weakest.unitId)?.name ?? "" : "En calibración",
+      units: Object.fromEntries(units.map(unit => [unit.unitId, { count: unit.count }])) };
+  });
+}
+
+type CompletedExam = { id: string; title: string; href: string; date: string; answers: string };
+function completedExams(sessions: Record<string, SavedDefaultExamSession>): CompletedExam[] {
+  return Object.entries(sessions)
+    .filter(([, session]) => session.completedAt)
+    .sort(([, a], [, b]) => b.completedAt!.localeCompare(a.completedAt!))
+    .flatMap(([id, session]) => {
+      const exam = DEFAULT_EXAMS.find(item => item.id === id);
+      if (!exam) return [];
+      const answers = DEFAULT_QUESTION_INDEX.filter(question => question.examId === id)
+        .map(question => !session.answers[question.id] ? "o" : session.answers[question.id] === question.correct ? "g" : "r").join("");
+      return [{ id, title: exam.title, href: exam.href, answers,
+        date: new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short", timeZone: "America/Santiago" }).format(new Date(session.completedAt!)) }];
+    });
+}
 
 function masteryStyle(state: MasteryState): MasteryCSS {
   return { "--mastery": MASTERY[state].color };
@@ -159,7 +185,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
   const Icon = axis.icon;
   const critical = axis.state === "Crítico";
   const axisColor = MASTERY[axis.state].color;
-  const progressColor = carouselMasteryColor(axis.percentage);
+  const progressColor = axis.percentage === null ? axisColor : carouselMasteryColor(axis.percentage);
   return (
     <motion.button
       onClick={() => onOpen(axis)}
@@ -192,7 +218,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
               className="rounded-lg px-2.5 py-1 text-[13px] font-bold"
               style={{ color: axisColor, background: `color-mix(in srgb, ${axisColor} 11%, var(--surface))` }}
             >
-              {axis.percentage}%
+              {axis.percentage === null ? "—" : `${axis.percentage}%`}
             </span>
           </div>
         </div>
@@ -201,9 +227,9 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
         <motion.div
           className="progress-fill h-full rounded-full"
           initial={{ width: 0 }}
-          animate={{ width: `${axis.percentage}%` }}
+          animate={{ width: `${axis.percentage ?? 0}%` }}
           transition={{ duration: .8, delay: .12, ease: [.22, 1, .36, 1] }}
-          style={{ background: carouselProgressGradient(axis.percentage) }}
+          style={{ background: carouselProgressGradient(axis.percentage ?? 0) }}
         />
       </div>
       <div className="mt-2.5 flex items-center justify-between gap-3 text-[11px] leading-4">
@@ -218,7 +244,7 @@ function DomainCard({ axis, onOpen, mobile = false, duplicate = false }: { axis:
   );
 }
 
-function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocus: boolean }) {
+function DomainRail({ axes, onOpen, tourFocus }: { axes: Axis[]; onOpen: (a: Axis) => void; tourFocus: boolean }) {
   const x = useMotionValue(0);
   const reduced = useReducedMotion();
   const unitRef = useRef<HTMLDivElement>(null);
@@ -355,102 +381,41 @@ function DomainRail({ onOpen, tourFocus }: { onOpen: (a: Axis) => void; tourFocu
 }
 
 function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }) {
-  return (
-    <AnimatePresence>
-      {axis && (
-        <>
-          <motion.button
-            aria-label="Cerrar detalle"
-            className="fixed inset-0 z-[90] bg-slate-950/55 backdrop-blur-[2px]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: .92, y: 22 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: .94, y: 14 }}
-            transition={{ type: "spring", stiffness: 420, damping: 28 }}
-            className="surface-raised fixed left-1/2 top-1/2 z-[100] max-h-[calc(100dvh-32px)] w-[calc(100%-28px)] max-w-2xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[22px] p-5 sm:p-6"
-            style={masteryStyle(axis.state)}
-          >
-            <div className="relative">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[.14em] text-[var(--muted)]">Detalle de dominio</p>
-                  <h2 className="text-2xl font-extrabold">{axis.name}</h2>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <MasteryBadge state={axis.state} />
-                    <span className="text-xs text-[var(--muted)]">{axis.evidence}</span>
-                  </div>
-                </div>
-                <button onClick={onClose} className="soft-button grid h-9 w-9 place-items-center rounded-xl"><X size={18} /></button>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-[160px_1fr]">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
-                  <div className="text-4xl font-extrabold" style={{ color: MASTERY[axis.state].color }}>{axis.percentage}%</div>
-                  <div className="mt-1 text-xs font-bold text-[var(--muted)]">dominio actual</div>
-                  <div className="mt-4 text-xs text-[var(--muted)]">{axis.correct} correctas de {axis.total} recientes</div>
-                </div>
-                <div className="space-y-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{getM1UnitsForAxis(axis.id).length} subejes · Admisión 2027</p>
-                  {getM1UnitsForAxis(axis.id).map((unit) => {
-                    const progress = demoSubejeProgress[unit.id];
-                    return (
-                      <div key={unit.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-extrabold leading-5">{unit.name}</div>
-                          <div className="mt-1 h-1.5 overflow-hidden rounded-full progress-track">
-                            {progress && <div className="h-full rounded-full" style={{ width: `${progress.pct}%`, background: MASTERY[progress.state].color }} />}
-                          </div>
-                        </div>
-                        <div className="min-w-[88px] shrink-0 text-right">
-                          {progress ? (
-                            <>
-                              <div className="text-xs font-extrabold" style={{ color: MASTERY[progress.state].color }}>{progress.pct}%</div>
-                              <div className="text-[9px] text-[var(--muted)]">{progress.state}</div>
-                            </>
-                          ) : <div className="text-[10px] font-bold text-[var(--muted)]">Sin evidencia</div>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-2)] p-4">
-                <div className="flex items-start gap-3">
-                  <Sparkles size={18} className="mt-0.5 text-[var(--primary)]" />
-                  <div>
-                    <div className="text-xs font-extrabold">Detalle inteligente — preparado para una fase futura</div>
-                    <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Aquí podrán aparecer preguntas falladas, evolución y recomendaciones basadas en tu historial. Los datos de dominio son ilustrativos y los subejes sin evidencia quedan sin evaluar.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 flex justify-end">
-                <button
-                  onClick={() => announce(`Práctica de ${axis.shortName} preparada`, "En el producto real, esto abrirá una sesión adaptativa.", "success")}
-                  className="tactile-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold"
-                >
-                  <Play size={16} fill="currentColor" /> Practicar este eje
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
+  if (!axis) return null;
+  return <Modal labelledBy="axis-detail-title" onDismiss={onClose}>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="axis-detail-title" tabIndex={-1} className="text-2xl font-extrabold">{axis.name}</h2>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <MasteryBadge state={axis.state} />
+          <span className="text-xs text-[var(--muted)]">{axis.evidence}</span>
+        </div>
+      </div>
+      <button type="button" aria-label="Cerrar detalle" onClick={onClose} className="soft-button grid h-9 w-9 shrink-0 place-items-center rounded-xl"><X size={18} /></button>
+    </div>
+    <p className="mt-5 text-sm text-[var(--muted)]">{axis.percentage === null
+      ? "El dominio se estima cuando registras al menos 15 respuestas elegibles en este eje."
+      : `Dominio estimado: ${axis.percentage}% · ${axis.correct} de ${axis.total} respuestas elegibles correctas.`}</p>
+    <ul className="mt-4 grid gap-2">
+      {getM1UnitsForAxis(axis.id).map(unit => {
+        const progress = axis.units[unit.id];
+        return <li key={unit.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs">
+          <span className="font-bold">{unit.name}</span>
+          <span className="shrink-0 text-[var(--muted)]">{progress ? `${progress.count} registradas` : "Sin evidencia"}</span>
+        </li>;
+      })}
+    </ul>
+    <Link href="/app/playground" className="tactile-primary mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold">
+      Ir a Playground <ArrowUpRight size={15} />
+    </Link>
+  </Modal>;
 }
 
 function DailyMission({ tourFocus }: { tourFocus: boolean }) {
   return <LearningEntryCard tourFocus={tourFocus} />;
 }
 
-function ExamsCard({ embedded = false }: { embedded?: boolean }) {
+function ExamsCard({ embedded = false, latest }: { embedded?: boolean; latest?: CompletedExam }) {
   return (
     <section id="tour-exams-summary" className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
       <div className="relative z-10">
@@ -464,7 +429,7 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
       <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
-          <div className="mt-1 text-lg font-extrabold">742 pts</div>
+          <div className="mt-1 text-lg font-extrabold">{latest ? `${latest.answers.split("g").length - 1} de ${latest.answers.length} correctas` : "Sin ensayos rendidos"}</div>
         </div>
         <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Formato</div>
@@ -486,38 +451,22 @@ function ExamsCard({ embedded = false }: { embedded?: boolean }) {
 }
 
 
-function ProgressMonth({ embedded = false }: { embedded?: boolean }) {
-  const reducedMotion = useReducedMotion();
-  const points = [690, 711, 728, 742];
-  const labels = ["03", "10", "16", "21 sep"];
-  const min = 670;
-  const max = 760;
-  const coords = points.map((p, i) => ({ x: 28 + i * 98, y: 112 - ((p - min) / (max - min)) * 80 }));
-  const path = coords.map((c, i) => `${i ? "L" : "M"}${c.x},${c.y}`).join(" ");
-  return (
-    <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold text-[var(--muted)]">Progreso de septiembre</div>
-          <h3 className="mt-1 text-lg font-extrabold">Vas +52 puntos este mes</h3>
-          <p className="mt-1 text-xs text-[var(--muted)]">Solo resultados reales de ensayos, no estimaciones del diagnóstico.</p>
-        </div>
-        <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-500">↗ +7,5%</div>
-      </div>
-      <div className="mt-4 overflow-hidden py-3">
-        <svg viewBox="0 0 340 135" className="h-[135px] w-full" role="img" aria-label="Evolución de puntajes del mes">
-          {[32, 72, 112].map((y) => <line key={y} x1="20" x2="330" y1={y} y2={y} stroke="var(--border)" strokeWidth="1" />)}
-          <motion.path d={path} fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: reducedMotion ? 0 : 1.1, ease: [.22,1,.36,1] }} />
-          {coords.map((c, i) => (
-            <g key={points[i]}>
-              <circle cx={c.x} cy={c.y} r="5" fill="var(--surface)" stroke="var(--primary)" strokeWidth="3" />
-              <text x={c.x} y="130" textAnchor="middle" fill="var(--muted)" fontSize="9" fontWeight="700">{labels[i]}</text>
-            </g>
-          ))}
-        </svg>
-      </div>
-    </section>
-  );
+function ProgressOverview({ embedded = false, state }: { embedded?: boolean; state: LearningState | null }) {
+  const modes = [
+    { id: "diagnostic", label: "Diagnóstico" },
+    { id: "learn", label: "Aprender" },
+    { id: "exam", label: "Ensayos" },
+    { id: "playground", label: "Playground" },
+  ] as const;
+  return <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
+    <h3 className="text-lg font-extrabold">Respuestas registradas</h3>
+    <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {modes.map(mode => <div key={mode.id} className="rounded-xl bg-[var(--surface-2)] p-3">
+        <dt className="text-xs font-semibold text-[var(--muted)]">{mode.label}</dt>
+        <dd className="mt-1 text-xl font-extrabold">{state?.attempts.filter(attempt => attempt.mode === mode.id).length ?? 0}</dd>
+      </div>)}
+    </dl>
+  </section>;
 }
 
 function LearnCard({ tourFocus }: { tourFocus: boolean }) {
@@ -540,7 +489,7 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; learnFocus: boolean }) {
+function DashboardCards({ missionFocus, learnFocus, completed, state }: { missionFocus: boolean; learnFocus: boolean; completed: CompletedExam[]; state: LearningState | null }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const examsRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -601,9 +550,9 @@ function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; l
     <>
       <div className="mt-4 grid gap-4 lg:hidden">
         <DailyMission tourFocus={missionFocus} />
-        <ExamsCard />
+        <ExamsCard latest={completed[0]} />
         <LearnCard tourFocus={learnFocus} />
-        <ProgressMonth />
+        <ProgressOverview state={state} />
       </div>
 
       <div ref={shellRef} className="relative mt-4 hidden lg:block">
@@ -627,14 +576,14 @@ function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; l
         <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
           <DailyMission tourFocus={missionFocus} />
           <div ref={examsRef}>
-            <ExamsCard embedded />
+            <ExamsCard embedded latest={completed[0]} />
           </div>
         </div>
 
         <div className="relative z-10 mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
           <LearnCard tourFocus={learnFocus} />
           <div ref={progressRef}>
-            <ProgressMonth embedded />
+            <ProgressOverview embedded state={state} />
           </div>
         </div>
       </div>
@@ -642,20 +591,17 @@ function DashboardCards({ missionFocus, learnFocus }: { missionFocus: boolean; l
   );
 }
 
-function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?: (typeof exams)[number] }) {
+function ExamCard({ exam }: { exam: CompletedExam }) {
   const squares = exam.answers.split("");
   const [hoveredQuestion, setHoveredQuestion] = useState<QuestionMapHoverData | null>(null);
   const correct = squares.filter((a) => a === "g").length;
   const wrong = squares.filter((a) => a === "r").length;
   const omitted = squares.filter((a) => a === "o").length;
-  const previousCorrect = previous?.answers.split("").filter((a) => a === "g").length;
-  const improvement = previousCorrect === undefined ? null : correct - previousCorrect;
 
   return (
-    <motion.button
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: .98 }}
-      className="group w-full rounded-[18px] border border-[var(--border)] bg-[var(--surface-2)] p-4 text-left shadow-[var(--shadow-1)] transition-[border-color,box-shadow] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-2)] sm:p-5"
+    <Link
+      href={exam.href}
+      className="group block w-full rounded-[18px] border border-[var(--border)] bg-[var(--surface-2)] p-4 text-left shadow-[var(--shadow-1)] transition-[border-color,box-shadow] hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-2)] sm:p-5"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -664,27 +610,10 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
               <Trophy size={15} />
             </span>
             <div>
-              <div className="text-[13px] font-extrabold">Ensayo PAES M1 #{exam.id}</div>
-              <div className="mt-0.5 text-[10px] font-medium text-[var(--muted)]">{exam.date} · 65 preguntas</div>
+              <div className="text-[13px] font-extrabold">{exam.title}</div>
+              <div className="mt-0.5 text-[10px] font-medium text-[var(--muted)]">{exam.date} · {squares.length} preguntas</div>
             </div>
           </div>
-        </div>
-        <div className="text-right">
-          <div className="text-[26px] font-extrabold leading-none tracking-[-.03em]">{exam.score}<span className="ml-1 text-[10px] font-semibold text-[var(--muted)]">pts</span></div>
-          <div
-            className={`mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold ${
-              improvement === null ? "bg-[var(--surface-3)] text-[var(--muted)]" :
-              improvement > 0 ? "bg-emerald-500/10 text-emerald-500" :
-              improvement < 0 ? "bg-rose-500/10 text-rose-400" :
-              "bg-[var(--surface-3)] text-[var(--muted)]"
-            }`}
-            title={previous ? `Comparado con el ensayo #${previous.id} (${previousCorrect} correctas)` : "Primer ensayo del historial mostrado"}
-          >
-            {improvement === null ? "Sin comparación previa" : improvement > 0
-              ? `+${improvement} correctas vs. el anterior`
-              : improvement < 0 ? `-${Math.abs(improvement)} correctas vs. el anterior` : "Mismas correctas que el anterior"}
-          </div>
-          {previous && <div className="mt-1 text-[9px] font-medium text-[var(--muted)]">respecto al ensayo #{previous.id}</div>}
         </div>
       </div>
 
@@ -713,11 +642,11 @@ function ExamCard({ exam, previous }: { exam: (typeof exams)[number]; previous?:
         <span className="ml-auto inline-flex items-center gap-1 text-[var(--primary)] opacity-90 transition-opacity group-hover:opacity-100">Ver análisis <ArrowUpRight size={13} /></span>
       </div>
       <QuestionMapHoverCard data={hoveredQuestion} />
-    </motion.button>
+    </Link>
   );
 }
 
-function LastExams({ tourFocus }: { tourFocus: boolean }) {
+function LastExams({ tourFocus, exams }: { tourFocus: boolean; exams: CompletedExam[] }) {
   return (
     <section id="tour-exams" className={`surface rounded-[24px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="mb-5 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-end sm:justify-between">
@@ -738,7 +667,8 @@ function LastExams({ tourFocus }: { tourFocus: boolean }) {
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-3">
-        {exams.map((exam, index) => <ExamCard key={exam.id} exam={exam} previous={exams[index + 1]} />)}
+        {exams.slice(0, 3).map(exam => <ExamCard key={exam.id} exam={exam} />)}
+        {exams.length === 0 && <p className="text-sm text-[var(--muted)]">Aquí aparecerán tus ensayos del catálogo cuando los termines.</p>}
       </div>
     </section>
   );
@@ -748,9 +678,9 @@ const tourSteps = [
   { key: "domains", title: "Tu dominio M1", body: "Aquí ves los cuatro ejes. El color depende de tu nivel, no del eje. Haz clic para ver detalle." },
   { key: "mission", title: "Tu misión diaria", body: "PAESSED prioriza una actividad corta usando tus debilidades y tu práctica reciente." },
   { key: "exams-summary", title: "Realiza ensayos completos", body: "Desde aquí puedes hacer un ensayo PAES M1, consultar tu último resultado y medir tu dominio con 65 preguntas." },
-  { key: "progress", title: "Sigue la evolución de tus puntajes", body: "Este gráfico muestra cómo han cambiado tus resultados reales de ensayos durante el mes." },
+  { key: "progress", title: "Revisa tus respuestas", body: "Aquí puedes ver el avance que has registrado en diagnóstico, práctica y ensayos." },
   { key: "learn", title: "Practica libremente en Playground", body: "Resuelve preguntas sin límite y filtra por año, eje temático y más." },
-  { key: "exams", title: "Tus ensayos recalibran el perfil", body: "Los puntajes que ves aquí son resultados reales. Sirven para medir progreso sin falsa precisión." },
+  { key: "exams", title: "Revisa tus últimos ensayos", body: "Abre un ensayo finalizado para ver sus resultados." },
 ];
 
 /** Mobile and desktop mount separate copies; target the one actually rendered. */
@@ -894,7 +824,12 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
   );
 }
 
-export function Dashboard({ suspendAutoTour = false }: { suspendAutoTour?: boolean }) {
+export function Dashboard({ diagnostic, displayName, state, profile, examSessions }: {
+  diagnostic?: ReactNode; displayName?: string; state: LearningState | null; profile: LearningProfile | null;
+  examSessions: Record<string, SavedDefaultExamSession>;
+}) {
+  const axes = useMemo(() => axisProgress(state, profile), [state, profile]);
+  const completed = useMemo(() => completedExams(examSessions), [examSessions]);
   const { dark, setDark, monthlyGoal, registerTour } = usePersistentAppShell();
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
@@ -912,20 +847,11 @@ export function Dashboard({ suspendAutoTour = false }: { suspendAutoTour?: boole
   // The persistent top bar calls the currently-mounted dashboard tour.
   useEffect(() => registerTour(startTour), [registerTour, startTour]);
 
-  useEffect(() => {
-    if (suspendAutoTour) return;
-    if (!localStorage.getItem("paessed-dashboard-tour-seen")) {
-      const timer = window.setTimeout(() => { if (tourOrigin.current === null) startTour(); }, 650);
-      return () => window.clearTimeout(timer);
-    }
-  }, [suspendAutoTour]);
-
   const closeTour = () => {
     const returnTo = tourOrigin.current;
     tourOrigin.current = null;
     setTourOpen(false);
     setTourStep(0);
-    localStorage.setItem("paessed-dashboard-tour-seen", "1");
     // Wait until temporary tour-only padding/overlay are removed.
     if (returnTo !== null) {
       window.requestAnimationFrame(() => {
@@ -1022,16 +948,17 @@ export function Dashboard({ suspendAutoTour = false }: { suspendAutoTour?: boole
         >
           <section className="mb-6 px-1 sm:px-[30px]">
             <PageHeadingTransition>
-              <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">¡Hola, Seba! Listos para romper los {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
+              <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">{displayName ? `¡Hola, ${displayName}!` : "¡Hola!"} Tu meta es de {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
             </PageHeadingTransition>
             <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>
 
+          {diagnostic}
           <div>
-              <DomainRail onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
-              <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} />
+              <DomainRail axes={axes} onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
+              <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} completed={completed} state={state} />
               <div className="mt-7">
-                <LastExams tourFocus={tourKey === "exams"} />
+                <LastExams tourFocus={tourKey === "exams"} exams={completed} />
               </div>
           </div>
         </div>

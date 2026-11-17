@@ -1,5 +1,6 @@
 import nextEnv from "@next/env";
 import postgres from "postgres";
+import { databaseTlsOptions } from "../lib/server/db-tls.ts";
 
 nextEnv.loadEnvConfig(process.cwd());
 let failed = false;
@@ -22,14 +23,19 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUB
   } catch { check(false, "Consultar configuración pública de Auth (revisar URL, clave y conectividad)"); }
 }
 if (process.env.DATABASE_URL) {
-  const sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, connect_timeout: 10, onnotice: () => {} });
+  let sql;
   try {
+    sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: databaseTlsOptions(), connect_timeout: 10, onnotice: () => {} });
     const rows = await sql`select to_regclass('paessed.profiles') is not null as profiles, to_regclass('paessed.auth_flows') is not null as flows`;
     check(rows[0].profiles && rows[0].flows, "Migración de cuentas aplicada");
     const sessionCheck = await sql`select paessed.session_is_valid('00000000-0000-0000-0000-000000000000'::uuid, '00000000-0000-0000-0000-000000000000'::uuid, false) as valid`;
     check(sessionCheck[0]?.valid === false, "Conexión del servidor puede validar sesiones revocadas");
+    const [role] = await sql`select pg_has_role(current_user, 'paessed_server', 'USAGE') as app_role,
+      has_table_privilege(current_user, 'auth.sessions', 'SELECT') as read_sessions,
+      (select rolsuper or rolbypassrls from pg_roles where rolname = current_user) as bypass_rls`;
+    check(role.app_role && !role.read_sessions && !role.bypass_rls, "Rol de aplicación restringido y sin lectura de auth.sessions");
   } catch { check(false, "Conexión de datos, migración y permisos del servidor"); }
-  finally { await sql.end({ timeout: 2 }); }
+  finally { await sql?.end({ timeout: 2 }); }
 }
 console.log("La prueba final requiere entrar con Google en un navegador, volver a Paessed y comprobar la persistencia tras recargar. Este script no simula ese acceso.");
 process.exitCode = failed ? 1 : 0;

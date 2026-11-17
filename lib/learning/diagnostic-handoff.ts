@@ -36,14 +36,15 @@ export function validateGuestDiagnostic(value: unknown): OnboardingSubmission {
 /** One bounded handoff. Never replaces a route, an original answer or prior mastery. */
 export function incorporateGuestDiagnostic(input: LearningState, value: unknown, now = new Date().toISOString()): LearningState {
   const submission = validateGuestDiagnostic(value);
-  if (onboardingStatus(input).handledDiagnosticIds.includes(submission.diagnostic.id)) return input;
+  const status = onboardingStatus(input);
+  const empty = !status.hasEvidence && !status.hasDiagnostic;
+  if (status.handledDiagnosticIds.includes(submission.diagnostic.id) || submission.includeEvidence === "if-empty" && !empty) return input;
   const receipts = [...(input.diagnosticHandoffs ?? [])];
   if (input.initialDiagnostic && !receipts.some(r => r.sourceId === input.initialDiagnostic!.sourceId)) receipts.push(input.initialDiagnostic);
   if (receipts.length >= 64) throw new HttpError(429, "Se alcanzó el límite de diagnósticos incorporados. Tu diagnóstico sigue guardado en este dispositivo.");
   const state = structuredClone(input), d = submission.diagnostic;
   // An empty account needs this first signal automatically. Existing accounts choose.
-  const status = onboardingStatus(input);
-  const includeEvidence = !status.hasEvidence && !status.hasDiagnostic || submission.includeEvidence;
+  const includeEvidence = empty || submission.includeEvidence === true;
   if (includeEvidence) {
     for (const id of d.questionIds) {
       const q = catalog.get(id)!;
@@ -66,7 +67,7 @@ export function incorporateGuestDiagnostic(input: LearningState, value: unknown,
         state.exposures.push({ questionId: id, sessionId: d.id, mode: "diagnostic", at: now, assisted });
       }
     }
-    state.diagnostic ??= structuredClone(d);
+    if (!state.diagnostic?.completedAt) state.diagnostic = structuredClone(d);
   }
   state.initialDiagnostic = { sourceId: d.id, completedAt: now, includeEvidence };
   state.diagnosticHandoffs = [...receipts, state.initialDiagnostic];

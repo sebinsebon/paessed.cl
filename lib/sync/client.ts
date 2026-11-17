@@ -1,4 +1,4 @@
-import { validateLearningState } from "../learning/repository.ts";
+import { readDiagnosticState, validateLearningState } from "../learning/repository.ts";
 import { ACCOUNT_STORES, LOCAL_CHANGED, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, listPendingOperations, listPracticeSessions, listSavedQuestions, notifyLocalChange, openLocalDatabase, readSyncMeta, setSyncOwner, type QueuedOperation, type SyncMeta } from "./local.ts";
 import type { SyncResponse } from "./contracts";
 import type { OnboardingStatus, OnboardingSubmission } from "./contracts";
@@ -38,6 +38,9 @@ async function readIdentity(): Promise<{ owner: string | null }> {
       await synchronize();
       return { owner: data.user.id };
     }
+    activeRequest?.abort();
+    cached = null;
+    try { localStorage.removeItem(identityStorageKey()); } catch { /* A verified guest still uses guest storage. */ }
   } catch { /* An expired or unreachable session never turns account data into guest data. */ }
   setSyncOwner(cached); authenticated = false;
   updateStatus({ state: cached ? "paused" : "guest", message: cached ? "Sincronización en pausa. Inicia sesión para enviar los cambios pendientes." : "Progreso guardado en este dispositivo" });
@@ -48,15 +51,28 @@ export function initializeSyncIdentity(): Promise<{ owner: string | null }> {
   return identityRequest;
 }
 
-/** Explicitly read the guest scope even after authentication selected an account. */
-export async function readCompletedGuestDiagnostic(): Promise<Omit<OnboardingSubmission, "includeEvidence"> | null> {
+/** Record the destination and any explicit choice before attempting a guest handoff. */
+type GuestDiagnosticHandoff = { owner: string; choice: OnboardingSubmission["includeEvidence"]; confirmed?: boolean };
+export async function guestDiagnosticHandoff(id: string, update?: GuestDiagnosticHandoff) {
   const db = await openLocalDatabase(null);
-  const value = await new Promise<unknown>((resolve, reject) => {
-    const tx = db.transaction("state", "readonly"), request = tx.objectStore("state").get("current");
-    tx.oncomplete = () => resolve(request.result); tx.onerror = () => reject(tx.error);
+  return new Promise<GuestDiagnosticHandoff | undefined>((resolve, reject) => {
+    const tx = db.transaction("meta", update ? "readwrite" : "readonly"), store = tx.objectStore("meta");
+    const key = `diagnostic-handoff:${id}`, request = store.get(key);
+    let value: typeof update;
+    request.onsuccess = () => {
+      value = request.result;
+      if (update && (!value || value.owner === update.owner && !value.confirmed)) {
+        value = value && value.choice !== "if-empty" ? { ...value, ...(update.confirmed ? { confirmed: true } : {}) } : update;
+        store.put(value, key);
+      }
+    };
+    tx.oncomplete = () => resolve(value);
+    tx.onerror = tx.onabort = () => reject(tx.error);
   });
-  if (!value) return null;
-  const state = validateLearningState(value), d = state.diagnostic;
+}
+
+export async function readCompletedDiagnostic(owner: string | null = null): Promise<Omit<OnboardingSubmission, "includeEvidence"> | null> {
+  const state = await readDiagnosticState(owner), d = state.diagnostic;
   if (!d?.completedAt) return null;
   if (d.questionIds.some(id => !state.attempts.some(a => a.sessionId === d.id && a.questionId === id && a.mode === "diagnostic" && a.answer === d.answers[id]))) {
     throw new Error("El diagnóstico no coincide con sus respuestas guardadas. Conserva un respaldo para recuperarlo.");
@@ -73,12 +89,17 @@ export async function readOnboardingStatus(owner: string): Promise<OnboardingSta
 }
 async function onboardingRequest(owner: string, submission?: OnboardingSubmission): Promise<OnboardingStatus> {
   if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Vuelve a abrir tu cuenta.");
-  const response = await fetch("/api/onboarding", { credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(15_000),
-    method: submission ? "POST" : "GET", headers: { "X-PAESSED-Account": owner, ...(submission ? { "Content-Type": "application/json" } : {}) },
-    ...(submission ? { body: JSON.stringify(submission) } : {}) });
+  let response: Response;
+  try {
+    response = await fetch("/api/onboarding", { credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(15_000),
+      method: submission ? "POST" : "GET", headers: { "X-PAESSED-Account": owner, ...(submission ? { "Content-Type": "application/json" } : {}) },
+      ...(submission ? { body: JSON.stringify(submission) } : {}) });
+  } catch {
+    throw new Error("No pudimos conectar con tu cuenta. Comprueba tu conexión y vuelve a intentarlo.");
+  }
   if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Tus respuestas siguen guardadas.");
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error ?? "No se pudo guardar tu diagnóstico. Vuelve a intentarlo.");
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data) throw new Error(data?.error ?? "El servidor no pudo confirmar tu diagnóstico.");
   if (submission) { await persistSyncResponse(owner, data.sync); await synchronize(); return data.status; }
   return data;
 }
@@ -282,23 +303,13 @@ export async function resolveSyncConflict(id: string, choice: "incoming" | "curr
 export async function guestProgressSummary(): Promise<{ attempts: number; sessions: number; completedNodes: number; savedQuestions: number; learning: boolean }> {
   const db = await openLocalDatabase(null);
   const owner = getSyncOwner();
-  let handledDiagnosticIds: string[] = [];
-  if (owner) {
-    const account = await openLocalDatabase(owner);
-    handledDiagnosticIds = await new Promise<string[]>((resolve, reject) => {
-      const tx = account.transaction("state", "readonly"), request = tx.objectStore("state").get("current");
-      tx.oncomplete = () => { const state = request.result; resolve([...(state?.diagnosticHandoffs ?? []).map((r: { sourceId: string }) => r.sourceId), ...(state?.initialDiagnostic ? [state.initialDiagnostic.sourceId] : [])]); };
-      tx.onerror = () => reject(tx.error);
-    });
-  }
   const [practice, saved, learning] = await Promise.all([listPracticeSessions(null), listSavedQuestions(null), new Promise<{attempts:number;sessions:number;completedNodes:number;learning:boolean}>((resolve, reject) => {
     const tx = db.transaction(["state", "exam-sessions"], "readonly"), state = tx.objectStore("state").get("current"), sessions = tx.objectStore("exam-sessions").count();
     tx.oncomplete = () => {
       const value = state.result, diagnostic = value?.diagnostic;
-      const handled = diagnostic && handledDiagnosticIds.includes(diagnostic.id);
-      resolve({ attempts: value?.attempts?.filter((a: { sessionId: string }) => !handled || a.sessionId !== diagnostic.id).length ?? 0,
+      resolve({ attempts: value?.attempts?.filter((a: { mode: string }) => !owner || a.mode !== "diagnostic").length ?? 0,
         sessions: sessions.result, completedNodes: value?.nodes?.filter((n: { state: string }) => n.state === "completed").length ?? 0,
-        learning: !handled && (!!diagnostic?.completedAt || Object.keys(diagnostic?.answers ?? {}).length > 0 || value?.goal !== undefined && value.goal !== 2) });
+        learning: value?.goal !== undefined && value.goal !== 2 || !owner && (!!diagnostic?.completedAt || Object.keys(diagnostic?.answers ?? {}).length > 0) });
     }; tx.onerror = () => reject(tx.error);
   })]);
   return { ...learning, sessions: learning.sessions + practice.length, savedQuestions: saved.length };
@@ -312,12 +323,20 @@ export async function importGuestProgress(): Promise<void> {
     tx.oncomplete = () => resolve({ state: state.result, sessions: sessions.result, keys: keys.result }); tx.onerror = () => reject(tx.error);
   });
   const state = snapshot.state ? validateLearningState(snapshot.state) : undefined;
+  if (state) {
+    // Guest diagnostic answers use the dedicated handoff and its recorded choice.
+    state.diagnostic = null;
+    state.attempts = state.attempts.filter(a => a.mode !== "diagnostic");
+    state.exposures = state.exposures.filter(e => e.mode !== "diagnostic");
+  }
   const [practice, saved] = await Promise.all([listPracticeSessions(null), listSavedQuestions(null)]);
   if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Vuelve a confirmar la incorporación.");
   const db = await openLocalDatabase(owner);
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(["outbox", "meta"], "readwrite");
-    if (state) enqueueLearningRestore(tx, state);
+    if (state && (state.attempts.length || state.exposures.length || state.nodes.some(node => node.state !== "future") || state.goal !== 2 || state.pendingGoal)) {
+      enqueueLearningRestore(tx, state);
+    }
     snapshot.sessions.forEach((session, i) => enqueueOperation(tx, { type: "session", mode: "exam", sourceId: `default:${snapshot.keys[i]}`, session: session as never }, true));
     practice.forEach(record => enqueueOperation(tx, { type: "session", ...record }, true));
     saved.forEach(questionId => enqueueOperation(tx, { type: "saved-question", questionId, deleted: false }, true));

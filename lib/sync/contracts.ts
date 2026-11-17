@@ -32,7 +32,7 @@ export const onboardingSchema = z.strictObject({
   diagnostic: diagnosticSessionSchema,
   priorQuestionIds: z.array(questionId).max(16).default([]),
   assistedQuestionIds: z.array(questionId).max(16).default([]),
-  includeEvidence: z.boolean(),
+  includeEvidence: z.union([z.boolean(), z.literal("if-empty")]),
 });
 export type OnboardingSubmission = z.infer<typeof onboardingSchema>;
 export type OnboardingStatus = { complete: boolean; hasEvidence: boolean; hasDiagnostic: boolean; handoffComplete: boolean; handledDiagnosticIds: string[] };

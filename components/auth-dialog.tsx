@@ -2,6 +2,7 @@
 
 import { AuthCard } from "./auth-form";
 import { Modal } from "./modal";
+import Link from "next/link";
 import styles from "./auth-dialog.module.css";
 
 export function AuthDialog({ mode = "login", diagnostic = false, accountsAvailable = true, onDismiss }: { mode?: "login" | "register"; diagnostic?: boolean; accountsAvailable?: boolean; onDismiss: () => void }) {
@@ -9,6 +10,7 @@ export function AuthDialog({ mode = "login", diagnostic = false, accountsAvailab
   return <Modal labelledBy="auth-title" onDismiss={dismiss} className={styles.dialog}>
     <button type="button" onClick={dismiss} className={styles.back}>← Volver</button>
     <AuthCard mode={mode} accountsAvailable={accountsAvailable} returnTo={diagnostic ? "/diagnostico" : undefined} introduction={diagnostic ? <p className={styles.explanation}>El diagnóstico usa 16 preguntas para conocer tus fortalezas y orientar tu ruta de M1. Crea tu cuenta o inicia sesión para guardar tu punto de partida.</p> : undefined} />
+    {diagnostic && <Link href="/diagnostico" onClick={dismiss} className={styles.later}>Hacer el diagnóstico como invitado</Link>}
     <button type="button" className={styles.later} onClick={dismiss}>Más tarde</button>
   </Modal>;
 }

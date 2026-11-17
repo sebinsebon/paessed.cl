@@ -48,8 +48,13 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
     setThemeDark(next);
   }, [setThemeDark]);
 
+  const tourRequested = useRef(false);
   const registerTour = useCallback((callback: () => void) => {
     tourCallback.current = callback;
+    if (tourRequested.current) {
+      tourRequested.current = false;
+      callback();
+    }
     return () => {
       if (tourCallback.current === callback) tourCallback.current = null;
     };
@@ -71,10 +76,10 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
   }, []);
 
   const openTour = () => {
-    localStorage.removeItem("paessed-dashboard-tour-seen");
     if (pathname === "/app/inicio" && tourCallback.current) {
       tourCallback.current();
     } else {
+      tourRequested.current = true;
       router.push("/app/inicio");
     }
   };

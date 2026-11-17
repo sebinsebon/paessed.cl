@@ -3,12 +3,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
+import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import catalogData from "../lib/default-catalog.json" with { type: "json" };
 import { createLearningState, getProfile, getLearningStats, hasCompletedInitialDiagnostic, planLearning, reduceLearning } from "../lib/learning/engine.ts";
 import { validateLearningState } from "../lib/learning/repository.ts";
 import { incorporateGuestDiagnostic, validateGuestDiagnostic, onboardingStatus, getOnboardingStatus } from "../lib/server/onboarding.ts";
 import { createSyncService, rebuildImportedState } from "../lib/server/sync-service.ts";
 import { CATALOG_REVISION, learningStateSchema, onboardingSchema } from "../lib/sync/contracts.ts";
+import { db, database } from "../lib/server/db.ts";
 
 const catalog = catalogData.questions;
 const at = "2026-11-10T14:00:00.000Z", later = "2026-11-10T14:20:00.000Z";
@@ -27,6 +29,43 @@ function existingAccount() {
   state = reduceLearning(state, { type: "start-node", nodeId: node.id }, catalog, at);
   return reduceLearning(state, { type: "answer", nodeId: node.id, questionId: node.questionIds[0], answer: "B" }, catalog, at);
 }
+
+test("the Postgres.js connection commits a diagnostic once and a fresh cursor recovers it", async () => {
+  const pg = new PGlite();
+  const socket = new PGLiteSocketServer({ db: pg, port: 0, host: "127.0.0.1" });
+  const oldUrl = process.env.DATABASE_URL;
+  let connection;
+  try {
+    await pg.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz,created_at timestamptz default now());");
+    await pg.exec(await readFile(new URL("../supabase/migrations/20261111230120_account_sync_mvp.sql", import.meta.url), "utf8"));
+    const owner = randomUUID();
+    await pg.query("insert into auth.users(id) values($1)", [owner]);
+    await socket.start();
+    process.env.DATABASE_URL = `postgres://postgres:postgres@${socket.getServerConn()}/postgres`;
+    connection = db();
+    const driver = database(), service = createSyncService(driver);
+    assert.equal((await service.pull(owner, 0)).revision, 1);
+    const first = await service.incorporateDiagnostic(owner, submission("if-empty"));
+    const replay = await service.incorporateDiagnostic(owner, submission("if-empty"));
+    assert.equal(first.sync.revision, replay.sync.revision);
+    const recovered = (await service.pull(owner, 0)).changes.find(change => change.kind === "learning").value;
+    assert.deepEqual(recovered.diagnostic, original.diagnostic);
+    assert.equal(recovered.diagnosticHandoffs.length, 1);
+    assert.equal(recovered.attempts.length, 16);
+    const count = await driver.query("select count(*)::int as count from paessed.original_answers");
+    assert.equal(count[0].count, 16);
+    const questionId = original.diagnostic.questionIds[0];
+    await service.push(owner, [{ id: randomUUID(), deviceId: randomUUID(), sequence: 1, baseRevision: first.sync.revision, generation: 0, contractVersion: 1,
+      catalogRevision: CATALOG_REVISION, at: later, action: { type: "saved-question", questionId, deleted: false } }]);
+    const bookmark = (await service.pull(owner, 0)).changes.find(change => change.kind === "saved-question");
+    assert.equal(bookmark.key, questionId);
+  } finally {
+    if (oldUrl === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = oldUrl;
+    await connection?.end({ timeout: 2 });
+    await socket.stop();
+    await pg.close();
+  }
+});
 
 test("later guest restores cannot silently incorporate a previously declined diagnostic", () => {
   const before = existingAccount();

@@ -3,11 +3,9 @@ const catalog = require("../lib/default-catalog.json");
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("paessed-dashboard-tour-seen", "1"));
 });
-async function dismissReminder(page) {
-  const reminder = page.getByRole("dialog", { name: "Nos falta tu punto de partida" });
-  await expect(reminder).toBeVisible();
-  await reminder.getByRole("button", { name: "Más tarde", exact: true }).click();
-  await expect(reminder).toHaveCount(0);
+async function expectDiagnosticLink(page) {
+  await expect(page.getByRole("link", { name: "Hacer diagnóstico", exact: true })).toBeVisible();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
 }
 
 async function seedCompletedDiagnostic(page, database = "paessed-learning", wrongEvery = 0) {
@@ -53,8 +51,8 @@ test("dev bypass requires same-origin server opt-in and isolates browser data", 
   await page.getByRole("button", { name: "DEV", exact: true }).click();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   await expect.poll(() => page.evaluate(async () => (await indexedDB.databases()).map(db => db.name))).toContain("paessed-dev:paessed-learning");
   const names = await page.evaluate(async () => (await indexedDB.databases()).map(db => db.name));
   expect(names).not.toContain("paessed-learning");
@@ -115,8 +113,8 @@ test("declining mastery contribution still unlocks Aprender without repeating di
   await page.getByRole("button", { name: "DEV", exact: true }).click();
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   await page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open("paessed-dev:paessed-learning", 1);
     request.onsuccess = () => {
@@ -192,17 +190,17 @@ async function activateDev(page, destination = "Dashboard") {
   await page.getByRole("button", { name: "DEV", exact: true }).click();
   await page.getByRole("button", { name: destination, exact: true }).click();
   await expect(page.getByRole("button", { name: "DEV · activo", exact: true })).toBeVisible();
-  if (destination === "Dashboard") await dismissReminder(page);
+  if (destination === "Dashboard") await expectDiagnosticLink(page);
 }
-async function registerTestAccount(page, email = "estudiante@example.test", name = "Estudiante", reminder = true) {
+async function registerTestAccount(page, email = "estudiante@example.test", name = "Estudiante", reminder = true, destination = /\/app\/inicio$/) {
   await page.goto("/registro");
   await page.getByRole("button", { name: "Continuar con correo", exact: true }).click();
   await page.getByLabel("Nombre", { exact: true }).fill(name);
   await page.getByLabel("Correo", { exact: true }).fill(email);
   await page.getByLabel("Contraseña", { exact: true }).fill("never-save-this-password");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
-  await expect(page).toHaveURL(/\/app\/inicio$/);
-  if (reminder) await dismissReminder(page);
+  await expect(page).toHaveURL(destination);
+  if (reminder) await expectDiagnosticLink(page);
 }
 async function devAccountState(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
@@ -213,32 +211,38 @@ async function devAccountState(page) {
   }));
 }
 
-test("original dashboard returns and the pending diagnostic reminder repeats on visits, then stops after completion", async ({ page }, info) => {
+test("a new account explores Inicio without interruption, then resumes at the next question", async ({ page }, info) => {
   await activateDev(page);
   await registerTestAccount(page);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
   await expect(page.locator("#tour-domains")).toBeVisible();
   await expect(page.locator("#tour-exams")).toBeVisible();
+  await expect(page.getByText("Sin ensayos rendidos").filter({ visible: true })).toBeVisible();
+  await expect(page.getByText("742 pts", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Tu próxima conquista empieza aquí." })).toHaveCount(0);
   await page.screenshot({ path: info.outputPath("dashboard-restored.png"), fullPage: true });
-  await page.goto("/app/aprender");
-  await expect(page.getByRole("region", { name: "Ruta de aprendizaje M1" })).toBeVisible();
-  await page.getByRole("link", { name: "Inicio", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Nos falta tu punto de partida" })).toBeVisible();
-  await page.screenshot({ path: info.outputPath("diagnostic-reminder.png") });
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: "Nos falta tu punto de partida" })).toHaveCount(0);
-  await page.reload();
-  const reminder = page.getByRole("dialog", { name: "Nos falta tu punto de partida" });
-  await expect(reminder).toBeVisible();
-  await reminder.getByRole("link", { name: "Hacer diagnóstico" }).click();
+  await page.getByRole("link", { name: "Hacer diagnóstico", exact: true }).click();
   await expect(page).toHaveURL(/\/diagnostico$/);
   await expect(page.getByRole("heading", { name: "Diagnóstico M1", exact: true })).toBeVisible();
-  await seedCompletedDiagnostic(page, "paessed-dev:paessed-learning");
-  await page.goto("/bienvenida");
-  await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("link", { name: "Ver mi ruta", exact: true })).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "Nos falta tu punto de partida" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Empezar diagnóstico", exact: true }).click();
+  await page.getByRole("radio").first().click();
+  await page.getByRole("button", { name: "Confirmar y continuar", exact: true }).click();
+  await expect(page.getByText(/Diagnóstico · 2 de 16/).first()).toBeVisible();
+  await page.goto("/app/inicio");
+  await expect(page.getByText("1 de 16 respuestas guardadas en este navegador.")).toBeVisible();
+  await page.getByRole("link", { name: "Retomar diagnóstico", exact: true }).click();
+  await expect(page.getByText(/Diagnóstico · 2 de 16/).first()).toBeVisible();
+  for (let question = 2; question <= 16; question++) {
+    await page.getByRole("radio").first().click();
+    await page.getByRole("button", { name: "Confirmar y continuar", exact: true }).click();
+    if (question < 16) await expect(page.getByText(new RegExp(`Diagnóstico · ${question + 1} de 16`)).first()).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Guardar y ver resultados", exact: true }).click();
+  await expect(page).toHaveURL(/\/diagnostico\/resultado$/);
+  await expect(page.getByText("Tus respuestas están guardadas en tu cuenta.")).toBeVisible();
+  await page.getByRole("link", { name: "Volver a Inicio", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Ver resultado del diagnóstico", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Hacer diagnóstico", exact: true })).toHaveCount(0);
 });
 
 test("one shared theme defaults to light and survives public routes, dashboard and another tab", async ({ page, context }, info) => {
@@ -306,19 +310,19 @@ test("dev registration, logout, email login and Google simulation make no remote
   await page.getByLabel("Contraseña", { exact: true }).fill("never-save-this-password");
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   expect((await devAccountState(page)).goal).toBe(3);
   await page.goto("/login");
   await page.getByRole("button", { name: "Continuar con Google", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   expect((await devAccountState(page)).goal).toBe(2);
   await page.getByRole("button", { name: "DEV · activo", exact: true }).click();
   await page.getByLabel("Cuenta de prueba", { exact: true }).selectOption(firstId);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   await expect.poll(async () => (await devAccountState(page))?.goal).toBe(3);
   const saved = await page.evaluate(() => JSON.stringify(Object.entries(localStorage)));
   expect(saved).not.toContain("never-save-this-password");
@@ -341,7 +345,7 @@ test("a new dev account automatically keeps its completed diagnostic", async ({ 
   await seedCompletedDiagnostic(page, "paessed-dev:paessed-learning");
   await page.goto("/diagnostico/resultado");
   await expect(page.getByRole("heading", { name: "Tu punto de partida", exact: true })).toBeVisible();
-  await registerTestAccount(page, "estudiante@example.test", "Estudiante", false);
+  await registerTestAccount(page, "estudiante@example.test", "Estudiante", false, /\/diagnostico\/resultado$/);
   const state = await devAccountState(page);
   expect(state.attempts).toHaveLength(16);
   expect(state.initialDiagnostic.includeEvidence).toBe(true);
@@ -349,13 +353,46 @@ test("a new dev account automatically keeps its completed diagnostic", async ({ 
   await expect(page.getByRole("region", { name: "Ruta de aprendizaje M1" })).toBeVisible();
 });
 
+test("an empty account retries its completed guest diagnostic without showing a choice", async ({ page }) => {
+  await page.addInitScript(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      if (key === "current" && value?.initialDiagnostic && sessionStorage.getItem("fail-diagnostic-save")) {
+        throw new DOMException("Envío interrumpido", "AbortError");
+      }
+      return put.call(this, value, key);
+    };
+  });
+  await activateDev(page, "Diagnóstico");
+  await expect(page.getByRole("heading", { name: "Diagnóstico M1", exact: true })).toBeVisible();
+  await seedCompletedDiagnostic(page, "paessed-dev:paessed-learning");
+  await page.evaluate(() => sessionStorage.setItem("fail-diagnostic-save", "1"));
+  await page.goto("/registro");
+  await page.getByRole("button", { name: "Continuar con correo", exact: true }).click();
+  await page.getByLabel("Nombre", { exact: true }).fill("Estudiante");
+  await page.getByLabel("Correo", { exact: true }).fill("retry@example.test");
+  await page.getByLabel("Contraseña", { exact: true }).fill("never-save-this-password");
+  await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
+  const alert = page.getByRole("main").getByRole("alert");
+  await expect(alert).toContainText("Envío interrumpido");
+  await expect(page.getByRole("heading", { name: "¿Sumar este diagnóstico a tu avance?" })).toHaveCount(0);
+  await expect(alert).toContainText("respuestas");
+  await page.evaluate(() => sessionStorage.removeItem("fail-diagnostic-save"));
+  await page.getByRole("button", { name: "Reintentar", exact: true }).dblclick();
+  await expect(page).toHaveURL(/\/diagnostico\/resultado$/);
+  await expect(page.getByRole("heading", { name: "Tu punto de partida" })).toBeVisible();
+  const state = await devAccountState(page);
+  expect(state.attempts).toHaveLength(16);
+  expect(state.diagnosticHandoffs).toHaveLength(1);
+});
+
 for (const include of [true, false]) test(`existing dev account ${include ? "incorporates" : "declines"} diagnostic evidence without resetting progress`, async ({ page }) => {
   await activateDev(page);
   await page.getByRole("button", { name: "DEV · activo", exact: true }).click();
   await page.getByRole("button", { name: "Usar cuenta con progreso", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/inicio$/);
-  await expect(page.getByRole("heading", { name: /¡Hola, Seba!/ })).toBeVisible();
-  await dismissReminder(page);
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expectDiagnosticLink(page);
   const before = await devAccountState(page);
   expect(before.attempts).toHaveLength(16);
   await page.goto("/diagnostico");
@@ -424,23 +461,16 @@ test("login stays centered, has a back link and copyright at the bottom left", a
   }
 });
 
-test("dashboard reminder keyboard focus cycles only through its own controls", async ({ page }) => {
+test("the diagnostic link leaves other Inicio actions available on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
   await activateDev(page);
-  await page.reload();
-  const reminder = page.getByRole("dialog", { name: "Nos falta tu punto de partida" });
-  await expect(reminder).toBeVisible();
-  await expect(reminder.getByRole("heading")).toBeFocused();
+  const start = page.getByRole("link", { name: "Hacer diagnóstico", exact: true });
+  await expect(start).toBeInViewport();
+  await start.focus();
   await page.keyboard.press("Tab");
-  await expect(reminder.getByRole("button", { name: "Hacer diagnóstico", exact: true })).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(reminder.getByRole("button", { name: "Más tarde", exact: true })).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(reminder.getByRole("button", { name: "Hacer diagnóstico", exact: true })).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(reminder.getByRole("button", { name: "Más tarde", exact: true })).toBeFocused();
-  await reminder.getByRole("button", { name: "Hacer diagnóstico", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Crea tu cuenta", exact: true })).toBeVisible();
-  await expect(page.locator("dialog[open]")).toHaveCount(1);
+  await expect(start).not.toBeFocused();
+  await page.getByRole("link", { name: "Hacer un ensayo", exact: true }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/app\/ensayos$/);
 });
 
 async function prepareGuestImport(page) {
@@ -473,10 +503,9 @@ test("progress choices require reading time, expire unchanged, then confirmation
   await page.screenshot({ path: info.outputPath("progress-confirm.png") });
   await progress.getByRole("button", { name: "CONFIRMAR", exact: true }).click();
   await expect(progress).toHaveCount(0);
-  await expect(page.getByRole("dialog", { name: "Nos falta tu punto de partida" })).toBeVisible();
-  await expect(page.locator("dialog[open]")).toHaveCount(1);
+  await expectDiagnosticLink(page);
   await page.reload();
-  await expect(page.getByRole("dialog", { name: "Nos falta tu punto de partida" })).toBeVisible();
+  await expectDiagnosticLink(page);
   await expect(progress).toHaveCount(0);
 });
 
@@ -487,7 +516,7 @@ test("deferring progress keeps originals and asks again on another visit without
   await progress.getByRole("button", { name: "Más tarde", exact: true }).click();
   await page.clock.fastForward(5000);
   await progress.getByRole("button", { name: "CONFIRMAR", exact: true }).click();
-  await dismissReminder(page);
+  await expectDiagnosticLink(page);
   await page.goto("/app/ensayos");
   await expect(page.getByRole("heading", { name: "Tus ensayos", exact: true })).toBeVisible();
   const shellHeader = page.locator("header").first();

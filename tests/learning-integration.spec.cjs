@@ -2,9 +2,11 @@ const {test,expect}=require("@playwright/test");
 const fs=require("node:fs");
 const JSZip=require("jszip");
 const index=require("../lib/default-catalog.json");
+const {enableLocalApp}=require("./local-app-fixture.cjs");
+test.beforeEach(async ({page,baseURL})=>{await enableLocalApp(page,baseURL);});
 async function state(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open("paessed-learning",1);r.onsuccess=()=>{const db=r.result;const read=db.transaction("state").objectStore("state").get("current");read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};r.onerror=()=>reject(r.error);}));}
 async function selectQuestion(page,value){await page.getByRole("button",{name:"Abrir menú de la pregunta",exact:true}).click();await page.getByLabel("Ir a pregunta").selectOption({value});}
-test("Default exam delivers real evidence, resumes, and backup restores into a fresh browser",async({page,browser})=>{
+test("Default exam delivers real evidence, resumes, and backup restores into a fresh browser",async({page,browser,baseURL})=>{
   const exam=index.exams[0],q=index.questions.find(q=>q.examId===exam.id&&q.number===1);
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(exam.href);
@@ -22,7 +24,7 @@ test("Default exam delivers real evidence, resumes, and backup restores into a f
   const download=page.waitForEvent("download");await page.getByRole("button",{name:"Descargar respaldo"}).click();
   const bytes=fs.readFileSync(await(await download).path());
   const zip=await JSZip.loadAsync(bytes);const manifest=JSON.parse(await zip.file("manifest.json").async("string"));expect(manifest.version).toBe(3);expect(manifest.learning.state.attempts).toHaveLength(1);
-  const fresh=await browser.newContext();const target=await fresh.newPage();await target.goto("/app/perfil");
+  const fresh=await browser.newContext({baseURL});const target=await fresh.newPage();await enableLocalApp(target,baseURL);await target.goto("/app/perfil");
   await expect(target.getByTestId("backup-panel")).toHaveAttribute("data-ready","true");
   await target.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({name:"PAESSED.zip",mimeType:"application/zip",buffer:bytes});
   await expect(target.getByTestId("backup-import-preview")).toBeVisible();await target.getByRole("button",{name:"Restaurar datos",exact:true}).click();await target.getByRole("button",{name:"Confirmar restauración"}).click();await expect(target.getByText(/Restauración terminada/)).toBeVisible();
@@ -43,8 +45,9 @@ test("Playground shares the Default bank and original evidence with exam mode",a
   await selectQuestion(page,"64");await page.getByRole("button",{name:"Entregar ensayo",exact:true}).click();await page.getByRole("button",{name:"Confirmar entrega"}).click();
   await expect(page.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();const attempts=(await state(page)).attempts;expect(attempts).toHaveLength(2);expect(attempts.filter(a=>a.eligible)).toHaveLength(1);
 });
-test("two Default exam tabs merge changed answers without overwriting another question",async({page,context})=>{
+test("two Default exam tabs merge changed answers without overwriting another question",async({page,context,baseURL})=>{
   const exam=index.exams[0];const second=await context.newPage();
+  await enableLocalApp(second,baseURL);
   await Promise.all([page.goto(exam.href),second.goto(exam.href)]);
   await Promise.all([expect(page.getByRole("radio").first()).toBeVisible(),expect(second.getByRole("radio").first()).toBeVisible()]);
   await selectQuestion(second,"1");

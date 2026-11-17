@@ -1,4 +1,5 @@
 import { createLearningState } from "./engine.ts";
+import { DIAGNOSTIC_DRAFT } from "./repository.ts";
 import { createAccountLearningState, enqueueOperation, getSyncOwner, notifyLocalChange, openLocalDatabase } from "../sync/local.ts";
 
 export type SavedDefaultExamSession = {id:string;index:number;answers:Record<string,string>;completedAt?:string;assisted?:string[];evidenceDelivered?:boolean};
@@ -46,5 +47,5 @@ export async function restoreExamSessions(value:unknown):Promise<void>{
   });
 }
 export async function clearLearningState():Promise<void>{
-  const owner=getSyncOwner(), db=await openLocalDatabase(owner);return new Promise((resolve,reject)=>{const tx=db.transaction(owner?["state","exam-sessions","playground-sessions","saved-questions","outbox","meta"]:["state","exam-sessions"],"readwrite");tx.objectStore("state").put(owner?createAccountLearningState(owner):createLearningState(),"current");tx.objectStore("exam-sessions").clear();if(owner){tx.objectStore("playground-sessions").clear();tx.objectStore("saved-questions").clear();enqueueOperation(tx,{type:"reset"});}tx.oncomplete=()=>{window.dispatchEvent(new Event("paessed-learning-change"));notifyLocalChange();const channel=new BroadcastChannel(owner?`paessed-account-${owner}-v3`:"paessed-learning");channel.postMessage("changed");channel.close();resolve();};tx.onerror=()=>{reject(tx.error);};});
+  const owner=getSyncOwner(), db=await openLocalDatabase(owner);return new Promise((resolve,reject)=>{const tx=db.transaction(owner?["state","exam-sessions","playground-sessions","saved-questions","outbox","meta"]:["state","exam-sessions"],"readwrite");tx.objectStore("state").put(owner?createAccountLearningState(owner):createLearningState(),"current");tx.objectStore("state").delete(DIAGNOSTIC_DRAFT);tx.objectStore("exam-sessions").clear();if(owner){tx.objectStore("playground-sessions").clear();tx.objectStore("saved-questions").clear();enqueueOperation(tx,{type:"reset"});}tx.oncomplete=()=>{window.dispatchEvent(new Event("paessed-learning-change"));notifyLocalChange();const channel=new BroadcastChannel(owner?`paessed-account-${owner}-v3`:"paessed-learning");channel.postMessage("changed");channel.close();resolve();};tx.onerror=()=>{reject(tx.error);};});
 }

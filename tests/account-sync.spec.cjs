@@ -1,8 +1,10 @@
 const { test, expect } = require("@playwright/test");
 const catalog = require("../lib/default-catalog.json");
 const JSZip = require("jszip");
+const { enableLocalApp } = require("./local-app-fixture.cjs");
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
+test.beforeEach(async ({ page, baseURL }) => { await enableLocalApp(page, baseURL); });
 async function readAccount(page, user, store) {
   return page.evaluate(({ user, store }) => new Promise((resolve, reject) => {
     const request = indexedDB.open(user ? `paessed-account-${user}-v3` : "paessed-learning", 1);
@@ -19,15 +21,19 @@ test("guest, separate accounts, explicit logout and pending queues stay isolated
   await page.getByRole("button", { name: "3 nodos", exact: true }).click();
   await expect.poll(async () => (await readAccount(page, null, "state"))[0]?.goal).toBe(3);
   user = A; await page.reload();
+  const importDialog = page.getByRole("dialog", { name: "Tienes progreso en este dispositivo" });
+  await expect(importDialog).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "2 nodos", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "1 nodo", exact: true }).click();
   await expect.poll(async () => (await readAccount(page, A, "outbox")).length).toBeGreaterThan(0);
   user = B; await page.reload();
+  await expect(importDialog).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "2 nodos", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect((await readAccount(page, A, "state"))[0].goal).toBe(1);
   await page.getByRole("button", { name: "Cerrar sesión", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
-  await page.getByRole("link", { name: "Continuar como invitado", exact: true }).click();
   await page.goto("/app/perfil");
   await expect(page.getByRole("button", { name: "3 nodos", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect((await readAccount(page, A, "outbox")).length).toBeGreaterThan(0);

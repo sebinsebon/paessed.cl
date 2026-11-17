@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { initializeSyncIdentity, readCompletedGuestDiagnostic } from "@/lib/sync/client";
+import { initializeSyncIdentity } from "@/lib/sync/client";
 import { OnboardingHandoff } from "./onboarding-handoff";
 import { takeAuthReturnTo } from "@/lib/auth/return-to";
 
@@ -13,7 +13,7 @@ export function DevWelcome() {
     void (async () => {
       const identity = await initializeSyncIdentity();
       if (!live) return;
-      if (!identity.owner || !await readCompletedGuestDiagnostic()) { router.replace(takeAuthReturnTo()); return; }
+      if (!identity.owner) { router.replace(takeAuthReturnTo()); return; }
       if (live) setOwner(identity.owner);
     })().catch(failure => { if (live) setError(failure instanceof Error ? failure.message : "No se pudo preparar la cuenta de prueba."); });
     return () => { live = false; };

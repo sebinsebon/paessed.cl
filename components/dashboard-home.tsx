@@ -1,40 +1,76 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dashboard } from "./dashboard";
 import { useLearning } from "./learning/use-learning";
 import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
 import styles from "./diagnostic-reminder.module.css";
-import { Modal } from "./modal";
-import { useProgressPromptPending } from "./progress-prompt-context";
 import { useAccount } from "./use-account";
-import { AuthDialog } from "./auth-dialog";
+import { readDiagnosticState, subscribeDiagnostic } from "@/lib/learning/repository";
+import { guestDiagnosticHandoff } from "@/lib/sync/client";
+import { getSyncOwner, LOCAL_CHANGED } from "@/lib/sync/local";
+import type { LearningState } from "@/lib/learning/types";
+import { listExamSessions, type SavedDefaultExamSession } from "@/lib/learning/exam-repository";
+
+type Draft = NonNullable<LearningState["diagnostic"]>;
 
 export function DashboardHome() {
   const learning = useLearning();
-  const [dismissed, setDismissed] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const progressPending = useProgressPromptPending();
-  const { account, loading: accountLoading } = useAccount();
-  const incomplete = !!learning.state && !hasCompletedInitialDiagnostic(learning.state);
-  const reminder = !learning.loading && !learning.error && !progressPending && !accountLoading && incomplete && !dismissed;
-  return <>
-    <Dashboard suspendAutoTour={learning.loading || progressPending || incomplete} />
-    {reminder && !authOpen && <DiagnosticReminder signedIn={!!account?.user} onAuthenticate={() => setAuthOpen(true)} answered={Object.keys(learning.state?.diagnostic?.answers ?? {}).length} onDismiss={() => setDismissed(true)} />}
-    {reminder && authOpen && <AuthDialog mode="register" diagnostic accountsAvailable={account?.configured ?? false} onDismiss={() => { setAuthOpen(false); setDismissed(true); }} />}
-  </>;
+  const { account } = useAccount();
+  const owner = getSyncOwner();
+  const [pending, setPending] = useState<{ draft: Draft | null; guest: boolean }>();
+  const [exams, setExams] = useState<Record<string, SavedDefaultExamSession>>({});
+  useEffect(() => {
+    let active = true, version = 0;
+    const refresh = async () => {
+      const current = ++version;
+      try {
+        const own = (await readDiagnosticState(owner)).diagnostic;
+        const guest = !own && owner ? (await readDiagnosticState()).diagnostic : null;
+        const association = guest ? await guestDiagnosticHandoff(guest.id) : undefined;
+        const available = !!guest && (!association || association.owner === owner && !association.confirmed);
+        if (active && current === version) setPending({ draft: own ?? (available ? guest : null), guest: available });
+      } catch {
+        if (active && current === version) setPending({ draft: null, guest: false });
+      }
+    };
+    void refresh();
+    const stop = subscribeDiagnostic(() => void refresh(), owner);
+    const stopGuest = owner ? subscribeDiagnostic(() => void refresh()) : undefined;
+    return () => { active = false; stop(); stopGuest?.(); };
+  }, [owner]);
+  useEffect(() => {
+    let active = true, version = 0;
+    const refresh = () => {
+      const current = ++version;
+      void listExamSessions().then(value => {
+        if (active && current === version) setExams(value);
+      }).catch(() => {});
+    };
+    refresh();
+    window.addEventListener(LOCAL_CHANGED, refresh);
+    return () => { active = false; window.removeEventListener(LOCAL_CHANGED, refresh); };
+  }, [owner]);
+  const complete = !!learning.state && hasCompletedInitialDiagnostic(learning.state);
+  const draft = pending?.draft;
+  const answered = Object.keys(draft?.answers ?? {}).length;
+  const pendingSave = !!draft?.completedAt && !!owner;
+  const diagnostic = pending && learning.state && !learning.error && (!complete || pendingSave)
+    ? <DiagnosticReminder answered={answered} href={pendingSave ? "/bienvenida" : pending.guest ? "/diagnostico?invitado=1" : "/diagnostico"} pendingSave={pendingSave} />
+    : complete && learning.state?.diagnostic?.completedAt
+      ? <Link href="/diagnostico/resultado" className={styles.resultLink}>Ver resultado del diagnóstico</Link>
+      : null;
+  return <Dashboard diagnostic={diagnostic} displayName={account?.profile?.displayName} state={learning.state} profile={learning.profile} examSessions={exams} />;
 }
 
-function DiagnosticReminder({ answered, onDismiss, signedIn, onAuthenticate }: { answered: number; onDismiss: () => void; signedIn: boolean; onAuthenticate: () => void }) {
-  return <Modal labelledBy="diagnostic-reminder-title" describedBy="diagnostic-reminder-copy" onDismiss={onDismiss} className={styles.dialog}>
-    <img src="/emoji-apple/1f4da.png" alt="" width="56" height="56" className={styles.emoji} />
-    <h2 id="diagnostic-reminder-title" tabIndex={-1}>Nos falta tu punto de partida</h2>
-    <p id="diagnostic-reminder-copy">Haz el diagnóstico para que tu ruta de Aprender se ajuste a lo que necesitas reforzar. Son 16 preguntas y puedes retomarlo cuando quieras.</p>
-    {answered > 0 && <p className={styles.saved}>Ya tienes {answered} de 16 respuestas guardadas.</p>}
-    <div className={styles.actions}>
-      {signedIn ? <Link href="/diagnostico" className={`tactile-primary ${styles.primary}`}>{answered ? "Retomar diagnóstico" : "Hacer diagnóstico"}</Link> : <button type="button" className={`tactile-primary ${styles.primary}`} onClick={onAuthenticate}>Hacer diagnóstico</button>}
-      <button type="button" className={`soft-button ${styles.secondary}`} onClick={onDismiss}>Más tarde</button>
+function DiagnosticReminder({ answered, href, pendingSave }: { answered: number; href: string; pendingSave: boolean }) {
+  return <section aria-labelledby="diagnostic-reminder-title" className={styles.card}>
+    <img src="/emoji-apple/1f3af.png" alt="" width="40" height="40" className={styles.emoji} />
+    <div>
+      <h2 id="diagnostic-reminder-title">{pendingSave ? "Tu diagnóstico está listo para guardarse" : "Tu diagnóstico M1"}</h2>
+      <p>{answered ? `${answered} de 16 respuestas guardadas en este navegador.` : "16 preguntas para conocer tu punto de partida. Puedes hacerlas a tu ritmo."}</p>
     </div>
-  </Modal>;
+    <Link href={href} className={`tactile-primary ${styles.primary}`}>{pendingSave ? "Guardar diagnóstico" : answered ? "Retomar diagnóstico" : "Hacer diagnóstico"}</Link>
+  </section>;
 }

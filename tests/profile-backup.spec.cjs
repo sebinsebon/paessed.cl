@@ -1,4 +1,6 @@
 const { test, expect } = require("@playwright/test");
+const { enableLocalApp } = require("./local-app-fixture.cjs");
+test.beforeEach(async ({ page, baseURL }) => { await enableLocalApp(page, baseURL); });
 const fs = require("node:fs");
 const path = require("node:path");
 const JSZip = require("jszip");

@@ -55,6 +55,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   const [captchaToken, setCaptchaToken] = useState("");
   const [reset, setReset] = useState(0);
   const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const providers = view === "login" || view === "register";
@@ -68,8 +69,8 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   }
 
   async function run(action: string, values: Record<string, unknown>) {
-    if (busy || !enabled) return;
-    setBusy(true); setError(""); setMessage("");
+    if (inFlight.current || !enabled) return;
+    inFlight.current = true; setBusy(true); setError(""); setMessage("");
     try {
       if (action === "login" || action === "register" || action === "google") {
         try {
@@ -83,17 +84,18 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
       if (result.redirect) { window.location.assign(result.redirect); return; }
       setMessage(result.message ?? "Listo."); setPassword("");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud."); }
-    finally { setBusy(false); setCaptchaToken(""); setReset(value => value + 1); }
+    finally { inFlight.current = false; setBusy(false); setCaptchaToken(""); setReset(value => value + 1); }
   }
 
   async function enableTestMode() {
-    if (busy || !available) return;
-    setBusy(true); setError("");
+    if (inFlight.current || !available) return;
+    inFlight.current = true; setBusy(true); setError("");
     try {
       const response = await fetch("/api/dev-mode", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: true }) });
       if (!response.ok) throw new Error("No se pudo activar el modo de prueba. Vuelve a intentarlo.");
       window.location.reload();
     } catch (failure) {
+      inFlight.current = false;
       setError(failure instanceof Error ? failure.message : "No se pudo activar el modo de prueba.");
       setBusy(false);
     }

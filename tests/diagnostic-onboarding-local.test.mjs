@@ -66,7 +66,7 @@ test("signed-in 16q diagnostic is isolated until consent; no preserves prior mas
     let draft = await window.repo.dispatchDiagnostic({type:"start-diagnostic"},window.catalog);
     for (const id of draft.diagnostic.questionIds) draft = await window.repo.dispatchDiagnostic({type:"answer-diagnostic",questionId:id,answer:window.catalog.find(q=>q.id===id).correct},window.catalog);
     await window.repo.dispatchDiagnostic({type:"complete-diagnostic"},window.catalog);
-    return { state:await window.repo.readLearningState(), owner:window.local.getSyncOwner(), queued:await window.local.listPendingOperations(), beforeQueued:queued, submission:await window.client.readCompletedGuestDiagnostic() };
+    return { state:await window.repo.readLearningState(), owner:window.local.getSyncOwner(), queued:await window.local.listPendingOperations(), beforeQueued:queued, submission:await window.client.readCompletedDiagnostic() };
   });
   assert.equal(proof.owner, owner, "active account is never switched to guest");
   assert.deepEqual(proof.state, before, "all 16 draft answers leave account mastery unchanged before consent");
@@ -83,7 +83,31 @@ test("signed-in 16q diagnostic is isolated until consent; no preserves prior mas
   const persisted = await page.evaluate(() => window.repo.readLearningState());
   assert.equal(persisted.initialDiagnostic.includeEvidence, false);
   assert.equal(persisted.diagnostic, null, "declined account has a completion marker without diagnostic contribution");
-  assert.equal((await page.evaluate(() => window.client.readCompletedGuestDiagnostic())).diagnostic.id, proof.submission.diagnostic.id, "guest originals survive both auth and handoff");
+  assert.equal((await page.evaluate(() => window.client.readCompletedDiagnostic())).diagnostic.id, proof.submission.diagnostic.id, "guest originals survive both auth and handoff");
+}));
+
+test("account diagnostic revisions survive reload and stay out of other accounts and guest storage", () => harness(async page => {
+  const draft = await page.evaluate(async () => {
+    const first = await window.repo.dispatchDiagnostic({ type: "start-diagnostic" }, window.catalog, window.owner);
+    const q = window.catalog.find(question => question.id === first.diagnostic.questionIds[0]);
+    await window.repo.dispatchDiagnostic({ type: "answer-diagnostic", questionId: q.id, answer: q.correct }, window.catalog, window.owner);
+    return { id: first.diagnostic.id, question: q.id, answer: q.correct };
+  });
+  await page.reload();
+  const persisted = await page.evaluate(async owner => {
+    const repo = await import("/lib/learning/repository.ts");
+    const { setSyncOwner, listPendingOperations } = await import("/lib/sync/local.ts");
+    const other = crypto.randomUUID();
+    setSyncOwner(other);
+    return { matching: (await repo.readDiagnosticState(owner)).diagnostic, other: (await repo.readDiagnosticState(other)).diagnostic,
+      guest: (await repo.readDiagnosticState()).diagnostic, account: (await repo.readLearningState(owner)).diagnostic, queued: await listPendingOperations(owner) };
+  }, owner);
+  assert.equal(persisted.matching.id, draft.id);
+  assert.deepEqual(persisted.matching.answers, { [draft.question]: draft.answer });
+  assert.equal(persisted.other, null);
+  assert.equal(persisted.guest, null);
+  assert.equal(persisted.account, null);
+  assert.deepEqual(persisted.queued, []);
 }));
 
 test("manual synchronization retry drains signed-in pending answers after failure before handoff", () => harness(async page => {

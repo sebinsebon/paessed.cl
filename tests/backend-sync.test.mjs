@@ -11,6 +11,8 @@ import { expectedAccount, readJson } from "../lib/server/http.ts";
 import { createLearningState, planLearning, reduceLearning } from "../lib/learning/engine.ts";
 
 const migration = await readFile(new URL("../supabase/migrations/20261111230120_account_sync_mvp.sql", import.meta.url), "utf8");
+const authProbe = await readFile(new URL("../supabase/migrations/20261114214805_account_session_probe.sql", import.meta.url), "utf8");
+const sessionValidator = await readFile(new URL("../supabase/migrations/20261116210000_auth_session_security_definer.sql", import.meta.url), "utf8");
 const q = catalog.questions.find(q => q.eligible);
 async function fixture() {
   const pg = new PGlite();
@@ -37,6 +39,35 @@ test("migration blocks direct tables/functions for public roles and enables RLS"
   const perms=await f.query("select has_table_privilege('paessed_server','paessed.original_answers','UPDATE') as update,has_table_privilege('paessed_server','paessed.original_answers','DELETE') as delete");
   assert.deepEqual(perms[0],{update:false,delete:false});
 }));
+
+for (const alreadyInstalled of [false, true]) {
+  test(`session migration ${alreadyInstalled ? "reconciles the hosted layout" : "works from a fresh database"}`, async () => {
+    const pg = new PGlite();
+    try {
+      await pg.exec("create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key); create table auth.sessions(id uuid primary key,user_id uuid,not_after timestamptz,created_at timestamptz default now());");
+      await pg.exec(migration);
+      await pg.exec(authProbe);
+      if (alreadyInstalled) {
+        await pg.exec(sessionValidator);
+        await pg.exec("grant select on auth.sessions to paessed_server");
+      }
+      await pg.exec(sessionValidator);
+      const owner = randomUUID(), valid = randomUUID(), expired = randomUUID(), stale = randomUUID();
+      await pg.query("insert into auth.sessions(id, user_id, not_after, created_at) values ($1, $4, null, now()), ($2, $4, now() - interval '1 minute', now()), ($3, $4, null, now() - interval '6 minutes')", [valid, expired, stale, owner]);
+      const { rows: [permissions] } = await pg.query("select has_table_privilege('paessed_server','auth.sessions','SELECT') as direct, has_schema_privilege('paessed_server','auth','USAGE') as auth_usage, has_function_privilege('anon','paessed.session_is_valid(uuid,uuid,boolean)','EXECUTE') as anon, has_function_privilege('authenticated','paessed.session_is_valid(uuid,uuid,boolean)','EXECUTE') as authenticated, has_function_privilege('service_role','paessed.session_is_valid(uuid,uuid,boolean)','EXECUTE') as service_role");
+      assert.deepEqual(permissions, { direct: false, auth_usage: false, anon: false, authenticated: false, service_role: false });
+      await pg.transaction(async tx => {
+        await tx.exec("set local role paessed_server");
+        const { rows } = await tx.query("select paessed.session_is_valid($1,$4,true) as valid, paessed.session_is_valid($2,$4,false) as expired, paessed.session_is_valid($3,$4,true) as stale, paessed.session_is_valid($1,$5,false) as wrong_owner", [valid, expired, stale, owner, randomUUID()]);
+        assert.deepEqual(rows, [{ valid: true, expired: false, stale: false, wrong_owner: false }]);
+      });
+      await assert.rejects(pg.transaction(async tx => {
+        await tx.exec("set local role paessed_server");
+        await tx.query("select id from auth.sessions limit 1");
+      }), error => error.code === "42501");
+    } finally { await pg.close(); }
+  });
+}
 test("stable retry is acknowledged after detail retention without duplicating evidence", () => withFixture(async f => {
   const session=randomUUID();const operation=f.op(1,{type:"learning",action:{type:"external-attempt",questionId:q.id,answer:q.correct,mode:"exam",sessionId:session}});
   const first=await f.service.push(f.owner,[operation]);assert.equal(first.acknowledgements[0].status,"accepted");

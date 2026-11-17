@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme-provider";
-import { initializeSyncIdentity } from "@/lib/sync/client";
+import { guestDiagnosticHandoff, initializeSyncIdentity } from "@/lib/sync/client";
 import { getSyncOwner } from "@/lib/sync/local";
 import { loadLearningCatalog } from "@/lib/learning/catalog";
-import { getProfile, planLearning } from "@/lib/learning/engine";
-import { dispatchDiagnostic, readDiagnosticState, subscribeDiagnostic } from "@/lib/learning/repository";
+import { dispatchDiagnostic, readDiagnosticState, readLearningState, subscribeDiagnostic } from "@/lib/learning/repository";
 import type { LearningAction, LearningAttempt, LearningQuestion, LearningState } from "@/lib/learning/types";
 import { ArrowRight, Check, ChevronDown, X } from "lucide-react";
 import { M1_AXES, M1_UNITS, type M1AxisId } from "@/lib/m1-curriculum";
@@ -18,6 +17,7 @@ import { LearningQuestionWorkspace } from "./learning-question-workspace";
 import mobileStyles from "./workspace/mobile-question.module.css";
 import { AuthDialog } from "@/components/auth-dialog";
 import { useAccount } from "@/components/use-account";
+import { OnboardingHandoff } from "@/components/onboarding-handoff";
 
 const AXIS_PRESENTATION: Record<M1AxisId, { emoji: string; shortName: string; description: string }> = {
   numeros: { emoji: "1f522", shortName: "Números", description: "Cálculos, porcentajes, potencias y raíces." },
@@ -26,7 +26,7 @@ const AXIS_PRESENTATION: Record<M1AxisId, { emoji: string; shortName: string; de
   datos: { emoji: "1f4ca", shortName: "Datos", description: "Gráficos, medidas de posición y probabilidades." },
 };
 
-export function LearningDiagnostic({ resultOnly = false }: { resultOnly?: boolean }) {
+export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: { resultOnly?: boolean; guestDraft?: boolean }) {
   const [identity, setIdentity] = useState<{ owner: string | null } | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -38,7 +38,7 @@ export function LearningDiagnostic({ resultOnly = false }: { resultOnly?: boolea
   }, []);
   if (error) return <DiagnosticShell><LearningError message={error} /></DiagnosticShell>;
   if (!identity) return <DiagnosticShell><LearningLoading label="Preparando tu diagnóstico…" /></DiagnosticShell>;
-  return <DiagnosticSession key={identity.owner ?? "guest"} resultOnly={resultOnly} authenticatedOwner={identity.owner} />;
+  return <DiagnosticSession key={`${identity.owner ?? "guest"}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
 }
 
 function DiagnosticShell({ children }: { children: ReactNode }) {
@@ -56,55 +56,79 @@ function DiagnosticShell({ children }: { children: ReactNode }) {
 
 /** A diagnostic is a draft until /bienvenida confirms inclusion. In particular,
  * authenticated practice evidence cannot change while answering these 16 Qs. */
-function useDiagnosticLearning() {
+function useDiagnosticLearning(owner: string | null, guestDraft: boolean, resultOnly: boolean) {
+  const scope = guestDraft ? null : owner;
   const [state, setState] = useState<LearningState | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [catalog, setCatalog] = useState<LearningQuestion[]>([]);
   const [loading, setLoading] = useState(true), [error, setError] = useState("");
   const refresh = useCallback(async () => {
     try {
-      const [saved, questions] = await Promise.all([readDiagnosticState(), loadLearningCatalog()]);
+      const [draft, account, questions] = await Promise.all([readDiagnosticState(scope), owner ? readLearningState(owner) : null, loadLearningCatalog()]);
+      if (guestDraft && draft.diagnostic) {
+        const association = await guestDiagnosticHandoff(draft.diagnostic.id);
+        if (association && association.owner !== owner) throw new Error("Este diagnóstico está asociado a otra cuenta.");
+      }
+      let saved = draft;
+      const published = !!account && !!(account.initialDiagnostic || account.diagnostic?.completedAt);
+      if (published && !guestDraft && !draft.diagnostic) saved = account;
+      else if (owner && resultOnly && !draft.diagnostic && !published) {
+        const guest = await readDiagnosticState();
+        if (guest.diagnostic?.completedAt && !await guestDiagnosticHandoff(guest.diagnostic.id)) saved = guest;
+      }
+      setConfirmed(saved === account);
       setCatalog(questions);
-      setState(previous => previous && previous.learnerId === saved.learnerId && previous.revision > saved.revision ? previous : planLearning(saved, questions));
+      setState(previous => previous && previous.learnerId === saved.learnerId && previous.revision > saved.revision ? previous : saved);
       setError("");
     } catch (err) { setError(err instanceof Error ? err.message : "No se pudo leer tu diagnóstico."); }
     finally { setLoading(false); }
-  }, []);
-  useEffect(() => { void refresh(); return subscribeDiagnostic(() => { void refresh(); }); }, [refresh]);
+  }, [guestDraft, owner, resultOnly, scope]);
+  useEffect(() => { void refresh(); return subscribeDiagnostic(() => { void refresh(); }, scope); }, [refresh, scope]);
   const dispatch = useCallback(async (action: LearningAction) => {
-    try { const next = await dispatchDiagnostic(action, catalog); setState(next); setError(""); return next; }
+    try { const next = await dispatchDiagnostic(action, catalog, scope); setState(next); setError(""); return next; }
     catch (err) { setError(err instanceof Error ? err.message : "No se pudo guardar tu respuesta."); return null; }
-  }, [catalog]);
-  return { state, catalog, profile: state ? getProfile(state) : null, loading, error, dispatch, refresh };
+  }, [catalog, scope]);
+  return { state, confirmed, catalog, loading, error, dispatch, refresh };
 }
 
-function DiagnosticSession({ resultOnly = false, authenticatedOwner }: { resultOnly?: boolean; authenticatedOwner: string | null }) {
-  const learning = useDiagnosticLearning();
+function DiagnosticSession({ resultOnly, authenticatedOwner, guestDraft }: { resultOnly: boolean; authenticatedOwner: string | null; guestDraft: boolean }) {
+  const learning = useDiagnosticLearning(authenticatedOwner, guestDraft, resultOnly);
   const router = useRouter();
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
-  const [started, setStarted] = useState(false);
+  const inFlight = useRef(false);
   const state = learning.state;
   const diagnostic = state?.diagnostic;
   const answered = Object.keys(diagnostic?.answers ?? {}).length;
   const questionId = diagnostic?.questionIds.find((id) => !diagnostic.answers[id]);
   const meta = learning.catalog.find((question) => question.id === questionId);
   const missingUnits = M1_UNITS.filter((unit) => !learning.catalog.some((question) => question.unitId === unit.id && question.eligible));
-  const start = async () => { setBusy(true); const result = await learning.dispatch({ type: "start-diagnostic" }); if (result) setStarted(true); setBusy(false); };
-  const confirm = async () => {
-    if (!meta || !selected || busy || !ready) return;
-    setBusy(true);
-    const result = await learning.dispatch({ type: "answer-diagnostic", questionId: meta.id, answer: selected });
-    if (result) { setSelected(""); setReady(false); setStarted(true); }
-    setBusy(false);
+  const save = async (action: LearningAction) => {
+    if (inFlight.current) return null;
+    inFlight.current = true; setBusy(true);
+    try { return await learning.dispatch(action); }
+    finally { inFlight.current = false; setBusy(false); }
   };
-  const finish = async () => { setBusy(true); const result = await learning.dispatch({ type: "complete-diagnostic" }); if (result) router.replace("/diagnostico/resultado"); setBusy(false); };
+  const start = () => save({ type: "start-diagnostic" });
+  const confirm = async () => {
+    if (!meta || !selected || !ready) return;
+    const result = await save({ type: "answer-diagnostic", questionId: meta.id, answer: selected });
+    if (result) { setSelected(""); setReady(false); }
+  };
+  const finish = async () => {
+    const result = await save({ type: "complete-diagnostic" });
+    if (result && !authenticatedOwner) router.replace("/diagnostico/resultado");
+  };
+  if (authenticatedOwner && diagnostic?.completedAt && !learning.confirmed && !resultOnly) {
+    return <OnboardingHandoff ownerId={authenticatedOwner} />;
+  }
   if (state?.initialDiagnostic && !diagnostic?.completedAt) return <DiagnosticShell><section className={styles.card}><h1 className={styles.title}>Tu punto de partida está listo</h1><p className={styles.description}>Puedes continuar con tu ruta y tu dominio actual.</p><Link href="/app/inicio" className={`${styles.primary} tactile-primary`}>Continuar <ArrowRight size={17} /></Link></section></DiagnosticShell>;
-  if (!learning.loading && state && diagnostic && !diagnostic.completedAt && !resultOnly && meta && (started || answered === 0)) return <LearningQuestionWorkspace
+  if (!learning.loading && state && diagnostic && !diagnostic.completedAt && !resultOnly && meta) return <LearningQuestionWorkspace
     key={meta.id} meta={meta} context="diagnostic" scratchpadKey={`${diagnostic.id}:${meta.id}`} selected={selected} onSelect={setSelected}
     locked={busy} revealSolution={false} onReady={value => { setReady(value); if (value) void learning.dispatch({ type: "expose", questionId: meta.id, mode: "diagnostic", sessionId: diagnostic.id }); }}
     number={meta.number} total={diagnostic.questionIds.length} progress={answered} progressMax={diagnostic.questionIds.length}
-    subtitle={`Diagnóstico · ${answered + 1} de ${diagnostic.questionIds.length} · Sin tiempo límite`} onClose={() => { if (!busy) router.push(authenticatedOwner ? "/app/aprender" : "/"); }} busy={busy}
+    subtitle={`Diagnóstico · ${answered + 1} de ${diagnostic.questionIds.length} · Sin tiempo límite`} onClose={() => { if (!busy) router.push(authenticatedOwner ? "/app/inicio" : "/"); }} busy={busy}
     steps={diagnostic.questionIds.map((id, index) => ({ number: index + 1, answered: !!diagnostic.answers[id], current: id === meta.id }))}
     showAiHelp={false} onAiHelp={() => {}} notices={learning.error ? <LearningError message={learning.error} /> : undefined}
     footer={drawing => <div className={mobileStyles.sessionActions}><button type="button" className="tactile-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:opacity-40" disabled={!selected || busy || !ready || drawing} onClick={() => void confirm()}>{busy ? "Guardando…" : "Confirmar y continuar"}<ArrowRight size={17} /></button></div>} />;
@@ -122,7 +146,7 @@ function DiagnosticSession({ resultOnly = false, authenticatedOwner }: { resultO
         <button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void start()}>{busy ? "Preparando…" : "Empezar diagnóstico"}<ArrowRight size={17} /></button>
         <p className={styles.setupNote}>Una pregunta por subeje · Sin límite de tiempo</p>
         <p className={styles.footnote}>Tus respuestas se guardan en este navegador.</p>
-      </section> : resultOnly ? <section className={styles.card}><h1 className={styles.title}>Tu diagnóstico sigue en curso</h1><p className={styles.description}>{answered} de 16 respuestas guardadas. Termina para ver tus resultados.</p><Link className={`${styles.primary} tactile-primary`} href="/diagnostico">Retomar diagnóstico <ArrowRight size={17} /></Link></section> : !started && answered > 0 && answered < 16 ? <section className={styles.card}><h1 className={styles.title}>Retoma tu diagnóstico</h1><p className={styles.description}>{answered} de 16 respuestas guardadas.</p><progress className={styles.progress} value={answered} max={16} aria-label="Preguntas respondidas" /><button type="button" className={`${styles.primary} tactile-primary`} onClick={() => setStarted(true)}>Continuar diagnóstico <ArrowRight size={17} /></button></section> : answered === 16 ? <section className={styles.card}><h1 className={styles.title}>Diagnóstico completado</h1><p className={styles.description}>Tus 16 respuestas están guardadas.</p><button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void finish()}>{busy ? "Preparando resultados…" : "Ver resultados"}<ArrowRight size={17} /></button></section> : <LearningError message="No encontramos la siguiente pregunta. Tus respuestas están guardadas." retry={() => void learning.refresh()} />}
+      </section> : resultOnly ? <section className={styles.card}><h1 className={styles.title}>Tu diagnóstico sigue en curso</h1><p className={styles.description}>{answered} de 16 respuestas guardadas. Termina para ver tus resultados.</p><Link className={`${styles.primary} tactile-primary`} href="/diagnostico">Retomar diagnóstico <ArrowRight size={17} /></Link></section> : answered === 16 ? <section className={styles.card}><h1 className={styles.title}>Diagnóstico completado</h1><p className={styles.description}>Tus 16 respuestas están guardadas.</p><button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void finish()}>{busy ? "Preparando resultados…" : authenticatedOwner ? "Guardar y ver resultados" : "Ver resultados"}<ArrowRight size={17} /></button></section> : <LearningError message="No encontramos la siguiente pregunta. Tus respuestas están guardadas." retry={() => void learning.refresh()} />}
     </>}
   </DiagnosticShell>;
 }
@@ -152,9 +176,12 @@ function DiagnosticResult({ learning, authenticatedOwner }: { learning: ReturnTy
     </aside>
     <div className={styles.nextStep}>
       <h2>Sigamos desde aquí</h2>
-      <p className={styles.description}>{authenticatedOwner ? "Continúa para guardar este diagnóstico en tu cuenta." : "Crea una cuenta para guardar tu diagnóstico y empezar tu ruta."}</p>
-      <div className={styles.actions}>{authenticatedOwner ? <Link href="/bienvenida" className={`${styles.primary} tactile-primary`}>Continuar <ArrowRight size={17} /></Link> : <><button type="button" onClick={() => setAuth("register")} className={`${styles.primary} tactile-primary`}>Crear cuenta <ArrowRight size={17} /></button><button type="button" onClick={() => setAuth("login")} className={styles.secondary}>Ya tengo cuenta</button></>}</div>
-      <p className={styles.footnote}>Tus respuestas están guardadas en este navegador.</p>
+      <p className={styles.description}>{learning.confirmed ? "Tus respuestas están guardadas en tu cuenta." : authenticatedOwner ? "Continúa para guardar este diagnóstico en tu cuenta." : "Crea una cuenta para guardar tu diagnóstico y empezar tu ruta."}</p>
+      <div className={styles.actions}>{learning.confirmed
+        ? <><Link href="/app/aprender" className={`${styles.primary} tactile-primary`}>Ver mi ruta <ArrowRight size={17} /></Link><Link href="/app/inicio" className={styles.secondary}>Volver a Inicio</Link></>
+        : authenticatedOwner ? <Link href="/bienvenida" className={`${styles.primary} tactile-primary`}>Continuar <ArrowRight size={17} /></Link>
+        : <><button type="button" onClick={() => setAuth("register")} className={`${styles.primary} tactile-primary`}>Crear cuenta <ArrowRight size={17} /></button><button type="button" onClick={() => setAuth("login")} className={styles.secondary}>Ya tengo cuenta</button></>}</div>
+      {!learning.confirmed && <p className={styles.footnote}>Tus respuestas están guardadas en este navegador.</p>}
     </div>
     {auth && <AuthDialog mode={auth} accountsAvailable={account?.configured ?? false} onDismiss={() => setAuth(null)} />}
   </section>;

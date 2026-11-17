@@ -10,7 +10,15 @@ export function DevPanel({ active }: { active: boolean }) {
   const [accounts, setAccounts] = useState<Array<{ id: string; email: string; name: string }>>([]), [selected, setSelected] = useState("");
   useEffect(() => {
     if (!active) return;
-    const read = async () => { const api = await import("@/lib/auth/dev-accounts"); setAccounts(api.listDevAccounts()); setSelected(api.selectedDevAccount()?.id ?? ""); };
+    const read = async () => {
+      try {
+        const api = await import("@/lib/auth/dev-accounts");
+        setAccounts(api.listDevAccounts());
+        setSelected(api.selectedDevAccount()?.id ?? "");
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : "No se pudieron leer las cuentas de prueba.");
+      }
+    };
     void read(); window.addEventListener("paessed-account-change", read);
     return () => window.removeEventListener("paessed-account-change", read);
   }, [active]);
@@ -26,7 +34,7 @@ export function DevPanel({ active }: { active: boolean }) {
     });
   }
   const button = "soft-button min-h-10 rounded-xl px-3 py-2 text-xs font-bold disabled:opacity-40";
-  return <aside className={`fixed ${appPage ? "bottom-28 lg:bottom-5" : "bottom-4"} right-4 z-[100] text-sm text-[var(--text)]`} aria-label="Herramientas de desarrollo">
+  return <aside className={`fixed ${appPage ? "bottom-28 lg:bottom-5" : "bottom-4"} right-4 z-[59] text-sm text-[var(--text)]`} aria-label="Herramientas de desarrollo">
     {open && <div id="paessed-dev-panel" className="mb-3 w-[min(330px,calc(100vw-32px))] rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-lg">
       <div className="flex items-center justify-between"><strong>Modo dev</strong><button aria-label="Cerrar herramientas" onClick={() => setOpen(false)} className="p-2"><X size={18} /></button></div>
       <p className="mt-2 text-xs leading-5 text-[var(--muted)]">{active ? "Datos y cuentas de prueba. Sin conexión a servicios reales." : "Los atajos activan un entorno de prueba separado."}</p>

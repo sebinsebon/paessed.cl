@@ -18,6 +18,7 @@ type Session = Extract<SyncAction, { type: "session" }>;
 type ConflictRow = { id: string; kind: string; revision: number; current_value: unknown; alternative: unknown; resolved: boolean };
 class Divergence extends Error { kind: string; constructor(kind: string) { super(kind); this.kind=kind; } }
 const clone = <T>(value: T): T => structuredClone(value);
+// Bind serialized JSON as text so Postgres.js does not JSON-encode it again.
 const encoded = (value: unknown) => JSON.stringify(value);
 /** Key order must not turn a retry into a different operation. */
 export function canonicalJson(value: unknown): string {
@@ -39,7 +40,7 @@ async function initialize(query: Query, ownerId: string): Promise<Account> {
   const rows = await query("select * from paessed.account_sync_state where owner_id=$1 for update", [ownerId]);
   const account = rows[0] as unknown as Account;
   account.revision = Number(account.revision); account.generation = Number(account.generation);
-  await query("insert into paessed.learning_states(owner_id,generation,revision,state) values($1,$2,$3,$4::jsonb) on conflict do nothing", [ownerId,account.generation,account.revision,encoded(initialLearningState(ownerId))]);
+  await query("insert into paessed.learning_states(owner_id,generation,revision,state) values($1,$2,$3,$4::text::jsonb) on conflict do nothing", [ownerId,account.generation,account.revision,encoded(initialLearningState(ownerId))]);
   return account;
 }
 async function readState(query: Query, ownerId: string): Promise<LearningState> {
@@ -48,14 +49,14 @@ async function readState(query: Query, ownerId: string): Promise<LearningState> 
 }
 async function storeState(query: Query, ownerId: string, account: Account, state: LearningState, previous?: LearningState): Promise<void> {
   if (previous && canonicalJson(state) === canonicalJson(previous)) return;
-  await query("update paessed.learning_states set state=$2::jsonb,revision=$3,generation=$4,updated_at=now() where owner_id=$1",[ownerId,encoded(state),account.revision,account.generation]);
+  await query("update paessed.learning_states set state=$2::text::jsonb,revision=$3,generation=$4,updated_at=now() where owner_id=$1",[ownerId,encoded(state),account.revision,account.generation]);
   for (const attempt of state.attempts) {
     if(previous?.attempts.some(a=>a.id===attempt.id))continue;
-    await query("insert into paessed.original_answers(owner_id,generation,route_id,session_id,question_id,answer,evidence) values($1,$2,$3,$4,$5,$6,$7::jsonb) on conflict do nothing",[ownerId,account.generation,account.active_route,attempt.sessionId,attempt.questionId,attempt.answer,encoded(attempt)]);
+    await query("insert into paessed.original_answers(owner_id,generation,route_id,session_id,question_id,answer,evidence) values($1,$2,$3,$4,$5,$6,$7::text::jsonb) on conflict do nothing",[ownerId,account.generation,account.active_route,attempt.sessionId,attempt.questionId,attempt.answer,encoded(attempt)]);
   }
   for (const exposure of state.exposures) {
     if(previous?.exposures.some(e=>e.sessionId===exposure.sessionId&&e.questionId===exposure.questionId&&canonicalJson(e)===canonicalJson(exposure)))continue;
-    await query("insert into paessed.question_exposures(owner_id,generation,route_id,session_id,question_id,state) values($1,$2,$3,$4,$5,$6::jsonb) on conflict(owner_id,generation,route_id,session_id,question_id) do update set state=excluded.state",[ownerId,account.generation,account.active_route,exposure.sessionId,exposure.questionId,encoded(exposure)]);
+    await query("insert into paessed.question_exposures(owner_id,generation,route_id,session_id,question_id,state) values($1,$2,$3,$4,$5,$6::text::jsonb) on conflict(owner_id,generation,route_id,session_id,question_id) do update set state=excluded.state",[ownerId,account.generation,account.active_route,exposure.sessionId,exposure.questionId,encoded(exposure)]);
   }
 }
 function validateReference(id: string, sourceId?: string): void {
@@ -77,7 +78,7 @@ async function registeredSession(query: Query, ownerId: string, account: Account
     if(!importedAt&&open.length>=configuredLimit("OPEN_SESSIONS",20))throw new HttpError(429,"Tienes demasiadas sesiones abiertas.",60);
     await consume(query,`sessions:${ownerId}`,configuredLimit("SESSIONS_DAY",100),86400);
     const ids=(mode==="playground"?catalog:catalog.filter(q=>q.examId===question.examId)).map(q=>q.id);
-    await query("insert into paessed.practice_sessions(owner_id,id,mode,source_id,generation,revision,state,provisional,completed_at) values($1,$2,$3,$4,$5,$6,$7::jsonb,true,$8)",[ownerId,sessionId,mode,sourceId,account.generation,account.revision,encoded({id:sessionId,index:0,answers:{},questionIds:ids,...(importedAt?{completedAt:importedAt}:{})}),importedAt??null]);
+    await query("insert into paessed.practice_sessions(owner_id,id,mode,source_id,generation,revision,state,provisional,completed_at) values($1,$2,$3,$4,$5,$6,$7::text::jsonb,true,$8)",[ownerId,sessionId,mode,sourceId,account.generation,account.revision,encoded({id:sessionId,index:0,answers:{},questionIds:ids,...(importedAt?{completedAt:importedAt}:{})}),importedAt??null]);
     // Imported children each get a cursor position; a large revision group must not block paging.
     account.revision++;
   }
@@ -218,10 +219,10 @@ async function sessionAction(query: Query,ownerId:string,account:Account,action:
       const prior=state.attempts.find(a=>a.sessionId===value.id&&a.questionId===id);
       if(prior&&prior.answer!==answer)throw new Divergence("original-answer");
       if(byId.has(id))next=reduceLearning(next,{type:"external-attempt",questionId:id,answer,sessionId:value.id,mode:action.mode,assisted:value.assisted.includes(id)},catalog,value.completedAt);
-      else await query("insert into paessed.original_answers(owner_id,generation,route_id,session_id,question_id,answer,evidence) values($1,$2,$3,$4,$5,$6,$7::jsonb) on conflict do nothing",[ownerId,account.generation,account.active_route,value.id,id,answer,encoded({eligible:false,sourceRevision:value.sourceRevision??null})]);
+      else await query("insert into paessed.original_answers(owner_id,generation,route_id,session_id,question_id,answer,evidence) values($1,$2,$3,$4,$5,$6,$7::text::jsonb) on conflict do nothing",[ownerId,account.generation,account.active_route,value.id,id,answer,encoded({eligible:false,sourceRevision:value.sourceRevision??null})]);
     }
   }
-  await query("insert into paessed.practice_sessions(owner_id,id,mode,source_id,generation,revision,state,completed_at,last_device_id,answer_devices,answer_revisions) values($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10::jsonb,$11::jsonb) on conflict(owner_id,id) do update set revision=excluded.revision,source_id=excluded.source_id,state=excluded.state,completed_at=excluded.completed_at,provisional=false,last_device_id=excluded.last_device_id,answer_devices=excluded.answer_devices,answer_revisions=excluded.answer_revisions",[ownerId,value.id,action.mode,action.sourceId,account.generation,account.revision,encoded(value),value.completedAt??null,operation?.deviceId??null,encoded(devices),encoded(revisions)]);
+  await query("insert into paessed.practice_sessions(owner_id,id,mode,source_id,generation,revision,state,completed_at,last_device_id,answer_devices,answer_revisions) values($1,$2,$3,$4,$5,$6,$7::text::jsonb,$8,$9,$10::text::jsonb,$11::text::jsonb) on conflict(owner_id,id) do update set revision=excluded.revision,source_id=excluded.source_id,state=excluded.state,completed_at=excluded.completed_at,provisional=false,last_device_id=excluded.last_device_id,answer_devices=excluded.answer_devices,answer_revisions=excluded.answer_revisions",[ownerId,value.id,action.mode,action.sourceId,account.generation,account.revision,encoded(value),value.completedAt??null,operation?.deviceId??null,encoded(devices),encoded(revisions)]);
   return next;
 }
 async function apply(query:Query,ownerId:string,account:Account,operation:SyncOperation,state:LearningState,importing:boolean):Promise<LearningState>{
@@ -339,11 +340,11 @@ export function createSyncService(driver:Database=database()){
             await query("rollback to savepoint operation_apply");await query("release savepoint operation_apply");
             if(!(error instanceof Divergence))throw error;
             status="conflict";
-            await query("insert into paessed.sync_conflicts(owner_id,id,generation,kind,revision,current_value,alternative) values($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb)",[ownerId,randomUUID(),account.generation,error.kind,account.revision,encoded(state),encoded(operation.action)]);
+            await query("insert into paessed.sync_conflicts(owner_id,id,generation,kind,revision,current_value,alternative) values($1,$2,$3,$4,$5,$6::text::jsonb,$7::text::jsonb)",[ownerId,randomUUID(),account.generation,error.kind,account.revision,encoded(state),encoded(operation.action)]);
           }
           await query("update paessed.account_sync_state set revision=$2,updated_at=now() where owner_id=$1",[ownerId,account.revision]);
           await query("update paessed.sync_devices set last_sequence=$3,last_seen_at=now() where owner_id=$1 and id=$2",[ownerId,operation.deviceId,operation.sequence]);
-          await query("insert into paessed.sync_operations(owner_id,id,device_id,sequence,generation,digest,status,revision,payload) values($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)",[ownerId,operation.id,operation.deviceId,operation.sequence,operation.generation,digest,status,account.revision,encoded(operation.action)]);
+          await query("insert into paessed.sync_operations(owner_id,id,device_id,sequence,generation,digest,status,revision,payload) values($1,$2,$3,$4,$5,$6,$7,$8,$9::text::jsonb)",[ownerId,operation.id,operation.deviceId,operation.sequence,operation.generation,digest,status,account.revision,encoded(operation.action)]);
           await technicalEvent(query,status==="accepted"?"sync-accepted":"sync-conflict");
           acknowledgements.push({id:operation.id,sequence:operation.sequence,status});
         }
@@ -366,7 +367,7 @@ export function createSyncService(driver:Database=database()){
           const latest = await readState(query, ownerId);
           const displaced = action.type === "session" ? await query("select state,source_id,mode from paessed.practice_sessions where owner_id=$1 and (id=$2 or (mode=$3 and source_id=$4 and generation=$5 and completed_at is null))",[ownerId,action.session.id,action.mode,action.sourceId,account.generation]) : [];
           const preserved = { learning: latest, practice: displaced.map(row => ({ mode: row.mode, sourceId: row.source_id, session: row.state })) };
-          await query("insert into paessed.sync_conflicts(owner_id,id,generation,kind,revision,current_value,alternative,resolved,choice,resolved_at) values($1,$2,$3,'preserved-before-resolution',$4,$5::jsonb,'{}'::jsonb,true,'current',now())",[ownerId,randomUUID(),account.generation,account.revision,encoded(preserved)]);
+          await query("insert into paessed.sync_conflicts(owner_id,id,generation,kind,revision,current_value,alternative,resolved,choice,resolved_at) values($1,$2,$3,'preserved-before-resolution',$4,$5::text::jsonb,'{}'::jsonb,true,'current',now())",[ownerId,randomUUID(),account.generation,account.revision,encoded(preserved)]);
           account.active_route=randomUUID();
           await query("update paessed.account_sync_state set active_route=$2 where owner_id=$1",[ownerId,account.active_route]);
           if(action.type==="restore-learning")await storeState(query,ownerId,account,rebuildImportedState({...action.state,initialDiagnostic:latest.initialDiagnostic,diagnosticHandoffs:latest.diagnosticHandoffs}));

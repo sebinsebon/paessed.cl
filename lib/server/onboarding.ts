@@ -10,6 +10,3 @@ export async function getOnboardingStatus(userId: string, driver: Database = dat
   const rows = await driver.query("select state from paessed.learning_states where owner_id=$1", [userId]);
   return onboardingStatus(rows.length ? validateLearningState(rows[0].state) : undefined);
 }
-export async function getOnboardingComplete(userId: string): Promise<boolean> {
-  return (await getOnboardingStatus(userId)).complete;
-}
