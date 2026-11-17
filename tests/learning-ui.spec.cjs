@@ -1,5 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const catalog = require("../lib/default-catalog.json").questions;
+const { enableLocalApp } = require("./local-app-fixture.cjs");
 
 async function readState(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
@@ -66,7 +67,8 @@ async function openCurrentNode(page, resume = false) {
   await expect(page.getByRole("button", { name: page.viewportSize().width <= 767 ? "Abrir menú de la pregunta" : "Ajustes de apariencia de la hoja", exact: true })).toBeInViewport();
 }
 
-test("real diagnostic, original 3/5, correction, resume and earned XP", async ({ page }, testInfo) => {
+test("real diagnostic, original 3/5, correction, resume and earned XP", async ({ page, baseURL }, testInfo) => {
+  await enableLocalApp(page, baseURL);
   await page.addInitScript(() => {
     window.__learningAiOpened = "";
     window.__learningAiPrompt = "";
@@ -75,11 +77,9 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   });
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
-  await page.goto("/app/aprender");
-  await expect(page.getByRole("heading", { name: "Prepara tu ruta de M1" })).toBeVisible();
-  await page.getByRole("button", { name: /^5 preguntas/ }).click();
-  await page.getByRole("button", { name: "Continuar al diagnóstico" }).click();
-  await expect(page).toHaveURL(/\/diagnostico$/);
+  await page.goto("/diagnostico");
+  await page.getByRole("button", { name: "Empezar diagnóstico" }).click();
+  await expect(page.getByRole("radio").first()).toBeVisible();
   for (let index = 0; index < 16; index++) {
     const state = await readState(page);
     const id = state.diagnostic.questionIds[index];
@@ -89,19 +89,18 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
     await expect.poll(async () => Object.keys((await readState(page)).diagnostic.answers).length).toBe(index + 1);
     if (index === 2) {
       await page.reload();
-      await expect(page.getByRole("heading", { name: "Retoma donde quedaste." })).toBeVisible();
-      await page.getByRole("button", { name: "Continuar diagnóstico" }).click();
+      await expect(page.getByText(/Diagnóstico · 4 de 16/).first()).toBeVisible();
     }
   }
-  await page.getByRole("button", { name: "Ver mi diagnóstico" }).click();
+  await page.getByRole("button", { name: "Ver resultados" }).click();
   await expect(page).toHaveURL(/\/diagnostico\/resultado$/);
-  await expect(page.getByRole("heading", { name: "Este es tu punto de partida." })).toBeVisible();
-  await expect(page.getByText("Lectura provisional", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tu punto de partida" })).toBeVisible();
+  await expect(page.getByText("Resultado provisional", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("learning-diagnostic-result.png"), fullPage: true });
   const afterDiagnostic = await readState(page);
   expect(afterDiagnostic.attempts.filter((attempt) => attempt.mode === "diagnostic")).toHaveLength(16);
   expect(new Set(afterDiagnostic.attempts.map((attempt) => attempt.unitId)).size).toBe(16);
-  await page.getByRole("link", { name: "Comenzar mi ruta" }).click();
+  await page.goto("/app/aprender");
   await expect(page.getByRole("heading", { name: "Aprender", exact: true })).toBeVisible();
   await expect(page.getByTestId("learning-route-node")).toHaveCount(7);
   await page.screenshot({ path: testInfo.outputPath("learning-desktop-light.png"), fullPage: true });
@@ -116,7 +115,7 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   let current = (await readState(page)).nodes.find((node) => node.state === "active");
   const firstNodeId = current.id;
   await page.getByRole("button", { name: "Guardar esta pregunta", exact: true }).click();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("paessed-playground-saved-questions") || "[]"))).toContain(current.questionIds[0]);
+  await expect(page.getByRole("button", { name: "Quitar pregunta de guardadas", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Quitar pregunta de guardadas", exact: true }).click();
   await page.getByRole("button", { name: "Abrir mapa de preguntas", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Mapa de preguntas del nodo", exact: true })).toContainText("0/5 respondidas");
@@ -126,6 +125,7 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
   await expect.poll(() => page.getByTestId("learning-session").evaluate(el => getComputedStyle(el).backgroundColor)).toBe("rgb(17, 24, 39)");
   // The preference must also be honored by the original Ensayos viewer.
   const essay = await page.context().newPage();
+  await enableLocalApp(essay, baseURL);
   await essay.goto("/app/ensayos/nuevo");
   await essay.getByRole("button", { name: "Ajustes de apariencia de la hoja", exact: true }).click();
   await expect(essay.getByRole("button", { name: "Hoja oscura", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -284,7 +284,7 @@ test("real diagnostic, original 3/5, correction, resume and earned XP", async ({
 test("package loading failure is visible and retry preserves unanswered diagnostic", async ({ page }) => {
   await page.route("**/default/gold/**", (route) => route.fulfill({ status: 503, body: "Temporarily unavailable" }));
   await page.goto("/diagnostico");
-  await page.getByRole("button", { name: "Continuar al diagnóstico" }).click();
+  await page.getByRole("button", { name: "Empezar diagnóstico" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "No se pudo cargar" })).toBeVisible();
   expect(Object.keys((await readState(page)).diagnostic.answers)).toHaveLength(0);
   expect((await readState(page)).exposures).toHaveLength(0);

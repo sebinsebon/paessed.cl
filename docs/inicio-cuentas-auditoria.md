@@ -13,6 +13,10 @@
 
 Las pruebas de navegador locales usan cuentas DEV o respuestas simuladas cuando ejercitan contratos de autenticación. La prueba TCP usa el controlador Postgres.js de la aplicación y PGlite como PostgreSQL local con el esquema mínimo de Auth.
 
-Para ejecutar las suites locales de navegador, iniciar la aplicación con `PAESSED_DEV_MODE=true` y `APP_ORIGIN=http://127.0.0.1:3210`, y usar ese mismo origen en `PAESSED_BASE_URL`. Ejecutar `npm run test:inicio-ui`, `npm run test:accounts-ui` y `npm run test:learning-integration`.
+Para ejecutar las suites locales de navegador, iniciar la aplicación con `PAESSED_DEV_MODE=true` y `APP_ORIGIN=http://127.0.0.1:3210`, y usar ese mismo origen en `PAESSED_BASE_URL`. Ejecutar `npm run test:inicio-ui`, `npm run test:accounts-ui`, `npm run test:learning-ui` y `npm run test:learning-integration`.
 
 El cierre del preview requiere Google y correo reales, terminar el diagnóstico con una interrupción de red, verificar en otra sesión el diagnóstico y una pregunta guardada, y cambiar de cuenta en el mismo navegador. La publicación requiere la aprobación del commit validado.
+
+## Preparación de producción
+
+Vercel construye producción desde `main`. Antes de publicar, establecer las variables propias de producción, comprobar los callbacks en el dominio de producción y verificar que el Supabase productivo pueda recuperarse de un respaldo. Al iniciar la auditoría, Vercel enumeró las variables de Auth y datos exclusivamente para el preview de `feat/inicio-cuentas`. La referencia de recuperación del sitio estable es el despliegue `dpl_9Su63yTVrBLqtFqFYFoytHv8Guns` del commit `0cd23a0`.
