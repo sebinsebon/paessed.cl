@@ -2,7 +2,7 @@
 import { scopedStorageKey } from "@/lib/sync/local";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Eraser, LoaderCircle, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { AlertCircle, Eraser, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { PaessedBlocks } from "@/components/paessed-blocks";
 import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useDrawingTools } from "@/components/use-drawing-tools";
@@ -10,6 +10,7 @@ import type { LearningQuestion } from "@/lib/learning/types";
 import { useLearningQuestion } from "./use-learning-question";
 import { QUESTION_PAPER_FONT } from "@/lib/question-paper";
 import styles from "./learning.module.css";
+import { LoadingRegion, QuestionLoading, Skeleton } from "@/components/loading-state";
 
 export const primaryButton = styles.primary;
 export const secondaryButton = styles.secondary;
@@ -19,7 +20,7 @@ export function LearningError({ message, retry }: { message: string; retry?: () 
 }
 
 export function LearningLoading({ label = "Preparando tu ruta…" }: { label?: string }) {
-  return <div className={styles.loading} role="status"><LoaderCircle size={26} className={`${styles.spin} mx-auto mb-3`} />{label}</div>;
+  return <LoadingRegion label={label} className={styles.card}><div className="grid min-h-48 place-items-center content-center gap-4"><Skeleton className="size-12 rounded-2xl" /><Skeleton className="h-5 w-52 max-w-full" /><Skeleton className="h-4 w-40 max-w-full" /></div></LoadingRegion>;
 }
 
 export function LearningQuestionCard({ meta, selected, onSelect, locked, revealSolution = false, onReady, scratchpadKey }: {
@@ -36,8 +37,7 @@ export function LearningQuestionCard({ meta, selected, onSelect, locked, revealS
     drawing.setDrawingEnabled(false);
   }, [inkKey, drawing.setDrawingEnabled]);
   const updateStrokes = (next: PlaygroundInkStroke[]) => { setStrokes(next); try { localStorage.setItem(inkKey, JSON.stringify(next)); } catch { /* The answer is saved independently; drawing still works in memory. */ } };
-  if (error) return <LearningError message={error} retry={retry} />;
-  if (!content || !ready) return <LearningLoading label="Cargando la pregunta original…" />;
+  if (error || !content || !ready) return <QuestionLoading error={error} retry={retry} />;
   const { question } = content;
   return <>
     <div className="mb-3 flex items-center justify-between gap-3">

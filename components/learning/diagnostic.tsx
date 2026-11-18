@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ThemeToggle } from "@/components/theme-provider";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DiagnosticShell } from "./diagnostic-shell";
+import { DiagnosticSkeleton } from "@/components/page-skeletons";
+import { PendingLabel } from "@/components/loading-state";
 import { guestDiagnosticHandoff, initializeSyncIdentity } from "@/lib/sync/client";
 import { getSyncOwner } from "@/lib/sync/local";
 import { loadLearningCatalog } from "@/lib/learning/catalog";
 import { dispatchDiagnostic, readDiagnosticState, readLearningState, subscribeDiagnostic } from "@/lib/learning/repository";
 import type { LearningAction, LearningAttempt, LearningQuestion, LearningState } from "@/lib/learning/types";
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, ChevronDown, X } from "lucide-react";
 import { M1_AXES, M1_UNITS, type M1AxisId } from "@/lib/m1-curriculum";
 import { LearningError, LearningLoading } from "./question-card";
@@ -37,21 +40,8 @@ export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: {
     return () => { active = false; window.removeEventListener("paessed-sync-owner-change", changed); };
   }, []);
   if (error) return <DiagnosticShell><LearningError message={error} /></DiagnosticShell>;
-  if (!identity) return <DiagnosticShell><LearningLoading label="Preparando tu diagnóstico…" /></DiagnosticShell>;
+  if (!identity) return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
   return <DiagnosticSession key={`${identity.owner ?? "guest"}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
-}
-
-function DiagnosticShell({ children }: { children: ReactNode }) {
-  return <main className={styles.page}>
-    <header className={styles.header}>
-      <Link href="/" aria-label="Paessed, inicio" className={styles.logo}>
-        <img className={styles.logoLight} src="/paessed-logo.svg" alt="PAESSED" width="154" height="28" />
-        <img className={styles.logoDark} src="/paessed-logo-dark.svg" alt="PAESSED" width="154" height="28" />
-      </Link>
-      <ThemeToggle />
-    </header>
-    <div className={styles.content}>{children}</div>
-  </main>;
 }
 
 /** A diagnostic is a draft until /bienvenida confirms inclusion. In particular,
@@ -131,10 +121,10 @@ function DiagnosticSession({ resultOnly, authenticatedOwner, guestDraft }: { res
     subtitle={`Diagnóstico · ${answered + 1} de ${diagnostic.questionIds.length} · Sin tiempo límite`} onClose={() => { if (!busy) router.push(authenticatedOwner ? "/app/inicio" : "/"); }} busy={busy}
     steps={diagnostic.questionIds.map((id, index) => ({ number: index + 1, answered: !!diagnostic.answers[id], current: id === meta.id }))}
     showAiHelp={false} onAiHelp={() => {}} notices={learning.error ? <LearningError message={learning.error} /> : undefined}
-    footer={drawing => <div className={mobileStyles.sessionActions}><button type="button" className="tactile-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:opacity-40" disabled={!selected || busy || !ready || drawing} onClick={() => void confirm()}>{busy ? "Guardando…" : "Confirmar y continuar"}<ArrowRight size={17} /></button></div>} />;
+    footer={drawing => <div className={mobileStyles.sessionActions}><button type="button" className="tactile-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold disabled:opacity-40" disabled={!selected || busy || !ready || drawing} onClick={() => void confirm()}><PendingLabel pending={busy} label="Guardando…">Confirmar y continuar<ArrowRight size={17} /></PendingLabel></button></div>} />;
   return <DiagnosticShell>
-    {learning.loading || !state ? <LearningLoading label="Preparando tu diagnóstico…" /> : <>
-      {learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />}
+    {learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />}
+    {learning.loading ? resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" /> : state && <>
       {(!learning.catalog.length || !diagnostic && missingUnits.length > 0) ? <section className={styles.card}><h1 className={styles.title}>Todavía no hay preguntas suficientes</h1><p className={styles.description}>Faltan preguntas verificadas para {missingUnits.length} de los 16 subejes.</p><Link href="/app/ensayos" className={styles.secondary}>Ver mis ensayos</Link></section> : diagnostic?.completedAt ? <DiagnosticResult learning={learning} authenticatedOwner={authenticatedOwner} /> : !diagnostic ? <section className={`${styles.card} ${styles.setup}`} aria-busy={busy}>
         <div className={styles.setupIllustration} aria-hidden="true"><img src="/emoji-apple/1f3af.png" alt="" width="80" height="80" className={styles.setupEmoji} /></div>
         <h1 className={styles.title}>Diagnóstico M1</h1>
@@ -146,7 +136,7 @@ function DiagnosticSession({ resultOnly, authenticatedOwner, guestDraft }: { res
         <button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void start()}>{busy ? "Preparando…" : "Empezar diagnóstico"}<ArrowRight size={17} /></button>
         <p className={styles.setupNote}>Una pregunta por subeje · Sin límite de tiempo</p>
         <p className={styles.footnote}>Tus respuestas se guardan en este navegador.</p>
-      </section> : resultOnly ? <section className={styles.card}><h1 className={styles.title}>Tu diagnóstico sigue en curso</h1><p className={styles.description}>{answered} de 16 respuestas guardadas. Termina para ver tus resultados.</p><Link className={`${styles.primary} tactile-primary`} href="/diagnostico">Retomar diagnóstico <ArrowRight size={17} /></Link></section> : answered === 16 ? <section className={styles.card}><h1 className={styles.title}>Diagnóstico completado</h1><p className={styles.description}>Tus 16 respuestas están guardadas.</p><button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void finish()}>{busy ? "Preparando resultados…" : authenticatedOwner ? "Guardar y ver resultados" : "Ver resultados"}<ArrowRight size={17} /></button></section> : <LearningError message="No encontramos la siguiente pregunta. Tus respuestas están guardadas." retry={() => void learning.refresh()} />}
+      </section> : resultOnly ? <section className={styles.card}><h1 className={styles.title}>Tu diagnóstico sigue en curso</h1><p className={styles.description}>{answered} de 16 respuestas guardadas. Termina para ver tus resultados.</p><Link className={`${styles.primary} tactile-primary`} href="/diagnostico">Retomar diagnóstico <ArrowRight size={17} /></Link></section> : answered === 16 ? <section className={styles.card}><h1 className={styles.title}>Diagnóstico completado</h1><p className={styles.description}>Tus 16 respuestas están guardadas.</p><button type="button" className={`${styles.primary} tactile-primary`} disabled={busy} onClick={() => void finish()}><PendingLabel pending={busy} label="Guardando…">{authenticatedOwner ? "Guardar y ver resultados" : "Ver resultados"}<ArrowRight size={17} /></PendingLabel></button></section> : <LearningError message="No encontramos la siguiente pregunta. Tus respuestas están guardadas." retry={() => void learning.refresh()} />}
     </>}
   </DiagnosticShell>;
 }
@@ -157,7 +147,8 @@ function DiagnosticResult({ learning, authenticatedOwner }: { learning: ReturnTy
   const diagnostic = learning.state!.diagnostic!;
   const attempts = learning.state!.attempts.filter((attempt) => attempt.sessionId === diagnostic.id && attempt.mode === "diagnostic" && diagnostic.questionIds.includes(attempt.questionId));
   const totalCorrect = attempts.filter((attempt) => attempt.correct).length;
-  return <section className={styles.result}>
+  const reducedMotion = useReducedMotion();
+  return <motion.section className={styles.result} initial={reducedMotion ? false : { opacity: 0.9 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.16 }}>
     <div className={styles.completed}><Check size={15} aria-hidden="true" /> Diagnóstico completado</div>
     <h1 className={styles.title}>Tu punto de partida</h1>
     <p className={styles.description}>Ya tienes una primera mirada a los cuatro ejes de M1.</p>
@@ -184,7 +175,7 @@ function DiagnosticResult({ learning, authenticatedOwner }: { learning: ReturnTy
       {!learning.confirmed && <p className={styles.footnote}>Tus respuestas están guardadas en este navegador.</p>}
     </div>
     {auth && <AuthDialog mode={auth} accountsAvailable={account?.configured ?? false} onDismiss={() => setAuth(null)} />}
-  </section>;
+  </motion.section>;
 }
 
 function DiagnosticAxisCard({ axis, attempts, questionIds }: { axis: (typeof M1_AXES)[number]; attempts: LearningAttempt[]; questionIds: string[] }) {

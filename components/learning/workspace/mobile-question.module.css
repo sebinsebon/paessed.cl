@@ -120,5 +120,6 @@
 :global([data-ink-locked=true][data-ink-layout=desktop]) .optionStatus { width:17px; flex-basis:17px; }
 @media (prefers-reduced-motion:reduce) {
  .answerEffects { display:none; }
- .viewport *, .dialog * { animation:none!important; transition:none!important; }
+ .viewport :not([data-loading-placeholder], [data-loading-indicator]),
+ .dialog :not([data-loading-placeholder], [data-loading-indicator]) { animation:none!important; transition:none!important; }
 }

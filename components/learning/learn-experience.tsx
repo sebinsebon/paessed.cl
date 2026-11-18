@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, BookOpen, Flag } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import type { DailyGoal, LearningAction, LearningState } from "@/lib/learning/types";
 import { useLearning } from "./use-learning";
-import { LearningError, LearningLoading } from "./question-card";
+import { LearnSkeleton } from "@/components/page-skeletons";
+import { PendingLabel } from "@/components/loading-state";
+import { LearningError } from "./question-card";
 import { NodeSession } from "./node-session";
 import { LearningRouteDashboard } from "./route/learning-route";
 import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
@@ -24,7 +26,7 @@ export function LearnExperience() {
   if (active) return <AppShell title="Tu sesión de aprendizaje" immersive><div className={`${styles.root} h-full`}><NodeSession key={active.id} node={active} state={learning.state!} catalog={learning.catalog} dispatch={learning.dispatch} error={learning.error} onClose={() => { setOpenNode(null); setClosedNode(active.id); }} /></div></AppShell>;
   return <AppShell title="Aprender" eyebrow="Tu ruta M1"><div className={styles.root}>
     {learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />}
-    {learning.loading || !learning.state ? <LearningLoading /> : !learning.catalog.length ? <EmptyBank /> : !devMode && !learning.state.diagnostic && !hasCompletedInitialDiagnostic(learning.state) ? <LearningSetup state={learning.state} dispatch={learning.dispatch} /> : <LearningRouteDashboard state={learning.state} profile={learning.profile} onOpen={setOpenNode} closedNode={closedNode} dispatch={learning.dispatch} />}
+    {learning.loading ? <LearnSkeleton /> : !learning.state ? null : !learning.catalog.length ? <EmptyBank /> : !devMode && !learning.state.diagnostic && !hasCompletedInitialDiagnostic(learning.state) ? <LearningSetup state={learning.state} dispatch={learning.dispatch} /> : <LearningRouteDashboard state={learning.state} profile={learning.profile} onOpen={setOpenNode} closedNode={closedNode} dispatch={learning.dispatch} />}
   </div></AppShell>;
 }
 
@@ -35,11 +37,18 @@ function EmptyBank() {
 export function LearningSetup({ state, dispatch, onContinue }: { state: LearningState; dispatch: Dispatch; onContinue?: () => void }) {
   const [goal, setGoal] = useState<DailyGoal>(state.goal);
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
   const choose = async () => {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
-    const saved = await dispatch({ type: "set-goal", goal });
-    if (saved) { if (onContinue) onContinue(); else window.location.assign("/diagnostico"); }
-    setBusy(false);
+    try {
+      const saved = await dispatch({ type: "set-goal", goal });
+      if (saved) { if (onContinue) onContinue(); else window.location.assign("/diagnostico"); }
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
   };
   return <section className={styles.setup}>
     <div className={styles.setupArt}><Flag size={36} strokeWidth={2.3} /></div>
@@ -49,7 +58,7 @@ export function LearningSetup({ state, dispatch, onContinue }: { state: Learning
     <fieldset className="mt-8"><legend className="text-sm font-extrabold">¿Cuántas sesiones quieres hacer al día?</legend><div className={styles.goalChoices}>
       {([1, 2, 3] as DailyGoal[]).map((value) => <button key={value} type="button" aria-pressed={goal === value} className={`${styles.goalChoice} ${goal === value ? styles.goalSelected : ""}`} onClick={() => setGoal(value)}><span>{value === 1 ? "5 preguntas" : value === 2 ? "10 preguntas" : "15 preguntas"}</span><strong>{value} {value === 1 ? "sesión" : "sesiones"}</strong><span>Con revisión de errores</span></button>)}
     </div></fieldset>
-    <button className={styles.primary} disabled={busy} onClick={() => void choose()}>{busy ? "Guardando…" : "Continuar al diagnóstico"}<ArrowRight size={18} /></button>
+    <button className={styles.primary} disabled={busy} onClick={() => void choose()}><PendingLabel pending={busy} label="Guardando…">Continuar al diagnóstico<ArrowRight size={18} /></PendingLabel></button>
     <div className={styles.setupList}><p><strong>16 preguntas iniciales</strong>Para elegir los temas de tu ruta.</p><p><strong>Sin reloj ni pistas</strong>Responde a tu ritmo.</p><p><strong>Tu avance se guarda</strong>En este navegador, sin crear una cuenta.</p></div>
   </section>;
 }

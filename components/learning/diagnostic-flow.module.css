@@ -73,7 +73,7 @@
 .progress::-webkit-progress-value { background: var(--primary); border-radius: 99px; }
 .progress::-moz-progress-bar { background: var(--primary); border-radius: 99px; }
 
-.result { animation: reveal .5s both; }
+.result { min-width: 0; }
 .completed { display: inline-flex; align-items: center; gap: 7px; color: var(--diagnostic-success); background: color-mix(in srgb, var(--success) 9%, var(--surface)); padding: 7px 11px; margin-bottom: 18px; border-radius: 99px; font-size: 11px; font-weight: 800; }
 .page { --diagnostic-success: #047857; --diagnostic-incorrect: #9a4b20; }
 :global(html.dark) .page { --diagnostic-success: #6ee7b7; --diagnostic-incorrect: #fdba74; }
@@ -93,10 +93,7 @@
 .mapLegend span:first-child svg { color: var(--diagnostic-success); }
 .mapLegend span:last-child svg { color: var(--diagnostic-incorrect); }
 .axes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
-.axisCard { min-width: 0; padding: 24px 22px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; animation: reveal .55s both; }
-.axisCard:nth-child(2) { animation-delay: .07s; }
-.axisCard:nth-child(3) { animation-delay: .14s; }
-.axisCard:nth-child(4) { animation-delay: .21s; }
+.axisCard { min-width: 0; padding: 24px 22px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
 .axisCard[data-axis="numeros"] { --axis-tint: #3b82f6; }
 .axisCard[data-axis="algebra"] { --axis-tint: #f59e0b; }
 .axisCard[data-axis="geometria"] { --axis-tint: #14b8a6; }

@@ -31,10 +31,18 @@ async function readIdentity(): Promise<{ owner: string | null }> {
     if (!response.ok) throw new Error("Sesión no disponible");
     const data = await response.json();
     if (data.user?.id) {
-      if (getSyncOwner() !== data.user.id) activeRequest?.abort();
+      if (getSyncOwner() !== data.user.id) {
+        activeRequest?.abort();
+        retryAt = 0;
+        failures = 0;
+        capacityWarning = false;
+        updateStatus({ state: "idle", pending: 0, conflicts: 0, message: "Progreso guardado en este dispositivo" });
+      }
       setSyncOwner(data.user.id); authenticated = true;
       try { localStorage.setItem(identityStorageKey(), data.user.id); } catch { /* IndexedDB still retains the scoped work. */ }
-      updateStatus({ state: "idle", message: "Progreso guardado en este dispositivo" });
+      if (status.state === "paused" && status.message.startsWith("Tu sesión venció")) {
+        updateStatus({ state: "idle", message: "Progreso guardado en este dispositivo" });
+      }
       await synchronize();
       return { owner: data.user.id };
     }
@@ -235,10 +243,13 @@ async function syncNow() {
     while (more && owner === getSyncOwner()) {
       const meta = await readSyncMeta(owner);
       const response = await fetchSync(`/api/sync?cursor=${meta.cursor}`, undefined, owner);
-      await persistSyncResponse(owner, response); more = response.hasMore;
+      await persistSyncResponse(owner, response);
+      if (owner !== getSyncOwner()) return;
+      more = response.hasMore;
       capacityWarning = !!response.capacity?.warning;
       if (response.capacity?.writesPaused) {
-        updateStatus({state:"paused",pending:(await listPendingOperations(owner)).length,message:"La cuenta alcanzó el umbral de capacidad remota. Tu progreso y sus cambios pendientes siguen guardados en este dispositivo."});
+        const pending = (await listPendingOperations(owner)).length;
+        if (owner === getSyncOwner()) updateStatus({state:"paused",pending,message:"La cuenta alcanzó el umbral de capacidad remota. Tu progreso y sus cambios pendientes siguen guardados en este dispositivo."});
         return;
       }
     }
@@ -258,11 +269,15 @@ async function syncNow() {
       await persistSyncResponse(owner, response);
       pending = await listPendingOperations(owner);
     }
+    const conflicts = (await listSyncConflicts()).length;
+    if (owner !== getSyncOwner()) return;
     failures = 0; retryAt = 0;
-    updateStatus({ state: "idle", pending: pending.length, conflicts: (await listSyncConflicts()).length, message: capacityWarning ? "Progreso sincronizado. La capacidad remota superó el 70 %; se suspenderán nuevos envíos al 85 %." : "Progreso sincronizado" });
+    updateStatus({ state: "idle", pending: pending.length, conflicts, message: capacityWarning ? "Progreso sincronizado. La capacidad remota superó el 70 %; se suspenderán nuevos envíos al 85 %." : "Progreso sincronizado" });
   } catch (error) {
+    if (owner !== getSyncOwner()) return;
     if (status.state === "syncing") updateStatus({ state: "error", message: error instanceof Error ? error.message : "El progreso pendiente permanece guardado." });
-    updateStatus({ pending: (await listPendingOperations(owner)).length });
+    const pending = (await listPendingOperations(owner)).length;
+    if (owner === getSyncOwner()) updateStatus({ pending });
   }
 }
 export async function synchronize(force = false): Promise<void> {
@@ -280,7 +295,8 @@ export function startSync(): () => void {
   let debounce: ReturnType<typeof setTimeout> | undefined, maximum: ReturnType<typeof setTimeout> | undefined;
   const send = () => { clearTimeout(debounce); clearTimeout(maximum); maximum = undefined; void synchronize(); };
   const changed = () => {
-    void listPendingOperations().then(p => updateStatus({ pending: p.length }));
+    const owner = getSyncOwner();
+    void listPendingOperations(owner).then(p => { if (owner === getSyncOwner()) updateStatus({ pending: p.length }); });
     clearTimeout(debounce); debounce = setTimeout(send, 2000);
     maximum ??= setTimeout(send, 10000);
   };

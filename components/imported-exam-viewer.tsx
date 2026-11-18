@@ -1,5 +1,6 @@
 "use client";
 
+import { PendingLabel, QuestionLoading } from "./loading-state";
 import { AppShell } from "@/components/app-shell";
 import { AiHelpSettings,AskAiButton,useAiSettings } from "@/components/ask-ai";
 import { ExternalQuestionWorkspace } from "@/components/learning/workspace/external-question-workspace";
@@ -80,6 +81,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
   const [sourceRevision, setSourceRevision] = useState("");
   const lastProjection = useRef("");
   const [loading, setLoading] = useState(true);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const deliveryInFlight = useRef(false);
   const [loadError, setLoadError] = useState(false);
   const [active, setActive] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -164,7 +167,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, loadAttempt]);
 
   useEffect(() => {
     if (!restored || !record) return;
@@ -282,7 +285,8 @@ export function ImportedExamViewer({ id }: { id: string }) {
     if (meta) void recordEvidence({ type: "expose", questionId: meta.id, sessionId, mode: "exam", assisted: true }).catch(error => setProgressError(error instanceof Error ? error.message : "No se pudo guardar el uso de ayuda."));
   };
   const deliver = async () => {
-    if (!record || !restored || !sessionId || delivering) return;
+    if (!record || !restored || !sessionId || deliveryInFlight.current) return;
+    deliveryInFlight.current = true;
     setDelivering(true);
     try {
       // Persist and lock the delivered snapshot before recording any evidence.
@@ -305,7 +309,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
       }
       setEvidenceDelivered(true); setProgressError("");
     } catch (error) { setProgressError(error instanceof Error ? error.message : "No se pudo registrar la entrega. Reintenta para conservar tu evidencia."); }
-    finally { setDelivering(false); }
+    finally { deliveryInFlight.current = false; setDelivering(false); }
   };
   const chooseAnswer = (answer: string) => {
     if (completedAt || delivering) return;
@@ -346,7 +350,7 @@ export function ImportedExamViewer({ id }: { id: string }) {
           <h2 className="text-lg font-extrabold">Ensayo entregado</h2><p className="mt-2 text-sm">{Object.keys(finalAnswers).length} respondidas · {questions.length - Object.keys(finalAnswers).length} omitidas. Tus respuestas entregadas están guardadas.</p>
           {evaluated.length > 0 ? <p className="mt-2 text-sm">{evaluated.filter(q => q.correct).length} correctas y {evaluated.filter(q => !q.correct).length} incorrectas entre {evaluated.length} preguntas con clave verificada del banco Default.</p> : <p className="mt-2 text-sm">Este archivo no tiene respuestas evaluables con clave verificada del banco Default.</p>}
           <p className="mt-2 text-xs">Las primeras respuestas nuevas sin ayuda aportan evidencia al perfil. Este resultado no se convierte en puntaje PAES.</p>
-          {!evidenceDelivered && <button type="button" disabled={delivering} onClick={() => void deliver()} className="mt-3 min-h-11 rounded-lg border px-3 font-bold">{delivering ? "Guardando evidencia…" : "Reintentar registro de evidencia"}</button>}
+          {!evidenceDelivered && <button type="button" disabled={delivering} onClick={() => void deliver()} className="mt-3 min-h-11 rounded-lg border px-3 font-bold"><PendingLabel pending={delivering} label="Guardando…">Reintentar registro de evidencia</PendingLabel></button>}
         </section>}
       </>}
       renderAiHelp={onOpenChange => <AskAiButton onOpenChange={onOpenChange} question={aiQuestion} settings={aiSettings} onChange={updateAiSettings} disabled={delivering || (!!completedAt && !evidenceDelivered)} onHelp={requestHelp} />}
@@ -364,11 +368,14 @@ export function ImportedExamViewer({ id }: { id: string }) {
     />
     {deliveryOpen && <QuestionDialog title="¿Entregar este ensayo?" onClose={() => { if (!delivering) setDeliveryOpen(false); }} paperStyle={paperStyle} wide>
       <p className="text-base leading-relaxed">{questions.length - answered} preguntas quedarán omitidas. Se guardarán tus respuestas actuales y la entrega no se podrá modificar.</p>
-      <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={delivering} onClick={() => setDeliveryOpen(false)} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-4 font-bold">Seguir revisando</button><button type="button" disabled={delivering} onClick={() => void deliver()} className="tactile-primary min-h-12 rounded-xl px-4 font-bold">{delivering ? "Guardando…" : "Confirmar entrega"}</button></div>
+      <div className="mt-6 flex flex-wrap gap-3"><button type="button" disabled={delivering} onClick={() => setDeliveryOpen(false)} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-4 font-bold">Seguir revisando</button><button type="button" disabled={delivering} onClick={() => void deliver()} className="tactile-primary min-h-12 rounded-xl px-4 font-bold"><PendingLabel pending={delivering} label="Guardando…">Confirmar entrega</PendingLabel></button></div>
     </QuestionDialog>}
-  </> : <section className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
-    <h2 className="text-lg font-bold">{loading ? "Abriendo ensayo importado…" : !record ? loadError ? "No se pudo abrir este ensayo" : "No se encontró este ensayo" : "No hay preguntas reconocibles en este paquete."}</h2>
-    {!loading && <Link href="/app/ensayos" className="soft-button rounded-xl px-4 py-3">Volver a Ensayos</Link>}
+  </> : loading || loadError ? <div className="mx-auto w-full max-w-[1060px] p-6">
+    <div className="mb-5 flex items-center justify-between gap-4"><h1 className="text-lg font-extrabold">Ensayo importado</h1><Link href="/app/ensayos" className="soft-button rounded-xl px-4 py-3">Volver a Ensayos</Link></div>
+    <QuestionLoading error={loadError ? "No se pudo abrir este ensayo." : undefined} retry={() => setLoadAttempt(value => value + 1)} />
+  </div> : <section className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
+    <h2 className="text-lg font-bold">{!record ? "No se encontró este ensayo" : "No hay preguntas reconocibles en este paquete."}</h2>
+    <Link href="/app/ensayos" className="soft-button rounded-xl px-4 py-3">Volver a Ensayos</Link>
   </section>;
   return <AppShell title="Ensayo importado" eyebrow="Biblioteca local" wide immersive immersiveSidebarOpen={sidebarVisible} onImmersiveSidebarToggle={() => setSidebarVisible(previous => !previous)}>{body}</AppShell>;
 }

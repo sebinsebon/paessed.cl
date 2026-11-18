@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { PendingLabel } from "./loading-state";
 import { Modal } from "./modal";
 import styles from "./progress-dialog.module.css";
 
@@ -9,6 +10,7 @@ export function ProgressDialog({ title, children, busy, error, onChoose, saveExp
   const [selection, setSelection] = useState<{ choice: ProgressChoice; at: number } | null>(null);
   const [now, setNow] = useState(0);
   const [expired, setExpired] = useState(false);
+  const confirming = useRef(false);
   useEffect(() => {
     if (!selection || busy) return;
     const tick = () => {
@@ -22,10 +24,11 @@ export function ProgressDialog({ title, children, busy, error, onChoose, saveExp
   const seconds = selection ? Math.max(0, Math.ceil(((reading ? selection.at + 5000 : selection.at + 10_000) - now) / 1000)) : 0;
   const choose = (choice: ProgressChoice) => { const at = Date.now(); setExpired(false); setNow(at); setSelection({ choice, at }); };
   async function confirm() {
-    if (!selection || busy) return;
+    if (!selection || busy || confirming.current) return;
     const elapsed = Date.now() - selection.at;
     if (elapsed < 5000 || elapsed >= 10_000) { if (elapsed >= 10_000) { setSelection(null); setExpired(true); } return; }
-    try { await onChoose(selection.choice); } finally { setSelection(null); }
+    confirming.current = true;
+    try { await onChoose(selection.choice); } finally { confirming.current = false; setSelection(null); }
   }
   return <Modal labelledBy="progress-title" onDismiss={() => { if (!busy) onDismiss(); }}>
     <img src="/emoji-apple/1f4da.png" width="52" height="52" alt="" className={styles.emoji} />
@@ -35,7 +38,7 @@ export function ProgressDialog({ title, children, busy, error, onChoose, saveExp
       <h3>{selection.choice === "save" ? "Vas a guardar este progreso" : selection.choice === "discard" ? "Vas a continuar sin incorporarlo" : "Vas a decidir más tarde"}</h3>
       <p>{selection.choice === "save" ? saveExplanation : selection.choice === "discard" ? discardExplanation : "No cambiaremos tu progreso. Podrás volver a decidir al entrar de nuevo."}</p>
       <p role="status" className={styles.timer}>{busy ? "Guardando tu elección…" : reading ? `Lee tu elección. Podrás confirmar en ${seconds} s.` : `Tienes ${seconds} s para confirmar. Si no lo haces, volverás a las opciones.`}</p>
-      <button type="button" className={styles.confirm} disabled={busy || !!reading} onClick={() => void confirm()}>{reading ? `CONFIRMAR EN ${seconds} S` : "CONFIRMAR"}</button>
+      <button type="button" className={styles.confirm} disabled={busy || !!reading} onClick={() => void confirm()}><PendingLabel pending={busy} label="Guardando…">{reading ? `CONFIRMAR EN ${seconds} S` : "CONFIRMAR"}</PendingLabel></button>
       <button type="button" className={styles.back} disabled={busy} onClick={() => setSelection(null)}>Volver a las opciones</button>
     </div> : <div className={styles.actions}>
       {expired && <p role="status" className={styles.expired}>Se acabó el tiempo. No se hizo ningún cambio.</p>}

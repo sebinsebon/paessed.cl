@@ -4,6 +4,8 @@ import JSZip from "jszip";
 import {readPaessed, validatePaessed} from "@/lib/paessed-package";
 import Link from "next/link";
 import { ChangeEvent, DragEvent, ReactNode, useMemo, useRef, useState } from "react";
+import { PendingLabel } from "./loading-state";
+import { sileo } from "sileo";
 import { motion } from "motion/react";
 import {
   AlertTriangle,
@@ -269,6 +271,7 @@ export async function importExamFile(file: File): Promise<ImportedExamSummary> {
 
 export function ImportExamPanel({ embedded = false, onBack, onImported }: { embedded?: boolean; onBack?: () => void; onImported?: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const inFlight = useRef(false);
   const [parsed, setParsed] = useState<ParsedPackage | null>(null);
   const [status, setStatus] = useState<"idle" | "reading" | "ready" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -277,7 +280,8 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
   const canImport = useMemo(() => Boolean(parsed && !parsed.fatalError && parsed.summary.questionCount > 0), [parsed]);
 
   const handleFile = async (file?: File) => {
-    if (!file) return;
+    if (!file || inFlight.current) return;
+    inFlight.current = true;
     setParsed(null);
     setMessage("");
     setStatus("reading");
@@ -289,22 +293,27 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "No se pudo leer el paquete.");
+    } finally {
+      inFlight.current = false;
     }
   };
 
   const importPackage = async () => {
-    if (!parsed || !canImport) return;
+    if (!parsed || !canImport || status === "saved" || inFlight.current) return;
+    inFlight.current = true;
     setStatus("saving");
     setMessage("");
     try {
       const record: ImportedExamRecord = { summary: parsed.summary, finalJson: parsed.finalJson, archive: parsed.archive };
       await saveImportedExam(record);
       setStatus("saved");
-      setMessage("Ensayo importado localmente. Ya aparece en tu sección Ensayos.");
+      sileo.success({ title: "Ensayo importado", description: "Ya aparece en tu sección Ensayos." });
       onImported?.();
     } catch (error) {
       setStatus("error");
       setMessage(error instanceof Error ? error.message : "No se pudo guardar el ensayo.");
+    } finally {
+      inFlight.current = false;
     }
   };
 
@@ -363,7 +372,7 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
               Acepta .paessed, .zip o un final.json. Nada se sube a un servidor: esta versión lo procesa localmente en tu navegador.
             </p>
             <button type="button" onClick={() => inputRef.current?.click()} disabled={status === "reading" || status === "saving"} className="tactile-primary mt-5 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-extrabold disabled:opacity-50">
-              <FileArchive size={16} />{status === "reading" ? "Leyendo paquete…" : "Elegir archivo"}
+              <PendingLabel pending={status === "reading"} label="Leyendo paquete…"><FileArchive size={16} />Elegir archivo</PendingLabel>
             </button>
           </div>
 
@@ -438,7 +447,7 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
           )}
 
           <button type="button" onClick={() => void importPackage()} disabled={!canImport || status === "saving" || status === "saved"} className="tactile-primary inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
-            <PackageCheck size={16} />{status === "saving" ? "Importando…" : status === "saved" ? "Importado" : "Importar ensayo"}
+            <PendingLabel pending={status === "saving"} label="Importando…"><PackageCheck size={16} />{status === "saved" ? "Importado" : "Importar ensayo"}</PendingLabel>
           </button>
 
           {status === "saved" && (onBack ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LoadingRegion, Skeleton } from "./loading-state";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AlertCircle, BarChart3, Database, HardDrive, RefreshCw, Trash2, X } from "lucide-react";
 import { LocalBackupPanel } from "@/components/local-backup-panel";
@@ -141,7 +142,7 @@ export function LocalStorageDashboard() {
         </div>
         <button ref={refreshRef} type="button" onClick={() => { void refresh(); }} disabled={loading}
           className="soft-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-[12px] font-bold disabled:opacity-50">
-          <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""} />
           Actualizar
         </button>
       </div>
@@ -176,7 +177,12 @@ export function LocalStorageDashboard() {
           <BarChart3 size={17} className="text-[var(--primary)]"/>
           <h3 className="text-[15px] font-extrabold">Consumo por categoría</h3>
         </div>
-        {loading && !report ? <p role="status" className="py-6 text-center text-xs text-[var(--muted)]">Calculando tamaños del navegador…</p> : (
+        {loading && !report ? <LoadingRegion label="Calculando tamaños del navegador…">
+          <Skeleton className="mb-4 h-6 w-full rounded-full" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[1, 2, 3, 4].map(item => <Skeleton key={item} className="h-12 w-full rounded-xl" />)}
+          </div>
+        </LoadingRegion> : (
           <div className="space-y-4">
             {!hasData && <p className="rounded-xl border border-dashed border-[var(--border)] p-4 text-center text-[12px] text-[var(--muted)]">Todavía no hay datos locales identificados.</p>}
             {STORAGE_CATEGORIES.map((definition) => {

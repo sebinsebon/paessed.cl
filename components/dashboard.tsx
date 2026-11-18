@@ -824,7 +824,9 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
   );
 }
 
-export function Dashboard({ diagnostic, displayName, state, profile, examSessions }: {
+export function Dashboard({ diagnostic, displayName, state, profile, examSessions, loading, notice }: {
+  loading?: React.ReactNode;
+  notice?: React.ReactNode;
   diagnostic?: ReactNode; displayName?: string; state: LearningState | null; profile: LearningProfile | null;
   examSessions: Record<string, SavedDefaultExamSession>;
 }) {
@@ -946,6 +948,7 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
+          {loading ?? <>
           <section className="mb-6 px-1 sm:px-[30px]">
             <PageHeadingTransition>
               <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">{displayName ? `¡Hola, ${displayName}!` : "¡Hola!"} Tu meta es de {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
@@ -953,6 +956,7 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
             <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>
 
+          {notice}
           {diagnostic}
           <div>
               <DomainRail axes={axes} onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
@@ -961,6 +965,7 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
                 <LastExams tourFocus={tourKey === "exams"} exams={completed} />
               </div>
           </div>
+          </>}
         </div>
       </main>
 

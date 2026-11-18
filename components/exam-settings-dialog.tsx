@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
 import {buildPaessedPackage} from "@/lib/paessed-export";
 import {validatePaessed} from "@/lib/paessed-package";
+import { PendingLabel, QuestionLoading } from "./loading-state";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowDownToLine, Archive, Check, ChevronDown, FileJson2, RotateCcw, Save, ShieldAlert, Upload, X } from "lucide-react";
 import {
@@ -68,7 +69,9 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   const [advancedPrompt, setAdvancedPrompt] = useState(false);
   const [advancedUnlocked, setAdvancedUnlocked] = useState(false);
   const [advancedText, setAdvancedText] = useState("");
-  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupAction, setBackupAction] = useState<"download" | "inspect" | "restore" | null>(null);
+  const backupBusy = backupAction !== null;
+  const inFlight = useRef(false);
   const [backupPreview, setBackupPreview] = useState<ExamBackupPreview | null>(null);
   const [confirmRestore, setConfirmRestore] = useState(false);
   const backupInputRef = useRef<HTMLInputElement>(null);
@@ -144,8 +147,9 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   };
 
   const save = async () => {
-    if (!record || saving || exporting || backupBusy || tab === "backups") return;
+    if (!record || inFlight.current || tab === "backups") return;
     if (tab === "advanced" ? !advancedDirty : !form || !basicDirty) return;
+    inFlight.current = true;
     setSaving(true);
     setError("");
     setNotice("");
@@ -180,12 +184,14 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar el ensayo.");
     } finally {
+      inFlight.current = false;
       setSaving(false);
     }
   };
 
   const download = async () => {
-    if (!record || dirty || saving || exporting || backupBusy) return;
+    if (!record || dirty || inFlight.current) return;
+    inFlight.current = true;
     setExporting(true);
     setError("");
     try {
@@ -194,6 +200,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo exportar el paquete.");
     } finally {
+      inFlight.current = false;
       setExporting(false);
     }
   };
@@ -218,8 +225,9 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   };
 
   const downloadBackup = async (): Promise<boolean> => {
-    if (!record || saving || exporting || backupBusy) return false;
-    setBackupBusy(true);
+    if (!record || inFlight.current) return false;
+    inFlight.current = true;
+    setBackupAction("download");
     setError("");
     try {
       const blob = await createExamBackup(record);
@@ -238,7 +246,8 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
       setError(err instanceof Error ? err.message : "No se pudo crear el respaldo.");
       return false;
     } finally {
-      setBackupBusy(false);
+      inFlight.current = false;
+      setBackupAction(null);
     }
   };
 
@@ -251,8 +260,9 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
   };
 
   const readBackup = async (file?: File) => {
-    if (!file || backupBusy || !record) return;
-    setBackupBusy(true);
+    if (!file || inFlight.current || !record) return;
+    inFlight.current = true;
+    setBackupAction("inspect");
     setError("");
     setNotice("");
     setBackupPreview(null);
@@ -263,14 +273,16 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo abrir el respaldo.");
     } finally {
-      setBackupBusy(false);
+      inFlight.current = false;
+      setBackupAction(null);
       if (backupInputRef.current) backupInputRef.current.value = "";
     }
   };
 
   const restoreBackup = async () => {
-    if (!record || !backupPreview || backupBusy || saving) return;
-    setBackupBusy(true);
+    if (!record || !backupPreview || inFlight.current) return;
+    inFlight.current = true;
+    setBackupAction("restore");
     setError("");
     try {
       const restored = backupPreview.record;
@@ -291,7 +303,8 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
       setError((err instanceof Error ? err.message : "No se pudo restaurar el respaldo.") +
         " Comprueba el estado actual antes de volver a intentarlo.");
     } finally {
-      setBackupBusy(false);
+      inFlight.current = false;
+      setBackupAction(null);
     }
   };
 
@@ -351,7 +364,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
           )}
 
           {loading ? (
-            <div className="p-8 text-sm text-[var(--muted)]">Cargando preguntas…</div>
+            <div className="p-6"><QuestionLoading /></div>
           ) : !record ? (
             <div className="p-8 text-sm text-[var(--muted)]">No se encontró el archivo en la biblioteca local.</div>
           ) : (
@@ -393,7 +406,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button type="button" disabled={backupBusy} onClick={() => { void enterAdvanced(true); }}
                         className="tactile-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:opacity-50">
-                        <Archive size={16}/> {backupBusy ? "Preparando…" : "Respaldar y continuar"}
+                        <PendingLabel pending={backupAction === "download"} label="Preparando ZIP…"><Archive size={16} />Respaldar y continuar</PendingLabel>
                       </button>
                       <button type="button" disabled={backupBusy} onClick={() => { void enterAdvanced(false); }}
                         className="soft-button inline-flex min-h-10 items-center rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
@@ -424,7 +437,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                       </div>
                       <button type="button" disabled={backupBusy || saving || exporting} onClick={() => { void downloadBackup(); }}
                         className="soft-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
-                        <ArrowDownToLine size={16}/> {backupBusy ? "Preparando…" : "Descargar respaldo .zip"}
+                        <PendingLabel pending={backupAction === "download"} label="Preparando ZIP…"><ArrowDownToLine size={16} />Descargar respaldo .zip</PendingLabel>
                       </button>
                     </div>
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)]/60 p-4">
@@ -442,7 +455,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                         onChange={(event) => { void readBackup(event.target.files?.[0]); }}/>
                       <button type="button" disabled={backupBusy} onClick={() => backupInputRef.current?.click()}
                         className="soft-button mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">
-                        <Upload size={16}/> {backupBusy ? "Verificando…" : "Seleccionar copia ZIP"}
+                        <PendingLabel pending={backupAction === "inspect"} label="Verificando…"><Upload size={16} />Seleccionar copia ZIP</PendingLabel>
                       </button>
                       {backupPreview && (
                         <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
@@ -460,7 +473,7 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <button type="button" disabled={backupBusy} onClick={() => { void restoreBackup(); }}
                                   className="min-h-10 rounded-lg bg-rose-600 px-3 text-[11px] font-extrabold text-white disabled:opacity-50">
-                                  Confirmar restauración
+                                  <PendingLabel pending={backupAction === "restore"} label="Importando…">Confirmar restauración</PendingLabel>
                                 </button>
                                 <button type="button" onClick={() => setConfirmRestore(false)}
                                   className="soft-button min-h-10 rounded-lg px-3 text-[11px] font-bold">Cancelar</button>
@@ -591,14 +604,14 @@ export function ExamSettingsDialog({ examId, onClose, onSaved }: EditorProps) {
 
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] bg-[var(--surface)] px-5 py-4 sm:px-6">
             <button type="button" disabled={!record || dirty || saving || exporting || backupBusy} onClick={() => { void download(); }} className="soft-button inline-flex min-h-10 items-center gap-2 rounded-xl px-3.5 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-40">
-              <ArrowDownToLine size={15} /> {exporting ? "Exportando..." : "Descargar .paessed"}
+              <PendingLabel pending={exporting} label="Preparando ZIP…"><ArrowDownToLine size={15} />Descargar .paessed</PendingLabel>
             </button>
             <div className="flex items-center gap-2">
               <button type="button" onClick={dismiss} disabled={saving || exporting || backupBusy} className="rounded-xl px-3.5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-[var(--surface-2)] disabled:opacity-40">
                 Cerrar
               </button>
               <button type="button" onClick={() => { void save(); }} disabled={tab === "backups" || advancedPrompt || !(tab === "advanced" ? advancedDirty : basicDirty) || saving || exporting || backupBusy} className="tactile-primary inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45">
-                <Save size={15} />{saving ? "Guardando..." : "Guardar cambios"}
+                <PendingLabel pending={saving} label="Guardando…"><Save size={15} />Guardar cambios</PendingLabel>
               </button>
             </div>
           </footer>

@@ -10,7 +10,8 @@ import type { LearningQuestion } from "@/lib/learning/types";
 import type { BankQuestion } from "@/lib/playground-imports";
 import type { PlaygroundInkStroke } from "@/components/playground-scratchpad";
 import { useLearningQuestion } from "./use-learning-question";
-import { LearningError, LearningLoading } from "./question-card";
+import { motion, useReducedMotion } from "motion/react";
+import { QuestionLoading } from "@/components/loading-state";
 import { QuestionWorkspace } from "./workspace/question-workspace";
 import { PostErrorAiHelp } from "./ai/post-error-ai-help";
 import { AdaptiveAlternatives } from "./workspace/adaptive-alternatives";
@@ -65,6 +66,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const [panel, setPanel] = useState<"menu" | "appearance" | "map" | "info" | "drawing" | null>(null);
   const [saved, setSaved] = useState(false);
   const [storageError, setStorageError] = useState("");
+  const reducedMotion = useReducedMotion();
   const [sheetReady, setSheetReady] = useState(false);
   const [inkLocked, setInkLocked] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -194,8 +196,8 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     {notices}
     {(storageError || timer.error) && <p role="alert" className="mb-3 max-w-[1060px] text-sm text-rose-500">{storageError || timer.error}</p>}
     {timer.enabled && <span className={`${styles.timer} ${styles.bodyTimer}`} data-testid="learning-question-timer" aria-label={`Tiempo activo: ${timer.label}`}>{timer.label}</span>}
-    {error ? <LearningError message={error} retry={retry} /> : !question || !ready ? <LearningLoading label="Cargando la pregunta original…" /> : <>
-      <div className="min-w-0" onPointerDownCapture={() => { if (panel === "drawing") setPanel(null); }}>
+    {error || !question || !ready ? <QuestionLoading error={error} retry={retry} /> : <>
+      <motion.div initial={reducedMotion ? false : { opacity: 0.9 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="min-w-0" onPointerDownCapture={() => { if (panel === "drawing") setPanel(null); }}>
       <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={scopedStorageKey(`paessed-learning-ink:${scratchpadKey}`)} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
         <div ref={sheetRef} className={styles.sheet}>
           <div ref={stemRef} tabIndex={-1} data-testid="learning-paper-stem" data-question-id={meta.id} style={QUESTION_PAPER_FONT} className={`${styles.stem} max-w-[1060px] text-[18px] leading-[1.55] text-[var(--pg-fg)] focus:outline-none sm:text-[21px]`}>{question.stemBlocks?.length ? <PaessedBlocks blocks={question.stemBlocks} assetUrls={resourceUrls.byId} /> : <p className="whitespace-pre-line">{question.stem}</p>}</div>
@@ -225,7 +227,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
           </AdaptiveAlternatives>
         </div>
       </LearningInkSheet>
-      </div>
+      </motion.div>
       {figures.length > 0 && <div className={`${styles.figureLinks} ${styles.mobileOnly}`}>{figures.map((item, index) => <button type="button" key={`${item.src}-${index}`} onClick={() => { setFigure(index); setZoom(1); }}><ZoomIn size={16} className="mr-1 inline" />Ampliar figura{figures.length > 1 ? ` ${index + 1}` : ""}</button>)}</div>}
       {feedback && <div className={styles.bodyFeedback} aria-live="polite">{feedback}</div>}
       {revealSolution && <section aria-label="Revisión de la solución" className="mt-4 max-w-[1060px] rounded-lg border border-emerald-500/50 bg-[var(--pg-good)] px-4 py-3 text-[12px] leading-5 text-[var(--pg-fg)] sm:text-[13px]">

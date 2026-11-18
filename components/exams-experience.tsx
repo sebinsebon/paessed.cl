@@ -20,6 +20,9 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { ExamsListSkeleton } from "./page-skeletons";
+import { PendingLabel } from "./loading-state";
+import { sileo } from "sileo";
 import { AppShell } from "@/components/app-shell";
 import { PageHeadingTransition } from "@/components/app-page-transition";
 import { ExamSettingsDialog } from "@/components/exam-settings-dialog";
@@ -422,6 +425,8 @@ function ExamCard({ exam, expanded, onToggle, onSettings, onDelete, progress }: 
 export function ExamsExperience() {
   const reduceMotion = useReducedMotion();
   const [source, setSource] = useState<ExamSource>("default");
+  const [sourceChosen, setSourceChosen] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(true);
   const [importedExams, setImportedExams] = useState<ImportedExamSummary[]>([]);
   const [importError, setImportError] = useState(false);
   const [personalSources, setPersonalSources] = useState<Array<{ hash: string; answers: number }>>([]);
@@ -432,6 +437,7 @@ export function ExamsExperience() {
   const [settingsExamId, setSettingsExamId] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [importing, setImporting] = useState(false);
+  const importInFlight = useRef(false);
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [feedback, setFeedback] = useState<UploadFeedback | null>(null);
   const [progressById, setProgressById] = useState<Record<string, ImportedExamProgressSummary>>({});
@@ -446,7 +452,8 @@ export function ExamsExperience() {
     let active = true;
     void listImportedExams()
       .then((items) => { if (active) setImportedExams(items); })
-      .catch(() => { if (active) setImportError(true); });
+      .catch(() => { if (active) setImportError(true); })
+      .finally(() => { if (active) setLibraryLoading(false); });
     return () => { active = false; };
   }, []);
 
@@ -469,6 +476,7 @@ export function ExamsExperience() {
       setSource(initial);
       if (requested === "local" || requested === "default") localStorage.setItem("paessed-exams-source-v2", initial);
     } catch { /* Session storage may be unavailable. */ }
+    finally { setSourceChosen(true); }
   }, []);
 
   const selectSource = (next: ExamSource) => {
@@ -559,7 +567,8 @@ export function ExamsExperience() {
     event.preventDefault();
     setDragging(false);
     const file = event.dataTransfer.files?.[0];
-    if (!file || importing) return;
+    if (!file || importInFlight.current) return;
+    importInFlight.current = true;
     setImporting(true);
     setFeedback(null);
     try {
@@ -570,17 +579,18 @@ export function ExamsExperience() {
       setSearch("");
       setSort("recent");
       setPage(1);
-      setFeedback({ kind: "success", message: "«" + summary.title + "» se agregó a tu biblioteca local." });
+      sileo.success({ title: "Ensayo importado", description: "«" + summary.title + "» se agregó a tu biblioteca local." });
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "No se pudo leer el archivo." });
     } finally {
+      importInFlight.current = false;
       setImporting(false);
     }
   };
 
   return (
     <AppShell title="Ensayos" eyebrow="Historial y práctica" wide>
-      {personalSources.filter(item => !importedExams.some(exam => exam.sourceHash === item.hash)).map(item => <section key={item.hash} className="surface mx-auto mb-4 max-w-[1460px] rounded-xl p-4"><h2 className="font-bold">Requiere importar el archivo</h2><p className="mt-2 text-sm text-[var(--muted)]">{item.answers} respuestas guardadas de una fuente personal. Importa el mismo archivo para continuar.</p><p className="mt-2 break-all font-mono text-xs text-[var(--muted)]">{item.hash.slice(0, 16)}…</p><button type="button" className="soft-button mt-3 rounded-xl px-4 py-3 text-sm font-bold" onClick={() => setShowImportPanel(true)}>Importar archivo coincidente</button></section>)}
+      {!libraryLoading && personalSources.filter(item => !importedExams.some(exam => exam.sourceHash === item.hash)).map(item => <section key={item.hash} className="surface mx-auto mb-4 max-w-[1460px] rounded-xl p-4"><h2 className="font-bold">Requiere importar el archivo</h2><p className="mt-2 text-sm text-[var(--muted)]">{item.answers} respuestas guardadas de una fuente personal. Importa el mismo archivo para continuar.</p><p className="mt-2 break-all font-mono text-xs text-[var(--muted)]">{item.hash.slice(0, 16)}…</p><button type="button" className="soft-button mt-3 rounded-xl px-4 py-3 text-sm font-bold" onClick={() => setShowImportPanel(true)}>Importar archivo coincidente</button></section>)}
       <AnimatePresence initial={false} mode="popLayout">
         {!showImportPanel ? (
           <motion.div
@@ -650,7 +660,7 @@ export function ExamsExperience() {
           </p>
         </section>
 
-        <div>
+        {!sourceChosen || source === "local" && libraryLoading ? <ExamsListSkeleton /> : <div>
         <section aria-label="Buscar y ordenar ensayos" className="mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[14px] font-bold text-[var(--text)]">
@@ -748,7 +758,7 @@ export function ExamsExperience() {
                 <>
                   <FileArchive size={emptyLocalDropZone ? 30 : 23} className={emptyLocalDropZone && dragging ? "text-[var(--primary)]" : "text-[var(--muted)]"} />
                   <h2 className={"mt-3 font-extrabold " + (emptyLocalDropZone ? "text-[20px]" : "text-[16px]")}>
-                    {emptyLocalDropZone && importing ? "Importando el ensayo…" : emptyLocalDropZone && dragging ? "Suelta el archivo aquí" : source === "local" ? "Aún no tienes ensayos locales" : "Próximamente: ensayos Gold"}
+                    {emptyLocalDropZone ? <PendingLabel pending={importing} label="Importando…">{dragging ? "Suelta el archivo aquí" : "Aún no tienes ensayos locales"}</PendingLabel> : source === "local" ? "Aún no tienes ensayos locales" : "Próximamente: ensayos Gold"}
                   </h2>
                   <p className={"mt-1 text-[var(--muted)] " + (emptyLocalDropZone ? "text-[13px]" : "text-[12px]")}>
                     {source === "local" ? "Importa un archivo .paessed, .zip o .json para verlo aquí." : "Los ensayos verificados aparecerán en este catálogo."}
@@ -816,15 +826,14 @@ export function ExamsExperience() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-bold text-[var(--text)]">
-              {importing ? "Importando el ensayo..." : dragging ? "Suelta el archivo aquí" : "¿Ya tienes un ensayo? Arrástralo aquí"}
+              <PendingLabel pending={importing} label="Importando…">{dragging ? "Suelta el archivo aquí" : "¿Ya tienes un ensayo? Arrástralo aquí"}</PendingLabel>
             </p>
             <p className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
               Formatos .paessed, .zip o .json · Se guarda en este navegador
             </p>
           </div>
         </button>}
-        </div>
-        
+        </div>}
           </motion.div>
         ) : (
           <motion.div

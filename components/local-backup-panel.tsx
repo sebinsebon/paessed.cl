@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PendingLabel } from "./loading-state";
+import { sileo } from "sileo";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Archive, Check, Download, FileUp, RotateCcw, ShieldCheck, X } from "lucide-react";
 import {
@@ -30,6 +32,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
   const [overwrite, setOverwrite] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
+  const inFlight = useRef(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const initializedSelection = useRef(false);
@@ -68,7 +71,8 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
   }
 
   async function download() {
-    if (!report || !exportSelected.length || busy) return;
+    if (!report || !exportSelected.length || inFlight.current) return;
+    inFlight.current = true;
     setBusy("export");
     setMessage(null);
     setError(null);
@@ -82,16 +86,18 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
       anchor.click();
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60000);
-      setMessage("Respaldo creado (" + formatStorageBytes(blob.size) + "). Guárdalo en un lugar seguro.");
+      sileo.success({ title: "Respaldo creado", description: formatStorageBytes(blob.size) + " · Guárdalo en un lugar seguro." });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo exportar la copia.");
     } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }
 
   async function readFile(file?: File) {
-    if (!file || busy) return;
+    if (!file || inFlight.current) return;
+    inFlight.current = true;
     setBusy("inspect");
     setPreview(null);
     setMessage(null);
@@ -105,13 +111,15 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo leer el respaldo.");
     } finally {
+      inFlight.current = false;
       setBusy(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   async function restore() {
-    if (!preview || !importSelected.length || busy) return;
+    if (!preview || !importSelected.length || inFlight.current) return;
+    inFlight.current = true;
     setBusy("restore");
     setError(null);
     setMessage(null);
@@ -129,6 +137,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
         " Si se agotó el espacio del navegador, parte de la restauración podría haberse guardado. Actualiza para comprobarlo.");
       onRestored();
     } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }
@@ -167,7 +176,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
           <button type="button" onClick={() => { void download(); }}
             disabled={!report || !exportSelected.length || busy !== null}
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-[12px] font-extrabold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
-            {busy === "export" ? "Preparando ZIP…" : <><Download size={16}/> Descargar respaldo</>}
+            <PendingLabel pending={busy === "export"} label="Preparando ZIP…"><Download size={16} />Descargar respaldo</PendingLabel>
           </button>
         </div>
 
@@ -180,7 +189,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
             aria-label="Seleccionar respaldo PAESSED" onChange={(event) => { void readFile(event.target.files?.[0]); }} />
           <button type="button" disabled={!report || busy !== null} onClick={() => inputRef.current?.click()}
             className="soft-button inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[12px] font-extrabold disabled:opacity-50">
-            {busy === "inspect" ? "Verificando copia…" : <><FileUp size={16}/> Seleccionar ZIP</>}
+            <PendingLabel pending={busy === "inspect"} label="Verificando copia…"><FileUp size={16} />Seleccionar ZIP</PendingLabel>
           </button>
 
           {preview && (
@@ -265,7 +274,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
                   className="soft-button min-h-11 rounded-xl px-4 text-[12px] font-bold disabled:opacity-50">Cancelar</button>
                 <button type="button" disabled={busy === "restore"} onClick={() => { void restore(); }}
                   className="min-h-11 rounded-xl bg-[var(--primary)] px-4 text-[12px] font-extrabold text-white disabled:opacity-50">
-                  {busy === "restore" ? "Restaurando…" : "Confirmar restauración"}
+                  <PendingLabel pending={busy === "restore"} label="Importando…">Confirmar restauración</PendingLabel>
                 </button>
               </div>
             </motion.div>

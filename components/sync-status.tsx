@@ -2,6 +2,10 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
+import { AppProgressLoading } from "./page-skeletons";
+import loadingStyles from "./loading-state.module.css";
 import { getSyncOwner, openLocalDatabase } from "@/lib/sync/local";
 import { getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, resolveSyncConflict, startSync, subscribeSyncStatus, synchronize, type SyncStatusValue } from "@/lib/sync/client";
 import { ProgressDialog, type ProgressChoice } from "./progress-dialog";
@@ -44,6 +48,8 @@ async function downloadVersion(value: unknown, label: string) {
 }
 
 export function SyncStatus({ children }: { children?: ReactNode }) {
+  const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
   const [ready, setReady] = useState(false), [status, setStatus] = useState<SyncStatusValue>(getSyncStatus);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof guestProgressSummary>> | null>(null);
   const [scope, setScope] = useState<string | null>(null);
@@ -55,8 +61,20 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const refreshing = useRef(0);
   useEffect(() => {
-    let active = true, initialized = false, stop = () => {};
-    const scopeChanged = () => { if (active && initialized) { setReady(false); setScope(getSyncOwner()); setSummary(null); setConflicts([]); setArchived([]); setDeferred(false); setArchiveOpen(false); setError(""); setDismissedError(""); stop(); void prepare().catch(err => { if (active) { setError(err.message); setReady(true); } }); } };
+    let active = true, initialized = false, preparation = 0, stop = () => {};
+    const scopeChanged = () => {
+      if (!active || !initialized) return;
+      setReady(false);
+      setBusy(false);
+      setSummary(null);
+      setConflicts([]);
+      setArchived([]);
+      setDeferred(false);
+      setArchiveOpen(false);
+      setError("");
+      setDismissedError("");
+      void prepare();
+    };
     window.addEventListener("paessed-sync-owner-change", scopeChanged);
     const refreshConflicts = async () => {
       const revision = ++refreshing.current, owner = getSyncOwner();
@@ -65,23 +83,35 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
     };
     const unsubscribe = subscribeSyncStatus(() => { if (active) { setStatus(getSyncStatus()); void refreshConflicts().catch(err => { if (active) setError(err.message); }); } });
     async function prepare() {
-      const owner = getSyncOwner();
       if (!active) return;
-      setScope(owner); stop(); stop = startSync();
-      if (owner) {
+      const revision = ++preparation, owner = getSyncOwner();
+      const current = () => active && revision === preparation && owner === getSyncOwner();
+      setScope(owner);
+      stop();
+      stop = startSync();
+      try {
+        if (!owner) return;
         const db = await openLocalDatabase(owner);
         const imported = await new Promise<boolean>((resolve, reject) => { const tx = db.transaction("meta", "readonly"), request = tx.objectStore("meta").get("guest-import-confirmed"); tx.oncomplete = () => resolve(!!request.result); tx.onerror = () => reject(tx.error); });
-        if (!imported) { const value = await guestProgressSummary(); if (active && owner === getSyncOwner() && (value.attempts || value.sessions || value.completedNodes || value.savedQuestions || value.learning)) setSummary(value); }
-        if (active && owner === getSyncOwner()) await refreshConflicts();
+        if (!imported) {
+          const value = await guestProgressSummary();
+          if (current() && (value.attempts || value.sessions || value.completedNodes || value.savedQuestions || value.learning)) setSummary(value);
+        }
+        if (current()) await refreshConflicts();
+      } catch (err) {
+        if (current()) setError(err instanceof Error ? err.message : "No se pudo leer tu progreso.");
+      } finally {
+        if (current()) setReady(true);
       }
-      if (active && owner === getSyncOwner()) setReady(true);
     }
-    void initializeSyncIdentity().then(() => { initialized = true; return prepare(); }).catch(err => { if (active) { setError(err.message); setReady(true); } });
+    void initializeSyncIdentity()
+      .catch(err => { if (active) setError(err instanceof Error ? err.message : "No se pudo comprobar la cuenta."); })
+      .then(() => { initialized = true; return prepare(); });
     return () => { active = false; stop(); unsubscribe(); window.removeEventListener("paessed-sync-owner-change", scopeChanged); };
   }, []);
   const incorporate = async () => { setBusy(true); setError(""); try { await importGuestProgress(); setSummary(null); const all = await listSyncConflicts(true); setConflicts(all.filter(item=>!item.resolved)); setArchived(all.filter(item=>item.resolved)); } catch (err) { setError(err instanceof Error ? err.message : "No se pudo incorporar el progreso."); } finally { setBusy(false); } };
   const resolve = async (id: string, choice: "incoming" | "current") => { setBusy(true); setError(""); try { await resolveSyncConflict(id, choice); const all = await listSyncConflicts(true); setConflicts(all.filter(item=>!item.resolved)); setArchived(all.filter(item=>item.resolved)); } catch (err) { setError(err instanceof Error ? err.message : "No se pudo resolver el conflicto."); } finally { setBusy(false); } };
-  if (!ready) return <div className="p-6 text-sm text-[var(--muted)]" role="status">Cargando tu progreso…</div>;
+  if (!ready || scope !== getSyncOwner()) return <AppProgressLoading key={pathname} pathname={pathname} />;
   const conflict = !deferred ? conflicts[0] : undefined;
   const importPrompt = !deferred && !conflict && summary;
   const issue = error || (["error", "paused"].includes(status.state) ? status.message : "");
@@ -107,6 +137,10 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
       <button type="button" className="min-h-11 px-3" onClick={() => setDismissedError(issue)}>Cerrar aviso</button>
     </section>}
     <Fragment key={scope ?? "guest"}>{children}</Fragment>
+    {scope && status.state === "syncing" && <motion.p role="status" className={loadingStyles.syncNotice}
+      initial={reduceMotion ? false : { opacity: 0.8 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.18 }}>
+      Actualizando tu progreso…
+    </motion.p>}
     {conflict && <ProgressDialog key={conflict.id} title="Hay dos versiones de tu progreso" busy={busy} error={error} onDismiss={() => setDeferred(true)}
       saveExplanation="Continuarás con la versión recibida. La versión de tu cuenta se conservará como alternativa y no sumará métricas."
       discardExplanation="Seguirás con la versión de tu cuenta. La versión recibida se conservará como alternativa, sin sumarse a tus métricas."

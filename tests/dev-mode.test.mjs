@@ -6,7 +6,10 @@ import { databaseName, scopedStorageKey, openLocalDatabase } from "../lib/sync/l
 test("developer shortcuts are explicit and unavailable in production, including forged environment opt-ins", () => {
   assert.equal(devModeAvailable({ NODE_ENV: "development" }), false);
   assert.equal(devModeAvailable({ NODE_ENV: "development", PAESSED_DEV_MODE: "true" }), true);
-  assert.equal(devModeAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview", PAESSED_DEV_MODE: "true" }), true);
+  assert.equal(devModeAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "feat/estados-carga" }), true);
+  assert.equal(devModeAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview", VERCEL_GIT_COMMIT_REF: "feat/inicio-cuentas", PAESSED_DEV_MODE: "true" }), false);
+  assert.equal(devModeAvailable({ NODE_ENV: "production", VERCEL_ENV: "preview", PAESSED_DEV_MODE: "true" }), false);
+  assert.equal(devModeAvailable({ NODE_ENV: "production", VERCEL_ENV: "production", VERCEL_GIT_COMMIT_REF: "feat/estados-carga", PAESSED_DEV_MODE: "true" }), false);
   assert.equal(devModeAvailable({ NODE_ENV: "production", PAESSED_DEV_MODE: "true" }), false);
   assert.equal(devModeAvailable({ NODE_ENV: "development", VERCEL_ENV: "production", APP_ENV: "local", PAESSED_DEV_MODE: "true" }), false);
   assert.equal(devModeAvailable({ NODE_ENV: "development", APP_ENV: "production", PAESSED_DEV_MODE: "true" }), false);

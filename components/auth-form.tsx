@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-provider";
 import { useDevMode } from "@/components/dev-context";
+import { PendingLabel } from "./loading-state";
 import { authAction } from "@/lib/auth/client";
 import styles from "./auth-form.module.css";
 
@@ -54,7 +55,8 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
   const [reset, setReset] = useState(0);
-  const [busy, setBusy] = useState(false);
+  const [actionInFlight, setActionInFlight] = useState<string | null>(null);
+  const busy = actionInFlight !== null;
   const inFlight = useRef(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -70,7 +72,8 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
 
   async function run(action: string, values: Record<string, unknown>) {
     if (inFlight.current || !enabled) return;
-    inFlight.current = true; setBusy(true); setError(""); setMessage("");
+    inFlight.current = true; setActionInFlight(action); setError(""); setMessage("");
+    let navigating = false;
     try {
       if (action === "login" || action === "register" || action === "google") {
         try {
@@ -80,16 +83,20 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
         catch { /* Authentication can continue when browser storage is unavailable. */ }
       }
       const result = await authAction(action, values);
-      if (result.url) { window.location.assign(result.url); return; }
-      if (result.redirect) { window.location.assign(result.redirect); return; }
+      const destination = result.url ?? result.redirect;
+      if (destination) {
+        window.location.assign(destination);
+        navigating = true;
+        return;
+      }
       setMessage(result.message ?? "Listo."); setPassword("");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud."); }
-    finally { inFlight.current = false; setBusy(false); setCaptchaToken(""); setReset(value => value + 1); }
+    finally { if (!navigating) { inFlight.current = false; setActionInFlight(null); setCaptchaToken(""); setReset(value => value + 1); } }
   }
 
   async function enableTestMode() {
     if (inFlight.current || !available) return;
-    inFlight.current = true; setBusy(true); setError("");
+    inFlight.current = true; setActionInFlight("dev"); setError("");
     try {
       const response = await fetch("/api/dev-mode", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: true }) });
       if (!response.ok) throw new Error("No se pudo activar el modo de prueba. Vuelve a intentarlo.");
@@ -97,7 +104,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
     } catch (failure) {
       inFlight.current = false;
       setError(failure instanceof Error ? failure.message : "No se pudo activar el modo de prueba.");
-      setBusy(false);
+      setActionInFlight(null);
     }
   }
 
@@ -107,15 +114,15 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
     void run(view, values);
   }
 
-  return <section className={styles.formCard} aria-labelledby="auth-title" aria-busy={busy}>
+  return <section className={styles.formCard} aria-labelledby="auth-title">
     <h1 id="auth-title" tabIndex={-1}>{titles[view]}</h1>
     {introduction != null && <div className={styles.introduction}>{introduction}</div>}
     {!enabled && <div className={styles.notice}>
       <p role="status">Las cuentas no están disponibles en este entorno.{available ? " Puedes usar el modo de prueba." : " Inténtalo más tarde."}</p>
-      {available && <button type="button" className={`soft-button ${styles.button}`} disabled={busy} onClick={() => void enableTestMode()}>{busy ? "Activando…" : "Activar modo de prueba"}</button>}
+      {available && <button type="button" className={`soft-button ${styles.button}`} disabled={busy} onClick={() => void enableTestMode()}><PendingLabel pending={actionInFlight === "dev"} label="Activando…">Activar modo de prueba</PendingLabel></button>}
     </div>}
     {providers && <div className={styles.providers}>
-      <button type="button" disabled={busy || !enabled} onClick={() => void run("google", { captchaToken })} className={`soft-button ${styles.button}`}><GoogleIcon />Continuar con Google</button>
+      <button type="button" disabled={busy || !enabled} onClick={() => void run("google", { captchaToken })} className={`soft-button ${styles.button}`}><PendingLabel pending={actionInFlight === "google"} label="Ingresando…"><GoogleIcon />Continuar con Google</PendingLabel></button>
       <div className={styles.divider}><span>o</span></div>
       {!emailOpen && <button type="button" disabled={busy || !enabled} aria-expanded={false} aria-controls="auth-email" onClick={() => setEmailOpen(true)} className={`tactile-primary ${styles.button}`}>Continuar con correo</button>}
     </div>}
@@ -126,7 +133,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
         {view !== "recover" && <label>Contraseña<input required type="password" minLength={8} maxLength={128} placeholder={view === "login" ? undefined : "Al menos 8 caracteres"} autoComplete={view === "login" ? "current-password" : "new-password"} value={password} onChange={event => setPassword(event.target.value)} className={styles.input} /></label>}
       </fieldset>}
       {view !== "password" && <Captcha onToken={setCaptchaToken} reset={reset} />}
-      {showFields && <button disabled={busy || !enabled} className={`tactile-primary ${styles.button}`}>{busy ? "Procesando…" : view === "recover" ? "Enviar enlace" : view === "password" ? "Guardar contraseña" : view === "register" ? "Crear cuenta" : "Entrar"}</button>}
+      {showFields && <button disabled={busy || !enabled} className={`tactile-primary ${styles.button}`}><PendingLabel pending={actionInFlight === view} label={view === "password" ? "Guardando…" : view === "recover" ? "Enviando…" : view === "register" ? "Creando cuenta…" : "Ingresando…"}>{view === "recover" ? "Enviar enlace" : view === "password" ? "Guardar contraseña" : view === "register" ? "Crear cuenta" : "Entrar"}</PendingLabel></button>}
     </form>
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {message && <p role="status" className={styles.message}>{message}</p>}

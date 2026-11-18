@@ -1,6 +1,8 @@
 "use client";
 
 import { PageHeadingTransition } from "@/components/app-page-transition";
+import { PlaygroundSkeleton } from "./page-skeletons";
+import { PendingLabel, QuestionLoading } from "./loading-state";
 import { AppShell } from "@/components/app-shell";
 import { AiHelpSettings,AskAiButton,useAiSettings } from "@/components/ask-ai";
 import { ExternalQuestionWorkspace } from "@/components/learning/workspace/external-question-workspace";
@@ -395,6 +397,8 @@ function shufflePlaygroundQuestions(questions: PlaygroundQuestion[]): string[] {
 
 export function PlaygroundExperience() {
   const [defaultQuestions, setDefaultQuestions] = useState<BankQuestion[]>(defaultBankPlaceholders);
+  const [questionRevision, setQuestionRevision] = useState(0);
+  const [questionError, setQuestionError] = useState<{ id: string; revision: number; message: string }>();
   const [defaultRecords, setDefaultRecords] = useState<Record<string, ImportedExamRecord>>({});
   const evidenceSession = useRef("");
   const [resumable, setResumable] = useState<PracticeSession | null>(null);
@@ -499,9 +503,11 @@ export function PlaygroundExperience() {
       if (!active) return;
       setDefaultQuestions(old=>old.map(q=>q.id===question.id?question:q));
       setDefaultRecords(old=>({...old,[question.sourceId]:record}));
-    }).catch(e=>{if(active)setSaveError(e.message);});
-    return ()=>{active=false;};
-  }, [isPracticing,current?.id]);
+    }).catch(error => {
+      if (active) setQuestionError({ id: meta.id, revision: questionRevision, message: error instanceof Error ? error.message : "No se pudo abrir la pregunta." });
+    });
+    return () => { active = false; };
+  }, [isPracticing, current?.id, questionRevision]);
   const sourceRecord = isPracticing && current ? defaultRecords[current.sourceId] ?? importedRecords[current.sourceId] ?? null : null;
   const { resourceUrls, resourceIssues, resourceError, resourcesLoading } = useImportedResourceUrls(sourceRecord);
   const questionAssets = (current?.assetPaths ?? []).flatMap(path => {
@@ -513,6 +519,7 @@ export function PlaygroundExperience() {
     const error = resourceIssues.get(id); return error ? [error] : [];
   }))];
   const displayedResourceError = resourceError || currentResourceErrors[0];
+  const displayedQuestionError = questionError?.id === current?.id && questionError?.revision === questionRevision ? questionError.message : undefined;
 
 
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
@@ -792,6 +799,8 @@ export function PlaygroundExperience() {
             </p>
           </div>
         </header>
+        {sourceLoading || !sessionReady ? <PlaygroundSkeleton /> : <>
+        {sourceError && <p role="alert" className="mb-4 text-sm text-amber-600">{sourceError}</p>}
         {resumable && <section className="surface mb-5 rounded-2xl p-4"><h2 className="font-bold">Tu última sesión</h2><p className="mt-2 text-sm text-[var(--muted)]">{Object.keys(resumable.answers).length} respuestas guardadas.</p><button className="soft-button mt-3 rounded-xl px-4 py-3 font-bold" onClick={resumePractice}>Continuar práctica</button>{resumable.questionIds?.some(id => !questionBank.some(q => q.id === id)) && <p className="mt-2 text-sm">Requiere importar el archivo para recuperar todas las preguntas.</p>}</section>}
 
         
@@ -872,8 +881,6 @@ export function PlaygroundExperience() {
                 <motion.div id="playground-advanced-setup" initial={{opacity:0,height:0}} animate={{opacity:1,height:"auto"}}
                   exit={{opacity:0,height:0}} transition={{duration:.22}} className="overflow-hidden">
                   <div className="mt-3 border-t border-[var(--border)] pt-4">
-                    {sourceLoading && <p role="status" className="text-xs text-[var(--muted)]">Cargando ensayos locales…</p>}
-                    {sourceError && <p role="alert" className="text-xs text-amber-600">{sourceError}</p>}
                     <PlaygroundAdvancedPicker questions={questionBank} sources={sources}
                       selected={chosenQuestionIds} onChange={(next)=>{setChosenQuestionIds(next);setSelectedStartQuestion("random");}} />
                   </div>
@@ -950,15 +957,19 @@ export function PlaygroundExperience() {
           El banco combina cuatro preguntas de ejemplo con tus ensayos importados de este navegador. Los ejemplos no son pruebas oficiales DEMRE; los años de demostración son referenciales. Los ensayos importados sin clasificación solo coinciden con «Todos los subejes».
         </p>
         </div>
-        
+        </>}
       </motion.div>
       ) : (
         <div key="playground-practice" aria-label="Modo práctica de Playground">
           {current ? <ExternalQuestionWorkspace key={current.id}
             question={!current.stemBlocks && questionAssets.length ? { ...current, stemBlocks: [{ type: "text", text: current.stem }, ...questionAssets.map(asset => ({ type: "image", asset_id: asset.path, alt: `Ilustración de la pregunta ${current.number}` }))] } : current}
             assetUrls={new Map([...resourceUrls.byPath, ...resourceUrls.byId])}
-            ready={!resourcesLoading && !displayedResourceError && (!DEFAULT_QUESTION_INDEX.some(question => question.id === current.id) || !!defaultRecords[current.sourceId])}
-            error={displayedResourceError} retry={() => { if (sourceRecord) { if (current.sourceId.startsWith("default:")) setDefaultRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } })); else setImportedRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } })); } }}
+            ready={!resourcesLoading && !displayedResourceError && !displayedQuestionError && (!current.sourceId.startsWith("default:") || current.options.length > 0 && !!defaultRecords[current.sourceId])}
+            error={displayedQuestionError || displayedResourceError} retry={() => {
+              if (displayedQuestionError) setQuestionRevision(previous => previous + 1);
+              else if (sourceRecord && current.sourceId.startsWith("default:")) setDefaultRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } }));
+              else if (sourceRecord) setImportedRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } }));
+            }}
             context="playground" sessionKey={`playground:${evidenceSession.current}`} number={position + 1} total={visibleOrder.length}
             subtitle={`${current.collection} · ${position + 1} de ${visibleOrder.length}`}
             selected={selectedAnswer ?? ""} onSelect={answer => setAnswers(previous => ({ ...previous, [current.id]: answer }))}
@@ -981,9 +992,9 @@ export function PlaygroundExperience() {
             footer={(drawing, aiHelp) => <div className="flex w-full flex-wrap items-center justify-end gap-2">
               <button type="button" aria-label="Pregunta anterior" disabled={position === 0 || drawing || checking} onClick={() => { setPendingAction(null); setPosition(previous => Math.max(0, previous - 1)); }} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-3 disabled:opacity-40"><ChevronLeft size={20} /></button>
               {isRevealed && aiHelp}
-              {current.options.length === 0 && !isRevealed ? <button type="button" className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold" onClick={() => setRevealed(previous => ({ ...previous, [current.id]: true }))}>Saltar pregunta</button> : !isRevealed ? <button type="button" aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"} disabled={!selectedAnswer || !sheetReady || checking || drawing} onClick={() => void confirmAnswer()} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40">{checking ? "Guardando…" : pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}</button> : <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={advanceQuestion}>Siguiente</button>}
+              {current.options.length === 0 && !isRevealed ? <button type="button" className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold" onClick={() => setRevealed(previous => ({ ...previous, [current.id]: true }))}>Saltar pregunta</button> : !isRevealed ? <button type="button" aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"} disabled={!selectedAnswer || !sheetReady || checking || drawing} onClick={() => void confirmAnswer()} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40"><PendingLabel pending={checking} label="Guardando…">{pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}</PendingLabel></button> : <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={advanceQuestion}>Siguiente</button>}
             </div>}
-          /> : <section role="status" className="grid min-h-[60vh] place-items-center">Preparando tu práctica…</section>}
+          /> : <div className="mx-auto max-w-[1060px] p-5"><QuestionLoading /></div>}
           {settingsOpen && <QuestionDialog title="Ajustes de la práctica" wide onClose={() => setSettingsOpen(false)}><div ref={settingsRef}>
                       <AiHelpSettings settings={aiSettings} onChange={updateAiSettings} />
                       <div className="mt-4 border-t border-[var(--border)] pt-4">

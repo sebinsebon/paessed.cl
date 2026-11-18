@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { HomeSkeleton } from "./page-skeletons";
+import { LearningError } from "./learning/question-card";
 import { Dashboard } from "./dashboard";
 import { useLearning } from "./learning/use-learning";
 import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
@@ -17,10 +19,10 @@ type Draft = NonNullable<LearningState["diagnostic"]>;
 
 export function DashboardHome() {
   const learning = useLearning();
-  const { account } = useAccount();
+  const { account, loading: accountLoading } = useAccount();
   const owner = getSyncOwner();
   const [pending, setPending] = useState<{ draft: Draft | null; guest: boolean }>();
-  const [exams, setExams] = useState<Record<string, SavedDefaultExamSession>>({});
+  const [exams, setExams] = useState<Record<string, SavedDefaultExamSession>>();
   useEffect(() => {
     let active = true, version = 0;
     const refresh = async () => {
@@ -46,7 +48,7 @@ export function DashboardHome() {
       const current = ++version;
       void listExamSessions().then(value => {
         if (active && current === version) setExams(value);
-      }).catch(() => {});
+      }).catch(() => { if (active && current === version) setExams(previous => previous ?? {}); });
     };
     refresh();
     window.addEventListener(LOCAL_CHANGED, refresh);
@@ -61,7 +63,9 @@ export function DashboardHome() {
     : complete && learning.state?.diagnostic?.completedAt
       ? <Link href="/diagnostico/resultado" className={styles.resultLink}>Ver resultado del diagnóstico</Link>
       : null;
-  return <Dashboard diagnostic={diagnostic} displayName={account?.profile?.displayName} state={learning.state} profile={learning.profile} examSessions={exams} />;
+  return <Dashboard diagnostic={diagnostic} displayName={account?.profile?.displayName} state={learning.state} profile={learning.profile} examSessions={exams ?? {}}
+    loading={learning.loading || accountLoading || !pending || !exams ? <HomeSkeleton /> : undefined}
+    notice={learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />} />;
 }
 
 function DiagnosticReminder({ answered, href, pendingSave }: { answered: number; href: string; pendingSave: boolean }) {

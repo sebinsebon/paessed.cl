@@ -5,5 +5,5 @@ import { requireAppEntry } from "@/lib/server/entry";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   await requireAppEntry();
-  return <SyncStatus><PersistentAppShell>{children}</PersistentAppShell></SyncStatus>;
+  return <PersistentAppShell><SyncStatus>{children}</SyncStatus></PersistentAppShell>;
 }
