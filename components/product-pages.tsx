@@ -520,6 +520,8 @@ export function PlaygroundExperience() {
   }))];
   const displayedResourceError = resourceError || currentResourceErrors[0];
   const displayedQuestionError = questionError?.id === current?.id && questionError?.revision === questionRevision ? questionError.message : undefined;
+  const questionContentReady = !!current && !resourcesLoading && !displayedResourceError && !displayedQuestionError
+    && (!current.sourceId.startsWith("default:") || current.options.length > 0 && !!defaultRecords[current.sourceId]);
 
 
   const updateCurrentStrokes = (next: PlaygroundInkStroke[]) => {
@@ -964,7 +966,7 @@ export function PlaygroundExperience() {
           {current ? <ExternalQuestionWorkspace key={current.id}
             question={!current.stemBlocks && questionAssets.length ? { ...current, stemBlocks: [{ type: "text", text: current.stem }, ...questionAssets.map(asset => ({ type: "image", asset_id: asset.path, alt: `Ilustración de la pregunta ${current.number}` }))] } : current}
             assetUrls={new Map([...resourceUrls.byPath, ...resourceUrls.byId])}
-            ready={!resourcesLoading && !displayedResourceError && !displayedQuestionError && (!current.sourceId.startsWith("default:") || current.options.length > 0 && !!defaultRecords[current.sourceId])}
+            ready={questionContentReady}
             error={displayedQuestionError || displayedResourceError} retry={() => {
               if (displayedQuestionError) setQuestionRevision(previous => previous + 1);
               else if (sourceRecord && current.sourceId.startsWith("default:")) setDefaultRecords(previous => ({ ...previous, [current.sourceId]: { ...sourceRecord } }));
@@ -992,7 +994,7 @@ export function PlaygroundExperience() {
             footer={(drawing, aiHelp) => <div className="flex w-full flex-wrap items-center justify-end gap-2">
               <button type="button" aria-label="Pregunta anterior" disabled={position === 0 || drawing || checking} onClick={() => { setPendingAction(null); setPosition(previous => Math.max(0, previous - 1)); }} className="min-h-12 rounded-xl border border-[var(--pg-border)] px-3 disabled:opacity-40"><ChevronLeft size={20} /></button>
               {isRevealed && aiHelp}
-              {current.options.length === 0 && !isRevealed ? <button type="button" className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold" onClick={() => setRevealed(previous => ({ ...previous, [current.id]: true }))}>Saltar pregunta</button> : !isRevealed ? <button type="button" aria-label={pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"} disabled={!selectedAnswer || !sheetReady || checking || drawing} onClick={() => void confirmAnswer()} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40"><PendingLabel pending={checking} label="Guardando…">{pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}</PendingLabel></button> : <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={advanceQuestion}>Siguiente</button>}
+              {questionContentReady && current.options.length === 0 && !isRevealed ? <button type="button" className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold" onClick={() => setRevealed(previous => ({ ...previous, [current.id]: true }))}>Saltar pregunta</button> : !isRevealed ? <button type="button" aria-label={checking ? "Guardando…" : pendingAction === "check" ? "Confirmar respuesta" : "Comprobar respuesta"} disabled={!selectedAnswer || !sheetReady || !questionContentReady || checking || drawing} onClick={() => void confirmAnswer()} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40"><PendingLabel pending={checking} label="Guardando…">{pendingAction === "check" ? "Confirmar" : current.correct === null ? "Registrar respuesta" : "Comprobar"}</PendingLabel></button> : <button type="button" disabled={drawing} className="tactile-primary min-h-12 flex-1 rounded-xl px-4 font-bold disabled:opacity-40" onClick={advanceQuestion}>Siguiente</button>}
             </div>}
           /> : <div className="mx-auto max-w-[1060px] p-5"><QuestionLoading /></div>}
           {settingsOpen && <QuestionDialog title="Ajustes de la práctica" wide onClose={() => setSettingsOpen(false)}><div ref={settingsRef}>

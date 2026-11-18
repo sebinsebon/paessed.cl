@@ -164,6 +164,7 @@ test("La hoja de Playground conserva el encabezado y vuelve a pedir la pregunta 
   const skeleton = page.locator("[data-loading-placeholder]").first();
   try {
     await expect(skeleton).toBeVisible();
+    await expect(page.getByText("Saltar pregunta", { exact: true })).toHaveCount(0);
     const headerPosition = await close.boundingBox();
     await page.screenshot({ path: info.outputPath("playground-pregunta-espera.png") });
     response.release();
