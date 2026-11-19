@@ -33,7 +33,7 @@ export function Landing({ accountsAvailable = true }: { accountsAvailable?: bool
       </div>
       <LandingFeatures />
     </main>
-    <footer className={styles.footer}><span>© {new Date().getFullYear()} Paessed</span><nav aria-label="Enlaces del pie de página">{account?.user ? <Link href="/app/perfil">Mi perfil</Link> : <button type="button" onClick={openLogin}>Iniciar sesión</button>}</nav></footer>
+    <footer className={styles.footer}><span>© {new Date().getFullYear()} Paessed</span><nav aria-label="Enlaces del pie de página"><Link href="/reportar">Reportar un problema</Link>{account?.user ? <Link href="/app/perfil">Mi perfil</Link> : <button type="button" onClick={openLogin}>Iniciar sesión</button>}</nav></footer>
     {auth && <AuthDialog mode={auth} diagnostic={diagnostic} accountsAvailable={accountsAvailable} onDismiss={() => setAuth(null)} />}
   </div>;
 }

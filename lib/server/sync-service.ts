@@ -127,7 +127,8 @@ export function rebuildImportedState(input: LearningState): LearningState {
   if (source.diagnostic && declined.has(source.diagnostic.id)) source.diagnostic = null;
   const result = clone(source);
   const seen = new Set<string>();
-  result.attempts = [...source.attempts].sort((a,b)=>a.at.localeCompare(b.at)||a.id.localeCompare(b.id)).map(a=>{
+  // Equal timestamps retain submission order, which the mastery calculation weights.
+  result.attempts = [...source.attempts].sort((a,b)=>a.at.localeCompare(b.at)).map(a=>{
     const q = byId.get(a.questionId);
     if (!q) throw new HttpError(400,"La evidencia importada debe corresponder al catálogo Gold.");
     const exposures = source.exposures.filter(e=>e.questionId===a.questionId&&e.at<=a.at);

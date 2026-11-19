@@ -6,6 +6,19 @@ nextEnv.loadEnvConfig(process.cwd());
 let failed = false;
 function check(ok, message) { console.log(`${ok ? "OK" : "PENDIENTE"} ${message}`); if (!ok) failed = true; }
 const required = ["APP_ORIGIN", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "DATABASE_URL", "AUTH_FLOW_SECRET", "IP_HMAC_SECRET"];
+const production = process.env.VERCEL_ENV === "production" || process.env.APP_ENV === "production";
+if (production) {
+  const ref = "byihttktkhpiqkhobpsr";
+  required.push("SUPABASE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY");
+  check(process.env.APP_ORIGIN === "https://paesseduiux-zeta.vercel.app", "Dominio oficial de producción");
+  check(process.env.NEXT_PUBLIC_SUPABASE_URL === `https://${ref}.supabase.co`, "Auth usa el Supabase productivo");
+  check(process.env.TRUSTED_PROXY === "vercel", "Proxy Vercel");
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    check(url.hostname === `db.${ref}.supabase.co` ||
+      (url.hostname.endsWith(".pooler.supabase.com") && url.username.endsWith("." + ref)), "PostgreSQL usa el Supabase productivo");
+  } catch { check(false, "Destino PostgreSQL productivo válido"); }
+}
 for (const key of required) check(!!process.env[key], key);
 for (const key of ["AUTH_FLOW_SECRET", "IP_HMAC_SECRET"]) if (process.env[key]) check(process.env[key].length >= 32, `${key}: mínimo 32 caracteres`);
 check(!process.env.AUTH_FLOW_SECRET || process.env.AUTH_FLOW_SECRET !== process.env.IP_HMAC_SECRET, "Secretos de autenticación y solicitudes distintos");
@@ -20,6 +33,7 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUB
     if (!response.ok) throw new Error();
     const settings = await response.json();
     check(settings.external?.google === true, "Proveedor Google habilitado en Supabase");
+    if (production) check(settings.external?.email === true && settings.mailer_autoconfirm === false && !settings.disable_signup, "Registro y confirmación de correo habilitados");
   } catch { check(false, "Consultar configuración pública de Auth (revisar URL, clave y conectividad)"); }
 }
 if (process.env.DATABASE_URL) {
@@ -31,8 +45,10 @@ if (process.env.DATABASE_URL) {
     const sessionCheck = await sql`select paessed.session_is_valid('00000000-0000-0000-0000-000000000000'::uuid, '00000000-0000-0000-0000-000000000000'::uuid, false) as valid`;
     check(sessionCheck[0]?.valid === false, "Conexión del servidor puede validar sesiones revocadas");
     const [role] = await sql`select pg_has_role(current_user, 'paessed_server', 'USAGE') as app_role,
-      has_table_privilege(current_user, 'auth.sessions', 'SELECT') as read_sessions,
-      (select rolsuper or rolbypassrls from pg_roles where rolname = current_user) as bypass_rls`;
+      has_table_privilege(current_user, c.oid, 'SELECT') as read_sessions,
+      (select rolsuper or rolbypassrls from pg_roles where rolname = current_user) as bypass_rls
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='auth' and c.relname='sessions'`;
     check(role.app_role && !role.read_sessions && !role.bypass_rls, "Rol de aplicación restringido y sin lectura de auth.sessions");
   } catch { check(false, "Conexión de datos, migración y permisos del servidor"); }
   finally { await sql?.end({ timeout: 2 }); }

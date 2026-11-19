@@ -781,7 +781,7 @@ export function PlaygroundExperience() {
   return (
     <AppShell title="Playground" eyebrow="Banco de preguntas" wide immersive={isPracticing} immersiveSidebarOpen={isPracticing && sidebarVisible} onImmersiveSidebarToggle={() => setSidebarVisible((previous) => !previous)}>
       <AnimatePresence initial={false} mode="popLayout">
-      {!isPracticing ? (
+      {!isPracticing && (
       <motion.div
         key="playground-setup"
         initial={{ opacity: 0, y: 14 }}
@@ -961,7 +961,9 @@ export function PlaygroundExperience() {
         </div>
         </>}
       </motion.div>
-      ) : (
+      )}
+      </AnimatePresence>
+      {isPracticing && (
         <div key="playground-practice" aria-label="Modo práctica de Playground">
           {current ? <ExternalQuestionWorkspace key={current.id}
             question={!current.stemBlocks && questionAssets.length ? { ...current, stemBlocks: [{ type: "text", text: current.stem }, ...questionAssets.map(asset => ({ type: "image", asset_id: asset.path, alt: `Ilustración de la pregunta ${current.number}` }))] } : current}
@@ -1108,7 +1110,6 @@ export function PlaygroundExperience() {
           </div></QuestionDialog>}
         </div>
       )}
-      </AnimatePresence>
     </AppShell>
   );
 }

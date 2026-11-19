@@ -81,6 +81,13 @@ test("later guest restores cannot silently incorporate a previously declined dia
   assert.equal(hasCompletedInitialDiagnostic(restored), true);
 });
 
+test("restore preserves answer order when two questions were answered in the same millisecond", () => {
+  const state = structuredClone(original);
+  state.attempts.sort((a, b) => b.id.localeCompare(a.id));
+  assert.equal(new Set(state.attempts.map(a => a.at)).size, 1);
+  assert.deepEqual(rebuildImportedState(state).attempts.map(a => a.id), state.attempts.map(a => a.id));
+});
+
 test("empty account automatically includes the completed 16q diagnostic, preserving identity and future nodes", () => {
   const before = planLearning(createLearningState(at), catalog, at);
   const after = incorporateGuestDiagnostic(before, submission(false), later);
