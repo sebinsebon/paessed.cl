@@ -3,11 +3,15 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type User } from "@supabase/supabase-js";
 import { db } from "./db";
+import { permitsBackend } from "./deployment-backend";
 import { HttpError } from "./http";
 import { AUTH_FLOW_COOKIE, REAUTH_COOKIE, configuredOrigin, flowNonce, nonceHash, signValue, verifyValue, type AuthPurpose } from "../auth/security";
 
-export function authConfigured(): boolean { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY); }
-export function authOrigin(): string { return configuredOrigin(process.env.APP_ORIGIN); }
+export function authConfigured(): boolean { return permitsBackend() && !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY); }
+export function authOrigin(): string {
+  try { return configuredOrigin(process.env.APP_ORIGIN); }
+  catch { throw new HttpError(503, "Las cuentas necesitan un origen válido para funcionar."); }
+}
 export function flowSecret(): string {
   const secret = process.env.AUTH_FLOW_SECRET;
   if (!secret || secret.length < 32) throw new HttpError(503, "La sincronización de cuentas aún no está configurada.");
@@ -24,8 +28,8 @@ export async function authClient(readOnly = false) {
 }
 export function authAdmin() {
   const key = process.env.SUPABASE_SECRET_KEY;
-  if (!key || !process.env.NEXT_PUBLIC_SUPABASE_URL) throw new HttpError(503, "La administración de cuentas aún no está configurada.");
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  if (!key || !authConfigured()) throw new HttpError(503, "La administración de cuentas aún no está configurada.");
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 }
 function sessionId(token: string): string {
   try { const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")); if (typeof payload.session_id === "string" && /^[0-9a-f-]{36}$/i.test(payload.session_id)) return payload.session_id; } catch { /* Only inspect after Auth verifies the token. */ }

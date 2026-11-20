@@ -2,8 +2,44 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { authDestination, configuredOrigin, flowNonce, nonceHash, signValue, validFlow, verifyValue } from "../lib/auth/security.ts";
 import { completeAuthCallback, parseAuthCallback, redirectTypeOf, validateCallbackIdentity } from "../lib/auth/callback.ts";
+import { expectedAccount, sameOrigin } from "../lib/server/http.ts";
+import { permitsBackend, PRODUCTION_ORIGIN, PRODUCTION_PROJECT } from "../lib/server/deployment-backend.ts";
 
 const secret = "test-only-secret-32-characters-long-enough";
+
+test("account writes require the account rendered in the tab", () => {
+  const request = new Request("http://localhost:3000", { headers: { "X-Paessed-Account": "account-a" } });
+  assert.doesNotThrow(() => expectedAccount(request, "account-a"));
+  assert.throws(() => expectedAccount(request, "account-b"), error => error.status === 409);
+  assert.throws(() => expectedAccount(new Request(request.url), "account-a"), error => error.status === 409);
+});
+
+test("hosted writes without an explicit application origin are disabled", () => {
+  const previous = process.env.APP_ORIGIN;
+  try {
+    delete process.env.APP_ORIGIN;
+    const request = new Request("https://paessed.example", { headers: { Origin: "https://paessed.example" } });
+    assert.throws(() => sameOrigin(request), error => error.status === 403);
+    process.env.APP_ORIGIN = "https://paessed.example";
+    assert.doesNotThrow(() => sameOrigin(request));
+  } finally {
+    if (previous === undefined) delete process.env.APP_ORIGIN;
+    else process.env.APP_ORIGIN = previous;
+  }
+});
+
+test("preview auth, database and callback origin are restricted to the test environment", () => {
+  const testProject = "rqeuczrmkkehxzipkynq";
+  const preview = { VERCEL_ENV: "preview", APP_ORIGIN: "https://preview.example",
+    NEXT_PUBLIC_SUPABASE_URL: `https://${testProject}.supabase.co`,
+    DATABASE_URL: `postgresql://app.${testProject}@aws.pooler.supabase.com/postgres` };
+  assert.equal(permitsBackend(preview), true);
+  assert.equal(permitsBackend({ ...preview, DATABASE_URL: `postgresql://app@db.${testProject}.supabase.co/postgres` }), true);
+  assert.equal(permitsBackend({ ...preview, NEXT_PUBLIC_SUPABASE_URL: `https://${PRODUCTION_PROJECT}.supabase.co` }), false);
+  assert.equal(permitsBackend({ ...preview, DATABASE_URL: `postgresql://app.${PRODUCTION_PROJECT}@aws.pooler.supabase.com/postgres` }), false);
+  assert.equal(permitsBackend({ ...preview, APP_ORIGIN: PRODUCTION_ORIGIN }), false);
+  assert.equal(permitsBackend({ ...preview, DATABASE_URL: undefined }), false);
+});
 test("auth state rejects tampering, expiration and malformed tokens", () => {
   const now = Date.now(), payload = { nonce: flowNonce(), purpose: "link", userId: "account-a", exp: now + 10000 };
   const signed = signValue(payload, secret);

@@ -1,9 +1,9 @@
-import type JSZip from "jszip";
+import { openResourceZip } from "@/lib/resource-zip";
 import { exportLearningState, restoreLearningState, validateLearningState } from "@/lib/learning/repository";
 import { listExamSessions, restoreExamSessions, validateExamSessions } from "@/lib/learning/exam-repository";
 import type { LearningState } from "@/lib/learning/types";
 import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
-import { listPracticeSessions, listSavedQuestions, savePracticeSession, saveQuestion, scopedStorageKey, validatePracticeSession, type PracticeSession } from "@/lib/sync/local";
+import { getSyncOwner, listPracticeSessions, listSavedQuestions, savePracticeSession, saveQuestion, scopedStorageKey, validatePracticeSession, type PracticeSession } from "@/lib/sync/local";
 import {
   DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_EVENT,
   DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY,
@@ -31,13 +31,14 @@ type BackupManifest = {
   exams: ExamDescriptor[];
 };
 export type LocalBackupPreview = {
+  accountId: string | null;
   name: string;
   createdAt: string;
   categories: BackupCategory[];
   itemCounts: Record<BackupCategory, number>;
   examCount: number;
   manifest: BackupManifest;
-  zip: JSZip;
+  zip: Awaited<ReturnType<typeof openResourceZip>>;
 };
 export type RestoreSummary = {
   examsAdded: number;
@@ -52,6 +53,10 @@ const MAX_UNCOMPRESSED_BYTES = 600 * 1024 * 1024;
 const MAX_ITEMS = 5000;
 const MAX_EXAMS = 500;
 const PROGRESS_CATEGORIES: BackupCategory[] = ["sessions", "drawings", "marked"];
+
+function requireBackupAccount(accountId: string | null) {
+  if (getSyncOwner() !== accountId) throw new Error("La cuenta cambió. Abre la cuenta correcta y vuelve a intentar con el mismo respaldo.");
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -158,6 +163,7 @@ function hasExistingContent(current: Record<string, unknown>, category: BackupCa
 
 /** Produces a versioned ZIP; it does not send any data to a server. */
 export async function createLocalBackup(categories: BackupCategory[], report: LocalStorageReport): Promise<Blob> {
+  const accountId = getSyncOwner();
   const selected = [...new Set(categories)].filter(isCategory);
   if (!selected.length) throw new Error("Selecciona al menos una categoría.");
   if (selected.includes("exams") && report.examError) throw new Error(report.examError);
@@ -170,8 +176,12 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
     createdAt: new Date().toISOString(), categories: selected, items: [], exams: [],
   };
   if (selected.includes("learning")) {
-    manifest.learning={state:await exportLearningState(),sessions:await listExamSessions(),practice:await listPracticeSessions(),savedQuestions:await listSavedQuestions()};
+    const state = await exportLearningState();
+    requireBackupAccount(accountId);
+    const sessions = await listExamSessions();
+    manifest.learning = { state, sessions, practice: await listPracticeSessions(accountId), savedQuestions: await listSavedQuestions(accountId) };
   }
+  requireBackupAccount(accountId);
   for (const category of selected) {
     if (category === "exams" || category === "learning") continue;
     const savedKeys = report.categories.find((item) => item.id === category)?.keys ?? [];
@@ -202,7 +212,9 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
     }
   }
   zip.file("manifest.json", JSON.stringify(manifest));
-  return zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
+  const archive = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
+  requireBackupAccount(accountId);
+  return archive;
 }
 
 function validateManifest(value: unknown): BackupManifest {
@@ -268,28 +280,22 @@ function validateManifest(value: unknown): BackupManifest {
 
 /** Reads and checks the file for preview. No browser data is changed here. */
 export async function inspectLocalBackup(file: File): Promise<LocalBackupPreview> {
+  const accountId = getSyncOwner();
   if (!file.name.toLowerCase().endsWith(".zip")) throw new Error("Selecciona un respaldo .zip de PAESSED.");
   if (file.size > MAX_FILE_BYTES) throw new Error("El respaldo supera el límite de 250 MB.");
-  const { default: JSZipModule } = await import("jszip");
-  const zip = await JSZipModule.loadAsync(await file.arrayBuffer());
-  const entries = Object.values(zip.files);
-  if (entries.length > MAX_EXAMS * 2 + 10) throw new Error("El respaldo contiene demasiados archivos.");
-  let uncompressed = 0;
-  for (const entry of entries) {
-    const size = (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
-    if (typeof size === "number") uncompressed += size;
-  }
-  if (uncompressed > MAX_UNCOMPRESSED_BYTES) throw new Error("Los archivos descomprimidos superan el límite de 600 MB.");
-  const manifestEntry = zip.file("manifest.json");
-  if (!manifestEntry) throw new Error("El respaldo no contiene manifest.json.");
-  const manifestText = await manifestEntry.async("string");
-  if (manifestText.length > MAX_MANIFEST_BYTES) throw new Error("El manifiesto del respaldo es demasiado grande.");
+  const zip = await openResourceZip(file, undefined, {
+    archiveBytes: MAX_FILE_BYTES, entries: MAX_EXAMS * 2 + 10,
+    jsonBytes: MAX_UNCOMPRESSED_BYTES, totalBytes: MAX_UNCOMPRESSED_BYTES,
+  });
+  if (zip.entries.get("manifest.json")?.directory !== false) throw new Error("El respaldo no contiene manifest.json.");
+  const manifestBytes = await zip.read("manifest.json", MAX_MANIFEST_BYTES);
   let parsed: unknown;
-  try { parsed = JSON.parse(manifestText); }
+  try { parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes)); }
   catch { throw new Error("El manifiesto JSON está dañado."); }
   const manifest = validateManifest(parsed);
   for (const exam of manifest.exams) {
-    if (!zip.file(exam.jsonPath) || (exam.archivePath && !zip.file(exam.archivePath))) {
+    if (zip.entries.get(exam.jsonPath)?.directory !== false ||
+        (exam.archivePath && zip.entries.get(exam.archivePath)?.directory !== false)) {
       throw new Error("Falta un archivo del ensayo " + exam.id + " en el respaldo.");
     }
   }
@@ -298,15 +304,15 @@ export async function inspectLocalBackup(file: File): Promise<LocalBackupPreview
   itemCounts.learning = manifest.learning ? 1 : 0;
   for (const item of manifest.items) itemCounts[item.category]++;
   return {
-    name: file.name, createdAt: manifest.createdAt, categories: manifest.categories,
+    accountId, name: file.name, createdAt: manifest.createdAt, categories: manifest.categories,
     itemCounts, examCount: manifest.exams.length, manifest, zip,
   };
 }
 
 async function decodeExam(preview: LocalBackupPreview, descriptor: ExamDescriptor): Promise<ImportedExamRecord> {
-  const examText = await preview.zip.file(descriptor.jsonPath)!.async("string");
+  const examBytes = await preview.zip.read(descriptor.jsonPath);
   let decoded: unknown;
-  try { decoded = JSON.parse(examText); }
+  try { decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(examBytes)); }
   catch { throw new Error("Uno de los ensayos contiene JSON dañado."); }
   if (!isObject(decoded) || !isObject(decoded.summary) ||
       decoded.summary.id !== descriptor.id ||
@@ -319,7 +325,7 @@ async function decodeExam(preview: LocalBackupPreview, descriptor: ExamDescripto
     throw new Error("El ensayo " + descriptor.id + " tiene una estructura incompatible.");
   }
   const archive = descriptor.archivePath
-    ? new Blob([await preview.zip.file(descriptor.archivePath)!.async("blob")],
+    ? new Blob([await preview.zip.read(descriptor.archivePath)],
       { type: descriptor.archiveMime || "application/zip" })
     : undefined;
   return { summary: decoded.summary as unknown as ImportedExamRecord["summary"],
@@ -330,6 +336,8 @@ async function decodeExam(preview: LocalBackupPreview, descriptor: ExamDescripto
 export async function restoreLocalBackup(
   preview: LocalBackupPreview, categories: BackupCategory[], overwrite: boolean,
 ): Promise<RestoreSummary> {
+  const { accountId } = preview;
+  requireBackupAccount(accountId);
   const selected = [...new Set(categories)].filter((category) => preview.categories.includes(category));
   if (!selected.length) throw new Error("Selecciona qué datos quieres restaurar.");
   const prepared: ImportedExamRecord[] = [];
@@ -342,16 +350,25 @@ export async function restoreLocalBackup(
   }
 
   const result: RestoreSummary = { examsAdded: 0, examsSkipped: 0, entriesApplied: 0, entriesSkipped: 0 };
+  requireBackupAccount(accountId);
   if(selected.includes("learning")&&preview.manifest.learning){
     await restoreLearningState(preview.manifest.learning.state);
+    requireBackupAccount(accountId);
     await restoreExamSessions(preview.manifest.learning.sessions);
-    for(const record of preview.manifest.learning.practice??[])await savePracticeSession(record.mode,record.sourceId,record.session);
-    for(const id of preview.manifest.learning.savedQuestions??[])await saveQuestion(id,true);
+    for (const record of preview.manifest.learning.practice ?? []) {
+      requireBackupAccount(accountId);
+      await savePracticeSession(record.mode, record.sourceId, record.session);
+    }
+    for (const id of preview.manifest.learning.savedQuestions ?? []) {
+      requireBackupAccount(accountId);
+      await saveQuestion(id, true);
+    }
     result.entriesApplied++;
   }
   if (selected.includes("exams")) {
     const existing = new Set((await listImportedExams()).map((exam) => exam.id));
     for (const record of prepared) {
+      requireBackupAccount(accountId);
       if (existing.has(record.summary.id) && !overwrite) { result.examsSkipped++; continue; }
       await saveImportedExam(record);
       result.examsAdded++;
@@ -359,11 +376,19 @@ export async function restoreLocalBackup(
   }
   for (const item of preview.manifest.items) {
     if (!selected.includes(item.category)) continue;
+    requireBackupAccount(accountId);
     const original = localStorage.getItem(scopedStorageKey(item.key));
     if (!isProgressKey(item.key)) {
       if (original !== null && !overwrite) { result.entriesSkipped++; continue; }
       localStorage.setItem(scopedStorageKey(item.key), item.value);
-      if(item.key==="paessed-playground-saved-questions"){const ids:unknown=JSON.parse(item.value);if(Array.isArray(ids))for(const id of ids)if(typeof id==="string"&&/^(?:demre|personal):[a-f\d]{64}:\d+$/.test(id))await saveQuestion(id,true);}
+      if (item.key === "paessed-playground-saved-questions") {
+        const ids: unknown = JSON.parse(item.value);
+        if (Array.isArray(ids)) for (const id of ids) {
+          if (typeof id !== "string" || !/^(?:demre|personal):[a-f\d]{64}:\d+$/.test(id)) continue;
+          requireBackupAccount(accountId);
+          await saveQuestion(id, true);
+        }
+      }
       result.entriesApplied++;
       continue;
     }

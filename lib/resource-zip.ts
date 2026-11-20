@@ -3,12 +3,13 @@ import Reader from './paessed-runtime/package-reader.js';
 import Validator from './paessed-runtime/validator.js';
 
 type Entry = {name:string;directory:boolean;size:number;crc:number};
+type ZipLimits = Pick<typeof Validator.LIMITS, 'archiveBytes' | 'entries' | 'jsonBytes' | 'totalBytes'>;
 
 // Generic containers may have audit files or a nested final.json. Only their
 // inventory differs from a .paessed package: bounds, paths and CRC stay checked.
 // The strict package reader is deliberately unchanged and never uses this path.
-function inspect(bytes:Uint8Array):Map<string,Entry>{
- const {assert,LIMITS,safePath}=Validator;
+function inspect(bytes:Uint8Array, LIMITS:ZipLimits):Map<string,Entry>{
+ const {assert,safePath}=Validator;
  assert(bytes.length>=22&&bytes.length<=LIMITS.archiveBytes,'ZIP','tamaño no permitido');
  const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
  const within=(at:number,n:number)=>assert(Number.isSafeInteger(at)&&at>=0&&at+n<=bytes.length,'ZIP','estructura truncada');
@@ -54,10 +55,10 @@ function inspect(bytes:Uint8Array):Map<string,Entry>{
  return entries;
 }
 
-export async function openResourceZip(input:Blob,cancelled:()=>boolean=()=>false){
- Validator.assert(input.size<=Validator.LIMITS.archiveBytes,'ZIP','archivo demasiado grande');
+export async function openResourceZip(input:Blob,cancelled:()=>boolean=()=>false,limits:ZipLimits=Validator.LIMITS){
+ Validator.assert(input.size<=limits.archiveBytes,'ZIP','archivo demasiado grande');
  const bytes=new Uint8Array(await input.arrayBuffer());
- const entries=inspect(bytes);
+ const entries=inspect(bytes,limits);
  if(cancelled())throw new Error('Carga cancelada');
  const zip=await JSZip.loadAsync(bytes,{createFolders:false});
  Validator.assert(Object.keys(zip.files).length===entries.size,'ZIP','inventario normalizado');
@@ -67,12 +68,13 @@ export async function openResourceZip(input:Blob,cancelled:()=>boolean=()=>false
   if(file.unsafeOriginalName!==undefined)Validator.assert(file.unsafeOriginalName===name,'ZIP','nombre original alterado');
  }
  let budget=0;
- const cache=new Map<string,Promise<Uint8Array>>();
- function read(name:string):Promise<Uint8Array>{
-  if(cache.has(name))return cache.get(name)!;
+ const cache=new Map<string,Promise<Uint8Array<ArrayBuffer>>>();
+ function read(name:string,maxBytes=limits.totalBytes):Promise<Uint8Array<ArrayBuffer>>{
   const entry=entries.get(name),file=zip.file(name);
   if(!entry||entry.directory||!file)return Promise.reject(new Error('Archivo no disponible: '+name));
-  const promise=new Promise<Uint8Array>((resolve,reject)=>{
+  if(entry.size>maxBytes)return Promise.reject(new Error('El archivo supera el límite permitido: '+name));
+  if(cache.has(name))return cache.get(name)!;
+  const promise=new Promise<Uint8Array<ArrayBuffer>>((resolve,reject)=>{
    const stream=(file as JSZip.JSZipObject&{internalStream(type:'uint8array'):JSZip.JSZipStreamHelper<Uint8Array>}).internalStream('uint8array'),chunks:Uint8Array[]=[];
    let count=0,stopped=false;
    const stop=(error:Error)=>{if(!stopped){stopped=true;stream.pause();reject(error);}};
@@ -80,7 +82,7 @@ export async function openResourceZip(input:Blob,cancelled:()=>boolean=()=>false
     if(stopped)return;
     count+=chunk.length;budget+=chunk.length;
     if(cancelled())return stop(new Error('Carga cancelada'));
-    if(count>entry.size||budget>Validator.LIMITS.totalBytes)return stop(new Error('Descompresión fuera de límite: '+name));
+    if(count>entry.size||budget>limits.totalBytes)return stop(new Error('Descompresión fuera de límite: '+name));
     chunks.push(chunk);
    });
    stream.on('error',stop);

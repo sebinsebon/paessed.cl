@@ -30,11 +30,12 @@ export function AccountPanel() {
     return () => { live = false; };
   }, [loadAttempt]);
   async function run(action: string, values: Record<string, unknown> = {}) {
-    if (lock.current) return;
+    const accountId = account?.user?.id;
+    if (lock.current || !accountId) return;
     lock.current = true;
     setActionInFlight(action); setMessage(""); setError("");
     try {
-      const result = await authAction(action, values);
+      const result = await authAction(action, values, accountId);
       if (result.url) { window.location.assign(result.url); return; }
       if (action === "logout" || action === "delete") { window.location.assign("/login"); return; }
       if (action === "profile") sileo.success({ title: result.message ?? "Perfil guardado" });

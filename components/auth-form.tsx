@@ -33,6 +33,7 @@ type AuthCardProps = {
   accountsAvailable?: boolean;
   introduction?: ReactNode;
   returnTo?: string;
+  accountId?: string;
 };
 const titles = { login: "Inicia sesión", register: "Crea tu cuenta", recover: "Recupera tu acceso", password: "Nueva contraseña" };
 
@@ -45,7 +46,7 @@ function GoogleIcon() {
   </svg>;
 }
 
-export function AuthCard({ mode, accountsAvailable = true, introduction, returnTo }: AuthCardProps) {
+export function AuthCard({ mode, accountsAvailable = true, introduction, returnTo, accountId }: AuthCardProps) {
   const { active, available } = useDevMode();
   const enabled = accountsAvailable || active;
   const [view, setView] = useState<AuthMode>(mode);
@@ -82,7 +83,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
         }
         catch { /* Authentication can continue when browser storage is unavailable. */ }
       }
-      const result = await authAction(action, values);
+      const result = await authAction(action, values, action === "password" ? accountId : undefined);
       const destination = result.url ?? result.redirect;
       if (destination) {
         window.location.assign(destination);
@@ -146,7 +147,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   </section>;
 }
 
-export function AuthForm({ mode, accountsAvailable = true }: { mode: AuthMode; accountsAvailable?: boolean }) {
+export function AuthForm({ mode, accountsAvailable = true, accountId }: Pick<AuthCardProps, "mode" | "accountsAvailable" | "accountId">) {
   return <div className={styles.page}>
     <header className={styles.header}>
       <Link href="/" className={styles.backLink}><ArrowLeft size={18} aria-hidden="true" /><span>Volver</span></Link>
@@ -154,7 +155,7 @@ export function AuthForm({ mode, accountsAvailable = true }: { mode: AuthMode; a
       <ThemeToggle />
     </header>
     <main className={styles.layout}>
-      <AuthCard mode={mode} accountsAvailable={accountsAvailable} />
+      <AuthCard mode={mode} accountsAvailable={accountsAvailable} accountId={accountId} />
     </main>
     <footer className={styles.copyright}>© {new Date().getFullYear()} Paessed</footer>
   </div>;
