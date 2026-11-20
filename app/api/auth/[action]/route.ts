@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { cookies } from "next/headers";
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
 import { authAdmin, authClient, authConfigured, beginAuthFlow, markReauthenticated, requireAccount, requireRecent } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
-import { HttpError, handleError, json, readJson, sameOrigin } from "@/lib/server/http";
-import { enforceRequestLimit } from "@/lib/server/limits";
+import { HttpError, expectedAccount, handleError, json, readJson, sameOrigin } from "@/lib/server/http";
+import { enforceProgressIpLimit, enforceRequestLimit } from "@/lib/server/limits";
 import { AUTH_FLOW_COOKIE, REAUTH_COOKIE } from "@/lib/auth/security";
 
 export const runtime = "nodejs";
@@ -53,7 +54,7 @@ export async function GET(request: Request, context: { params: Promise<{ action:
     if ((await context.params).action !== "session") throw new HttpError(404, "Ruta no encontrada.");
     if (!authConfigured()) return json({ user: null, configured: false });
     stage = "rate_limit";
-    await enforceRequestLimit(request, "auth");
+    await enforceProgressIpLimit(request);
     stage = "session";
     const jar = await cookies();
     if (!jar.getAll().some(c => c.name.startsWith("sb-") && c.name.includes("auth-token"))) return json({ user: null, configured: true });
@@ -93,6 +94,10 @@ export async function POST(request: Request, context: { params: Promise<{ action
       return json({ ok: true, message: "Revisa tu correo para verificar la cuenta. Abre el enlace en este navegador." });
     }
     if (action === "recover") {
+      if (request.headers.has("x-paessed-account")) {
+        const { user } = await requireAccount(request);
+        expectedAccount(request, user.id);
+      }
       const input = schemas.recover.parse(value); captchaRequired(input.captchaToken);
       const redirectTo = await beginAuthFlow("recover");
       const { error } = await client.auth.resetPasswordForEmail(input.email, { redirectTo, captchaToken: input.captchaToken }); failAuth(error);
@@ -105,12 +110,16 @@ export async function POST(request: Request, context: { params: Promise<{ action
       return json({ url: data.url });
     }
     if (action === "logout") {
-      // An already revoked or expired session must still be able to clear its own cookies.
-      const { error } = await client.auth.signOut({ scope: "global" }); failAuth(error);
+      const { data: { user }, error: lookupError } = await client.auth.getUser();
+      if (user) expectedAccount(request, user.id);
+      else if (lookupError && !isAuthSessionMissingError(lookupError) && lookupError.code !== "session_not_found") failAuth(lookupError);
+      // Without a valid identity, clear this browser's session without revoking other sessions.
+      const { error } = await client.auth.signOut({ scope: user ? "global" : "local" }); failAuth(error);
       const jar = await cookies(); jar.delete(REAUTH_COOKIE); jar.delete(AUTH_FLOW_COOKIE);
       return json({ ok: true });
     }
     const account = await requireAccount(request);
+    expectedAccount(request, account.user.id);
     if (action === "reauth") {
       const input = schemas.reauth.parse(value); captchaRequired(input.captchaToken);
       if (!account.user.email) throw new HttpError(400, "Usa Google para confirmar tu identidad.");

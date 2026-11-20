@@ -3,6 +3,7 @@ import { validatePaessed } from "@/lib/paessed-package";
 import { scopedStorageKey } from "./sync/local.ts";
 import { isJsonObject } from "@/lib/exam-editing";
 import { IMPORTED_EXAM_PROGRESS_PREFIX, type ImportedExamRecord } from "@/lib/local-imports";
+import { openResourceZip } from "@/lib/resource-zip";
 
 export type ExamBackupPreview = {
   name: string;
@@ -48,19 +49,17 @@ export async function inspectExamBackup(file: File, expectedExamId: string): Pro
   if (!file.name.toLowerCase().endsWith(".zip") || file.size > MAX_BACKUP_BYTES) {
     throw new Error("Selecciona un respaldo .zip de hasta 500 MB.");
   }
-  const { default: JSZip } = await import("jszip");
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const uncompressed = Object.values(zip.files).reduce((sum, entry) =>
-    sum + ((entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0);
-  if (Object.keys(zip.files).length > 4 || uncompressed > 700 * 1024 * 1024) {
-    throw new Error("El respaldo contiene archivos inesperados o demasiado grandes.");
+  const zip = await openResourceZip(file, undefined, {
+    archiveBytes: MAX_BACKUP_BYTES, entries: 4, jsonBytes: 50 * 1024 * 1024, totalBytes: 700 * 1024 * 1024,
+  });
+  if (zip.entries.get("manifest.json")?.directory !== false || zip.entries.get("final.json")?.directory !== false) {
+    throw new Error("El respaldo no contiene manifest.json y final.json.");
   }
-  const rawManifest = await zip.file("manifest.json")?.async("string");
-  const rawFinal = await zip.file("final.json")?.async("string");
-  if (!rawManifest || !rawFinal) throw new Error("El respaldo no contiene manifest.json y final.json.");
+  const [manifestBytes, finalBytes] = await Promise.all([zip.read("manifest.json"), zip.read("final.json")]);
   let manifest: unknown;
   let finalJson: unknown;
-  try { manifest = JSON.parse(rawManifest); finalJson = JSON.parse(rawFinal); }
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  try { manifest = JSON.parse(decoder.decode(manifestBytes)); finalJson = JSON.parse(decoder.decode(finalBytes)); }
   catch { throw new Error("Los archivos JSON del respaldo están dañados."); }
   if (!isJsonObject(manifest) || manifest.format !== "paessed-exam-backup" ||
       manifest.version !== 1 || manifest.examId !== expectedExamId ||
@@ -85,9 +84,8 @@ export async function inspectExamBackup(file: File, expectedExamId: string): Pro
     } catch { throw new Error("El respaldo contiene progreso inválido."); }
   }
   if (finalJson.format === "paessed-benchmark") validatePaessed(finalJson);
-  const archiveEntry = zip.file("original.bin");
-  const archive = archiveEntry
-    ? new Blob([await archiveEntry.async("blob")], { type: manifest.archiveMime || "application/zip" })
+  const archive = zip.entries.get("original.bin")?.directory === false
+    ? new Blob([await zip.read("original.bin")], { type: manifest.archiveMime || "application/zip" })
     : undefined;
   return {
     name: file.name,

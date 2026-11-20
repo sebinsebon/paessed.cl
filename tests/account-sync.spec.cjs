@@ -15,7 +15,11 @@ async function readAccount(page, user, store) {
 test("guest, separate accounts, explicit logout and pending queues stay isolated", async ({ page }) => {
   let user = null;
   await page.route("**/api/auth/session", route => route.fulfill({ json: { configured: true, user: user ? { id: user, email: "piloto@example.test", providers: ["email"] } : null, profile: { displayName: "Piloto", timezone: "America/Santiago" } } }));
-  await page.route("**/api/auth/logout", route => { user = null; return route.fulfill({ json: { ok: true } }); });
+  await page.route("**/api/auth/logout", route => {
+    expect(route.request().headers()["x-paessed-account"]).toBe(B);
+    user = null;
+    return route.fulfill({ json: { ok: true } });
+  });
   await page.route("**/api/sync**", route => route.request().method() === "GET" ? route.fulfill({ json: { revision: 0, generation: 0, catalogRevision: "gold-0.7-sync-1", acknowledgements: [], changes: [], conflicts: [], hasMore: false, cursor: 0 } }) : route.fulfill({ status: 429, headers: { "Retry-After": "3600" }, json: { error: "Cuota temporal" } }));
   await page.goto("/app/perfil");
   await page.getByRole("button", { name: "3 nodos", exact: true }).click();
@@ -37,6 +41,30 @@ test("guest, separate accounts, explicit logout and pending queues stay isolated
   await page.goto("/app/perfil");
   await expect(page.getByRole("button", { name: "3 nodos", exact: true })).toHaveAttribute("aria-pressed", "true");
   expect((await readAccount(page, A, "outbox")).length).toBeGreaterThan(0);
+});
+
+test("an open profile keeps the account shown on screen when another tab changes the active account", async ({ page }) => {
+  let user = A;
+  await page.route("**/api/auth/session", route => route.fulfill({ json: {
+    configured: true, user: { id: user, email: "piloto@example.test", providers: ["email"] },
+    profile: { displayName: "Cuenta Uno", timezone: "America/Santiago" },
+  } }));
+  await page.route("**/api/sync**", route => route.fulfill({ json: {
+    revision: 0, generation: 0, catalogRevision: "gold-0.7-sync-1", acknowledgements: [], changes: [], conflicts: [], hasMore: false, cursor: 0,
+  } }));
+  let requestedAccount;
+  await page.route("**/api/auth/profile", route => {
+    requestedAccount = route.request().headers()["x-paessed-account"];
+    return route.fulfill({ status: 409, json: { error: "La cuenta cambió en otra pestaña." } });
+  });
+  await page.goto("/app/perfil");
+  const name = page.getByRole("textbox", { name: "Nombre", exact: true });
+  await expect(name).toHaveValue("Cuenta Uno");
+  user = B;
+  await name.fill("Nombre en la pestaña de la cuenta uno");
+  await page.getByRole("button", { name: "Guardar perfil" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "La cuenta cambió" })).toBeVisible();
+  expect(requestedAccount).toBe(A);
 });
 test("Playground resumes confirmed answers and sync traffic contains progress references only", async ({ page }) => {
   const traffic = [];
@@ -72,7 +100,12 @@ test("legacy version 2 backups restore the learning state through the current pr
     learning: { state: { version: 1, learnerId: A, seed: 42, revision: 0, goal: 3, attempts: [], exposures: [], nodes: [], diagnostic: null }, sessions: {} } }));
   await page.goto("/app/perfil");
   await expect(page.getByTestId("backup-panel")).toHaveAttribute("data-ready", "true");
-  await page.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({ name: "respaldo-v2.zip", mimeType: "application/zip", buffer: await zip.generateAsync({ type: "nodebuffer" }) });
+  const input = page.locator('input[aria-label="Seleccionar respaldo PAESSED"]');
+  const backup = await zip.generateAsync({ type: "nodebuffer" });
+  await input.setInputFiles({ name: "respaldo-incompleto.zip", mimeType: "application/zip", buffer: backup.subarray(0, -12) });
+  await expect(page.getByText(/directorio final ausente/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "2 nodos", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await input.setInputFiles({ name: "respaldo-v2.zip", mimeType: "application/zip", buffer: backup });
   await expect(page.getByTestId("backup-import-preview")).toBeVisible();
   await page.getByRole("button", { name: "Restaurar datos", exact: true }).click();
   await page.getByRole("button", { name: "Confirmar restauración", exact: true }).click();

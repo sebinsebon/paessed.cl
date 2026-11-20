@@ -155,7 +155,7 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4">
           <div className="mb-2 flex items-center gap-2 text-[13px] font-extrabold"><Download size={17} /> Exportar</div>
-          <p className="mb-3 text-[11px] leading-5 text-[var(--muted)]">Selecciona qué incluir en un único archivo .zip.</p>
+          <p className="mb-3 text-[11px] leading-5 text-[var(--muted)]">Elige qué incluir. El archivo ZIP se descarga sin cifrado.</p>
           <div className="space-y-1.5">
             {selectionReady && BACKUP_CATEGORIES.map((category) => {
               const bytes = report?.categories.find((item) => item.id === category)?.bytes ?? 0;

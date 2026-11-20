@@ -1,6 +1,7 @@
 import nextEnv from "@next/env";
 import postgres from "postgres";
 import { databaseTlsOptions } from "../lib/server/db-tls.ts";
+import { connectsToSupabaseProject, permitsBackend, PRODUCTION_ORIGIN, PRODUCTION_PROJECT } from "../lib/server/deployment-backend.ts";
 
 nextEnv.loadEnvConfig(process.cwd());
 let failed = false;
@@ -8,17 +9,18 @@ function check(ok, message) { console.log(`${ok ? "OK" : "PENDIENTE"} ${message}
 const required = ["APP_ORIGIN", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "DATABASE_URL", "AUTH_FLOW_SECRET", "IP_HMAC_SECRET"];
 const production = process.env.VERCEL_ENV === "production" || process.env.APP_ENV === "production";
 if (production) {
-  const ref = "byihttktkhpiqkhobpsr";
-  required.push("SUPABASE_SECRET_KEY", "NEXT_PUBLIC_TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY");
-  check(process.env.APP_ORIGIN === "https://paesseduiux-zeta.vercel.app", "Dominio oficial de producción");
-  check(process.env.NEXT_PUBLIC_SUPABASE_URL === `https://${ref}.supabase.co`, "Auth usa el Supabase productivo");
+  required.push("SUPABASE_SECRET_KEY");
+  check(process.env.APP_ORIGIN === PRODUCTION_ORIGIN, "Dominio oficial de producción");
+  check(process.env.NEXT_PUBLIC_SUPABASE_URL === `https://${PRODUCTION_PROJECT}.supabase.co`, "Auth usa el Supabase productivo");
   check(process.env.TRUSTED_PROXY === "vercel", "Proxy Vercel");
-  try {
-    const url = new URL(process.env.DATABASE_URL);
-    check(url.hostname === `db.${ref}.supabase.co` ||
-      (url.hostname.endsWith(".pooler.supabase.com") && url.username.endsWith("." + ref)), "PostgreSQL usa el Supabase productivo");
-  } catch { check(false, "Destino PostgreSQL productivo válido"); }
+  check(connectsToSupabaseProject(process.env.DATABASE_URL, PRODUCTION_PROJECT), "PostgreSQL usa el Supabase productivo");
 }
+const safeBackend = permitsBackend();
+check(safeBackend, "El preview usa el backend de pruebas");
+const turnstileSite = !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+const turnstileServer = !!process.env.TURNSTILE_SECRET_KEY;
+check(turnstileSite === turnstileServer, "Turnstile requiere ambas claves o se mantiene diferido");
+if (!turnstileSite && !turnstileServer) console.log("DIFERIDO Turnstile. Las cuotas de PAESSED y Supabase Auth siguen aplicando.");
 for (const key of required) check(!!process.env[key], key);
 for (const key of ["AUTH_FLOW_SECRET", "IP_HMAC_SECRET"]) if (process.env[key]) check(process.env[key].length >= 32, `${key}: mínimo 32 caracteres`);
 check(!process.env.AUTH_FLOW_SECRET || process.env.AUTH_FLOW_SECRET !== process.env.IP_HMAC_SECRET, "Secretos de autenticación y solicitudes distintos");
@@ -27,7 +29,7 @@ if (process.env.APP_ORIGIN) {
   try { const url = new URL(process.env.APP_ORIGIN); check(url.protocol === "https:" || ["localhost", "127.0.0.1"].includes(url.hostname), "Origen HTTPS o loopback local"); }
   catch { check(false, "APP_ORIGIN válido"); }
 }
-if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+if (safeBackend && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
   try {
     const response = await fetch(new URL("/auth/v1/settings", process.env.NEXT_PUBLIC_SUPABASE_URL), { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }, signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error();
@@ -36,7 +38,7 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUB
     if (production) check(settings.external?.email === true && settings.mailer_autoconfirm === false && !settings.disable_signup, "Registro y confirmación de correo habilitados");
   } catch { check(false, "Consultar configuración pública de Auth (revisar URL, clave y conectividad)"); }
 }
-if (process.env.DATABASE_URL) {
+if (safeBackend && process.env.DATABASE_URL) {
   let sql;
   try {
     sql = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, ssl: databaseTlsOptions(), connect_timeout: 10, onnotice: () => {} });

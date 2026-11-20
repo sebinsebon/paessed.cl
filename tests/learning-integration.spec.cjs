@@ -1,12 +1,13 @@
 const {test,expect}=require("@playwright/test");
 const fs=require("node:fs");
+const { createCipheriv, createDecipheriv, randomBytes } = require("node:crypto");
 const JSZip=require("jszip");
 const index=require("../lib/default-catalog.json");
 const {enableLocalApp}=require("./local-app-fixture.cjs");
 test.beforeEach(async ({page,baseURL})=>{await enableLocalApp(page,baseURL);});
 async function state(page){return page.evaluate(()=>new Promise((resolve,reject)=>{const r=indexedDB.open("paessed-learning",1);r.onsuccess=()=>{const db=r.result;const read=db.transaction("state").objectStore("state").get("current");read.onsuccess=()=>{resolve(read.result);db.close();};read.onerror=()=>reject(read.error);};r.onerror=()=>reject(r.error);}));}
 async function selectQuestion(page,value){await page.getByRole("button",{name:"Abrir menú de la pregunta",exact:true}).click();await page.getByLabel("Ir a pregunta").selectOption({value});}
-test("Default exam delivers real evidence, resumes, and backup restores into a fresh browser",async({page,browser,baseURL})=>{
+test("Default exam delivers real evidence, resumes, and an encrypted backup restores into a fresh browser",async({page,browser,baseURL})=>{
   const exam=index.exams[0],q=index.questions.find(q=>q.examId===exam.id&&q.number===1);
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(exam.href);
@@ -24,9 +25,17 @@ test("Default exam delivers real evidence, resumes, and backup restores into a f
   const download=page.waitForEvent("download");await page.getByRole("button",{name:"Descargar respaldo"}).click();
   const bytes=fs.readFileSync(await(await download).path());
   const zip=await JSZip.loadAsync(bytes);const manifest=JSON.parse(await zip.file("manifest.json").async("string"));expect(manifest.version).toBe(3);expect(manifest.learning.state.attempts).toHaveLength(1);
+  // The browser export is a plain ZIP. Exercise external encryption before handing it to a fresh browser.
+  const key = randomBytes(32), iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(bytes), cipher.final()]);
+  await expect(JSZip.loadAsync(encrypted)).rejects.toThrow();
+  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(cipher.getAuthTag());
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
   const fresh=await browser.newContext({baseURL});const target=await fresh.newPage();await enableLocalApp(target,baseURL);await target.goto("/app/perfil");
   await expect(target.getByTestId("backup-panel")).toHaveAttribute("data-ready","true");
-  await target.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({name:"PAESSED.zip",mimeType:"application/zip",buffer:bytes});
+  await target.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({name:"PAESSED.zip",mimeType:"application/zip",buffer:decrypted});
   await expect(target.getByTestId("backup-import-preview")).toBeVisible();await target.getByRole("button",{name:"Restaurar datos",exact:true}).click();await target.getByRole("button",{name:"Confirmar restauración"}).click();await expect(target.getByText(/Restauración terminada/)).toBeVisible();
   const after=await state(target);expect(after.learnerId).toBe(before.learnerId);expect(after.attempts).toEqual(before.attempts);
   await target.goto(exam.href);await expect(target.getByRole("heading",{name:"Ensayo finalizado"})).toBeVisible();

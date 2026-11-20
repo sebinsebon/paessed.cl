@@ -14,12 +14,14 @@ export function handleError(error: unknown): Response {
 }
 export function sameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
-  const expected = process.env.APP_ORIGIN ?? new URL(request.url).origin;
+  const url = new URL(request.url);
+  const local = !process.env.VERCEL_ENV && process.env.APP_ENV !== "production" && ["127.0.0.1", "localhost"].includes(url.hostname);
+  const expected = process.env.APP_ORIGIN ?? (local ? url.origin : null);
   if (!origin || origin !== expected || request.headers.get("sec-fetch-site") === "cross-site") throw new HttpError(403, "Origen no permitido.");
 }
 /** An assertion prevents a queued operation from one tab following another tab's new cookies. */
 export function expectedAccount(request: Request, ownerId: string): void {
-  if (request.headers.get("x-paessed-account") !== ownerId) throw new HttpError(409, "La cuenta cambió en otra pestaña. Conserva la cola y vuelve a abrir esta cuenta.");
+  if (request.headers.get("x-paessed-account") !== ownerId) throw new HttpError(409, "La cuenta cambió en otra pestaña. Tu progreso sigue guardado. Vuelve a abrir esta cuenta.");
 }
 /** Count actual stream bytes. Content-Length is only an early rejection hint. */
 export async function readJson(request: Request, max = 256 * 1024): Promise<unknown> {
