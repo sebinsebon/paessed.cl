@@ -66,7 +66,11 @@ export function AccountPanel() {
         <div className="mt-3"><Captcha onToken={setCaptchaToken} reset={captchaReset} /></div>
         <div className="mt-3 flex flex-wrap gap-2">
           {account.user.providers.includes("google") ? <button disabled={busy} className={button} onClick={() => void run("reauth-google", { captchaToken })}>Confirmar con Google</button> : <button disabled={busy} className={button} onClick={() => void run("link-google")}>Vincular Google</button>}
-          <button disabled={busy || !account.user.email} className={button} onClick={() => void run("recover", { email: account.user!.email, captchaToken })}>{account.user.providers.includes("email") ? "Cambiar contraseña por correo" : "Añadir contraseña por correo"}</button>
+          {account.user.providers.includes("email")
+            ? <button disabled={busy || !account.user.email} className={button} onClick={() => void run("recover", { email: account.user!.email, captchaToken })}>Cambiar contraseña por correo</button>
+            : account.user.providers.includes("google") && account.user.email && (
+              <button disabled={busy} className={button} onClick={() => void run("reauth-google", { captchaToken, setupPassword: true })}>Añadir contraseña con Google</button>
+            )}
           <button disabled={busy} className={button} onClick={() => void run("logout")}>Cerrar sesión</button>
         </div>
       </div>

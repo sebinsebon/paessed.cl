@@ -28,8 +28,18 @@ export function validFlow(value: Record<string, unknown> | null, nonce: string |
   return !!value && typeof nonce === "string" && /^[A-Za-z0-9_-]{43}$/.test(nonce) && value.nonce === nonce && purposes.includes(value.purpose as AuthPurpose);
 }
 /** Return destinations are fixed by the server; never accept next/redirect URL inputs. */
-export function authDestination(purpose: AuthPurpose): string {
-  return purpose === "recover" ? "/auth/password" : purpose === "link" || purpose === "reauth" ? "/app/perfil" : "/bienvenida";
+export function authDestination(purpose: AuthPurpose, setupPassword = false): string {
+  if (purpose === "recover" || (purpose === "reauth" && setupPassword)) return "/auth/password";
+  return purpose === "link" || purpose === "reauth" ? "/app/perfil" : "/bienvenida";
+}
+
+export function canSetGooglePassword(user: { email?: string; email_confirmed_at?: string; identities?: { provider: string }[] }): boolean {
+  const providers = user.identities?.map(identity => identity.provider) ?? [];
+  return !!user.email && !!user.email_confirmed_at && providers.includes("google") && !providers.includes("email");
+}
+
+export function passwordReceiptAllowed(purpose: unknown, user: Parameters<typeof canSetGooglePassword>[0]): boolean {
+  return purpose === "recover" || (purpose === "google-password" && canSetGooglePassword(user));
 }
 export function configuredOrigin(value: string | undefined): string {
   if (!value) throw new Error("Falta APP_ORIGIN.");

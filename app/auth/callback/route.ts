@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_FLOW_COOKIE, authDestination, nonceHash } from "@/lib/auth/security";
+import { AUTH_FLOW_COOKIE, authDestination, canSetGooglePassword, nonceHash } from "@/lib/auth/security";
 import { completeAuthCallback, parseAuthCallback, redirectTypeOf } from "@/lib/auth/callback";
 import { authClient, authConfigured, authOrigin, flowSecret, markReauthenticated } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
@@ -30,8 +30,11 @@ export async function GET(request: Request) {
       },
       rejectSession: async () => { await client.auth.signOut({ scope: "local" }); },
     });
-    if (flow.purpose === "recover" || flow.purpose === "reauth") await markReauthenticated(data.user.id, data.session.access_token, flow.purpose);
-    const result = NextResponse.redirect(new URL(authDestination(flow.purpose), authOrigin()));
+    const setupPassword = flow.setupPassword === true && canSetGooglePassword(data.user);
+    if (flow.purpose === "recover" || flow.purpose === "reauth") {
+      await markReauthenticated(data.user.id, data.session.access_token, setupPassword ? "google-password" : flow.purpose);
+    }
+    const result = NextResponse.redirect(new URL(authDestination(flow.purpose, setupPassword), authOrigin()));
     result.headers.set("Cache-Control", "private, no-store");
     result.headers.set("Referrer-Policy", "no-referrer");
     return result;

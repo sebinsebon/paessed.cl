@@ -34,6 +34,8 @@ test("public routes require real accounts while diagnostic remains open", async 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Inicia sesión", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Continuar como invitado" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Olvidé mi contraseña", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Recupera tu acceso" })).toBeVisible();
   await page.goto("/diagnostico");
   await expect(page).toHaveURL(/\/diagnostico$/);
   await expect(page.getByRole("heading", { name: "Diagnóstico M1" })).toBeVisible();
@@ -198,6 +200,7 @@ async function registerTestAccount(page, email = "estudiante@example.test", name
   await page.getByLabel("Nombre", { exact: true }).fill(name);
   await page.getByLabel("Correo", { exact: true }).fill(email);
   await page.getByLabel("Contraseña", { exact: true }).fill("never-save-this-password");
+  await page.getByLabel("Confirmar contraseña", { exact: true }).fill("never-save-this-password");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   await expect(page).toHaveURL(destination);
   if (reminder) await expectDiagnosticLink(page);
@@ -372,6 +375,12 @@ test("an empty account retries its completed guest diagnostic without showing a 
   await page.getByLabel("Nombre", { exact: true }).fill("Estudiante");
   await page.getByLabel("Correo", { exact: true }).fill("retry@example.test");
   await page.getByLabel("Contraseña", { exact: true }).fill("never-save-this-password");
+  const confirmation = page.getByLabel("Confirmar contraseña", { exact: true });
+  await confirmation.fill("a-different-password");
+  await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
+  await expect(page.getByText("Las contraseñas no coinciden.", { exact: true })).toBeVisible();
+  await expect(confirmation).toBeFocused();
+  await confirmation.fill("never-save-this-password");
   await page.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   const alert = page.getByRole("main").getByRole("alert");
   await expect(alert).toContainText("Envío interrumpido");
@@ -434,6 +443,7 @@ test("landing opens account dialogs, explains the diagnostic and resumes it afte
   await register.getByLabel("Nombre", { exact: true }).fill("Mi cuenta");
   await register.getByLabel("Correo", { exact: true }).fill("modal@example.test");
   await register.getByLabel("Contraseña", { exact: true }).fill("never-store-password");
+  await register.getByLabel("Confirmar contraseña", { exact: true }).fill("never-store-password");
   await register.getByRole("button", { name: "Crear cuenta", exact: true }).click();
   await expect(page).toHaveURL(/\/diagnostico$/);
   await expect(page.getByRole("heading", { name: "Diagnóstico M1", exact: true })).toBeVisible();
