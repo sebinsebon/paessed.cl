@@ -54,6 +54,8 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const confirmationInput = useRef<HTMLInputElement>(null);
   const [captchaToken, setCaptchaToken] = useState("");
   const [reset, setReset] = useState(0);
   const [actionInFlight, setActionInFlight] = useState<string | null>(null);
@@ -62,12 +64,13 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const providers = view === "login" || view === "register";
+  const creatingPassword = view === "register" || view === "password";
   const showFields = emailOpen || !providers;
 
   useEffect(() => { if (new URLSearchParams(window.location.search).has("authError")) setError("El acceso fue cancelado o el enlace ya no es válido. Vuelve a intentarlo."); }, []);
 
   function changeView(next: AuthMode) {
-    setView(next); setPassword(""); setError(""); setMessage("");
+    setView(next); setPassword(""); setPasswordConfirmation(""); setError(""); setMessage("");
     setCaptchaToken(""); setReset(value => value + 1);
   }
 
@@ -90,7 +93,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
         navigating = true;
         return;
       }
-      setMessage(result.message ?? "Listo."); setPassword("");
+      setMessage(result.message ?? "Listo."); setPassword(""); setPasswordConfirmation("");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud."); }
     finally { if (!navigating) { inFlight.current = false; setActionInFlight(null); setCaptchaToken(""); setReset(value => value + 1); } }
   }
@@ -111,6 +114,11 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (creatingPassword && password !== passwordConfirmation) {
+      setError("Las contraseñas no coinciden.");
+      confirmationInput.current?.focus();
+      return;
+    }
     const values = view === "password" ? { password } : view === "recover" ? { email, captchaToken } : view === "register" ? { email, password, name, captchaToken } : { email, password, captchaToken };
     void run(view, values);
   }
@@ -133,6 +141,10 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
         {view === "register" && <label>Nombre<input required minLength={2} maxLength={80} autoComplete="name" value={name} onChange={event => setName(event.target.value)} className={styles.input} /></label>}
         {view !== "password" && <label>Correo<input required type="email" maxLength={254} autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} className={styles.input} /></label>}
         {view !== "recover" && <label>Contraseña<input required type="password" minLength={8} maxLength={128} placeholder={view === "login" ? undefined : "Al menos 8 caracteres"} autoComplete={view === "login" ? "current-password" : "new-password"} value={password} onChange={event => setPassword(event.target.value)} className={styles.input} /></label>}
+        {creatingPassword && <label>Confirmar contraseña
+          <input ref={confirmationInput} required type="password" minLength={8} maxLength={128} autoComplete="new-password"
+            value={passwordConfirmation} onChange={event => setPasswordConfirmation(event.target.value)} className={styles.input} />
+        </label>}
       </fieldset>}
       {view !== "password" && <Captcha onToken={setCaptchaToken} reset={reset} />}
       {showFields && <button disabled={busy || !enabled} className={`tactile-primary ${styles.button}`}><PendingLabel pending={actionInFlight === view} label={view === "password" ? "Guardando…" : view === "recover" ? "Enviando…" : view === "register" ? "Creando cuenta…" : "Ingresando…"}>{view === "recover" ? "Enviar enlace" : view === "password" ? "Guardar contraseña" : view === "register" ? "Crear cuenta" : "Entrar"}</PendingLabel></button>}
@@ -142,7 +154,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
     <nav className={styles.links} aria-label="Opciones de cuenta">
       {providers ? <>
         <button type="button" disabled={busy} onClick={() => changeView(view === "login" ? "register" : "login")}>{view === "login" ? "Crear cuenta" : "Iniciar sesión"}</button>
-        {view === "login" && showFields && <button type="button" disabled={busy} onClick={() => changeView("recover")}>Olvidé mi contraseña</button>}
+        {view === "login" && <button type="button" disabled={busy} onClick={() => changeView("recover")}>Olvidé mi contraseña</button>}
       </> : <button type="button" disabled={busy} onClick={() => changeView("login")}>Volver al inicio de sesión</button>}
     </nav>
   </section>;
