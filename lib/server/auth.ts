@@ -5,7 +5,7 @@ import { createClient, type User } from "@supabase/supabase-js";
 import { db } from "./db";
 import { permitsBackend } from "./deployment-backend";
 import { HttpError } from "./http";
-import { AUTH_FLOW_COOKIE, REAUTH_COOKIE, configuredOrigin, flowNonce, nonceHash, signValue, verifyValue, type AuthPurpose } from "../auth/security";
+import { AUTH_FLOW_COOKIE, REAUTH_COOKIE, configuredOrigin, flowNonce, nonceHash, passwordReceiptAllowed, signValue, verifyValue, type AuthPurpose } from "../auth/security";
 
 export function authConfigured(): boolean { return permitsBackend() && !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY); }
 export function authOrigin(): string {
@@ -47,20 +47,20 @@ export async function requireAccount(_request: Request, readOnly = false): Promi
   if (!rows[0]?.valid) throw new HttpError(401, "La sesión fue revocada. Vuelve a iniciar sesión.");
   return { user, accessToken: session.access_token };
 }
-export async function requireRecent(account: {user: {id: string}; accessToken: string }, recoveryOnly = false): Promise<void> {
+export async function requireRecent(account: {user: User; accessToken: string }, passwordOnly = false): Promise<void> {
   const id = sessionId(account.accessToken), jar = await cookies();
   const receipt = verifyValue(jar.get(REAUTH_COOKIE)?.value, flowSecret());
-  if (receipt?.userId === account.user.id && receipt.sessionId === id && (!recoveryOnly || receipt.purpose === "recover")) return;
-  if (!recoveryOnly) {
+  if (receipt?.userId === account.user.id && receipt.sessionId === id && (!passwordOnly || passwordReceiptAllowed(receipt.purpose, account.user))) return;
+  if (!passwordOnly) {
     const rows = await db()`select paessed.session_is_valid(${id}::uuid, ${account.user.id}::uuid, true) as valid`;
     if (rows[0]?.valid) return;
   }
-  throw new HttpError(403, recoveryOnly ? "Abre el enlace de recuperación para añadir o cambiar tu contraseña." : "Confirma tu identidad antes de continuar.");
+  throw new HttpError(403, passwordOnly ? "Abre el enlace de recuperación o vuelve a confirmar con Google desde Perfil." : "Confirma tu identidad antes de continuar.");
 }
-export async function markReauthenticated(userId: string, accessToken: string, purpose: "recover" | "reauth") {
+export async function markReauthenticated(userId: string, accessToken: string, purpose: "recover" | "reauth" | "google-password") {
   (await cookies()).set(REAUTH_COOKIE, signValue({ userId, sessionId: sessionId(accessToken), purpose, exp: Date.now() + 300_000 }, flowSecret()), { httpOnly: true, secure: authOrigin().startsWith("https://"), sameSite: "lax", maxAge: 300, path: "/" });
 }
-export async function beginAuthFlow(purpose: AuthPurpose, userId?: string): Promise<string> {
+export async function beginAuthFlow(purpose: AuthPurpose, userId?: string, setupPassword = false): Promise<string> {
   const nonce = flowNonce();
   await db().begin(async tx => {
     await tx`select pg_advisory_xact_lock(hashtext('paessed:auth-flows-cap'))`;
@@ -69,6 +69,6 @@ export async function beginAuthFlow(purpose: AuthPurpose, userId?: string): Prom
     if (count[0].total >= 10000) throw new HttpError(429, "Hay demasiados accesos en curso. Intenta nuevamente más tarde.", 60);
     await tx`insert into paessed.auth_flows (nonce_hash,user_id,purpose,expires_at) values (${nonceHash(nonce)},${userId ?? null}::uuid,${purpose},now()+interval '30 minutes')`;
   });
-  (await cookies()).set(AUTH_FLOW_COOKIE, signValue({ nonce, purpose, userId: userId ?? null, exp: Date.now() + 1_800_000 }, flowSecret()), { httpOnly: true, secure: authOrigin().startsWith("https://"), sameSite: "lax", maxAge: 1800, path: "/" });
+  (await cookies()).set(AUTH_FLOW_COOKIE, signValue({ nonce, purpose, userId: userId ?? null, ...(setupPassword ? { setupPassword: true } : {}), exp: Date.now() + 1_800_000 }, flowSecret()), { httpOnly: true, secure: authOrigin().startsWith("https://"), sameSite: "lax", maxAge: 1800, path: "/" });
   return `${authOrigin()}/auth/callback?flow=${nonce}`;
 }

@@ -5,7 +5,7 @@ import { authAdmin, authClient, authConfigured, beginAuthFlow, markReauthenticat
 import { db } from "@/lib/server/db";
 import { HttpError, expectedAccount, handleError, json, readJson, sameOrigin } from "@/lib/server/http";
 import { enforceProgressIpLimit, enforceRequestLimit } from "@/lib/server/limits";
-import { AUTH_FLOW_COOKIE, REAUTH_COOKIE } from "@/lib/auth/security";
+import { AUTH_FLOW_COOKIE, REAUTH_COOKIE, canSetGooglePassword } from "@/lib/auth/security";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ const schemas = {
   google: z.object(captcha).strict(),
   "link-google": z.object({}).strict(),
   reauth: z.object({ password, ...captcha }).strict(),
-  "reauth-google": z.object(captcha).strict(),
+  "reauth-google": z.object({ ...captcha, setupPassword: z.literal(true).optional() }).strict(),
   password: z.object({ password }).strict(),
   profile: z.object({ displayName: z.string().trim().min(2).max(80), timezone: z.literal("America/Santiago") }).strict(),
   logout: z.object({}).strict(),
@@ -130,8 +130,10 @@ export async function POST(request: Request, context: { params: Promise<{ action
     }
     if (action === "reauth-google") {
       if (!account.user.identities?.some(i => i.provider === "google")) throw new HttpError(400, "Esta cuenta aún no tiene Google vinculado.");
-      const input = schemas["reauth-google"].parse(value); await verifyOAuthCaptcha(input.captchaToken);
-      const redirectTo = await beginAuthFlow("reauth", account.user.id);
+      const input = schemas["reauth-google"].parse(value);
+      if (input.setupPassword && !canSetGooglePassword(account.user)) throw new HttpError(409, "Usa la recuperación por correo para cambiar tu contraseña.");
+      await verifyOAuthCaptcha(input.captchaToken);
+      const redirectTo = await beginAuthFlow("reauth", account.user.id, input.setupPassword);
       const { data, error } = await client.auth.signInWithOAuth({ provider: "google", options: { redirectTo, scopes: "openid email profile", skipBrowserRedirect: true, queryParams: { prompt: "select_account", max_age: "0" } } }); failAuth(error);
       return json({ url: data.url });
     }

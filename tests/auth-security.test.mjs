@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { authDestination, configuredOrigin, flowNonce, nonceHash, signValue, validFlow, verifyValue } from "../lib/auth/security.ts";
+import { authDestination, canSetGooglePassword, configuredOrigin, flowNonce, nonceHash, passwordReceiptAllowed, signValue, validFlow, verifyValue } from "../lib/auth/security.ts";
 import { completeAuthCallback, parseAuthCallback, redirectTypeOf, validateCallbackIdentity } from "../lib/auth/callback.ts";
 import { expectedAccount, sameOrigin } from "../lib/server/http.ts";
 import { permitsBackend, PRODUCTION_ORIGIN, PRODUCTION_PROJECT } from "../lib/server/deployment-backend.ts";
@@ -65,9 +65,42 @@ test("OAuth destinations never accept external destinations", () => {
   assert.equal(authDestination("signup"), "/bienvenida");
   assert.equal(authDestination("recover"), "/auth/password");
   assert.equal(authDestination("link"), "/app/perfil");
+  assert.equal(authDestination("reauth", true), "/auth/password");
+  assert.equal(authDestination("reauth"), "/app/perfil");
+  assert.equal(authDestination("signin", true), "/bienvenida");
   assert.equal(configuredOrigin("https://paessed.cl"), "https://paessed.cl");
   assert.equal(configuredOrigin("http://localhost:3000"), "http://localhost:3000");
   for (const value of [undefined, "http://paessed.cl", "https://paessed.cl/evil", "https://user:password@paessed.cl", "https://paessed.cl?next=https://evil.com", "javascript:alert(1)"]) assert.throws(() => configuredOrigin(value));
+});
+
+test("Google password setup requires a verified Google account without an email sign-in identity", () => {
+  const googleOnly = { email: "google@example.test", email_confirmed_at: "2026-11-19T00:00:00.000Z", identities: [{ provider: "google" }] };
+  const both = { ...googleOnly, identities: [...googleOnly.identities, { provider: "email" }] };
+  assert.equal(canSetGooglePassword(googleOnly), true);
+  assert.equal(canSetGooglePassword({ ...googleOnly, email_confirmed_at: undefined }), false);
+  assert.equal(canSetGooglePassword({ ...googleOnly, identities: [] }), false);
+  assert.equal(passwordReceiptAllowed("google-password", both), false);
+  assert.equal(passwordReceiptAllowed(undefined, googleOnly), false);
+  assert.equal(passwordReceiptAllowed("reauth", googleOnly), false);
+  assert.equal(passwordReceiptAllowed("google-password", googleOnly), true);
+  assert.equal(passwordReceiptAllowed("recover", both), true);
+});
+
+test("Google password setup survives only in signed reauthentication tied to the original account", () => {
+  const nonce = flowNonce(), now = Date.now();
+  const url = new URL(`https://paessed.cl/auth/callback?flow=${nonce}&code=one-time-code`);
+  const payload = { purpose: "reauth", nonce, userId: "user-a", setupPassword: true, exp: now + 10_000 };
+  const flow = parseAuthCallback(url, signValue(payload, secret), secret, now);
+  const google = { userId: "user-a", verified: true, hasGoogle: true, redirectType: null };
+  assert.equal(flow.setupPassword, true);
+  assert.doesNotThrow(() => validateCallbackIdentity(flow, google));
+  assert.throws(() => validateCallbackIdentity(flow, { ...google, userId: "user-b" }));
+  assert.throws(() => validateCallbackIdentity(flow, { ...google, hasGoogle: false }));
+  for (const invalid of [{ ...payload, userId: null }, { ...payload, purpose: "signin" }]) {
+    assert.throws(() => parseAuthCallback(url, signValue(invalid, secret), secret, now));
+  }
+  url.searchParams.set("setupPassword", "true");
+  assert.throws(() => parseAuthCallback(url, signValue(payload, secret), secret, now));
 });
 test("callback requests reject missing browser state, expired state, duplicate inputs and external returns", () => {
   const nonce = flowNonce(), now = Date.now();

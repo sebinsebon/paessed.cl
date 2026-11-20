@@ -118,6 +118,7 @@ export function AuthCard({ mode, accountsAvailable = true, introduction, returnT
   return <section className={styles.formCard} aria-labelledby="auth-title">
     <h1 id="auth-title" tabIndex={-1}>{titles[view]}</h1>
     {introduction != null && <div className={styles.introduction}>{introduction}</div>}
+    {view === "recover" && <p className={styles.introduction}>Si entraste con Google, puedes seguir usando Google y añadir una contraseña de PAESSED desde Perfil.</p>}
     {!enabled && <div className={styles.notice}>
       <p role="status">Las cuentas no están disponibles en este entorno.{available ? " Puedes usar el modo de prueba." : " Inténtalo más tarde."}</p>
       {available && <button type="button" className={`soft-button ${styles.button}`} disabled={busy} onClick={() => void enableTestMode()}><PendingLabel pending={actionInFlight === "dev"} label="Activando…">Activar modo de prueba</PendingLabel></button>}

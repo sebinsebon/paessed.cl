@@ -66,6 +66,24 @@ test("an open profile keeps the account shown on screen when another tab changes
   await expect(page.getByRole("alert").filter({ hasText: "La cuenta cambió" })).toBeVisible();
   expect(requestedAccount).toBe(A);
 });
+
+test("a student with only Google can start setting the first password from their existing profile", async ({ page }) => {
+  await page.route("**/api/auth/session", route => route.fulfill({ json: {
+    configured: true, user: { id: A, email: "google@example.test", providers: ["google"] },
+    profile: { displayName: "Cuenta Google", timezone: "America/Santiago" },
+  } }));
+  await page.route("**/api/sync**", route => route.fulfill({ json: {
+    revision: 0, generation: 0, catalogRevision: "gold-0.7-sync-1", acknowledgements: [], changes: [], conflicts: [], hasMore: false, cursor: 0,
+  } }));
+  await page.route("**/api/auth/reauth-google", route => route.fulfill({ json: { ok: true } }));
+  await page.goto("/app/perfil");
+  await expect(page.getByRole("button", { name: /contraseña por correo/ })).toHaveCount(0);
+  const requestPromise = page.waitForRequest(request => request.url().endsWith("/api/auth/reauth-google"));
+  await page.getByRole("button", { name: "Añadir contraseña con Google" }).click();
+  const request = await requestPromise;
+  expect(request.postDataJSON()).toMatchObject({ setupPassword: true });
+  expect(request.headers()["x-paessed-account"]).toBe(A);
+});
 test("Playground resumes confirmed answers and sync traffic contains progress references only", async ({ page }) => {
   const traffic = [];
   await page.route("**/api/auth/session", route => route.fulfill({ json: { configured: true, user: { id: A, email: "piloto@example.test", providers: ["email"] }, profile: { displayName: "Piloto", timezone: "America/Santiago" } } }));
