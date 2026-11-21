@@ -54,8 +54,10 @@ Mismo benchmark y 30 regresos calientes por versión y escenario. Tiempos p50 / 
 
 | Escenario | Contenido seguro en main | Contenido seguro corregido | Saludo personalizado en main | Saludo personalizado corregido |
 |---|---:|---:|---:|---:|
-| 1440 px, sesión +450 ms | 531 / 558 | **68,5 / 84** | 531 / 558 | 538 / 557 |
-| 390 px, sesión +450 ms | 518,5 / 531 | **68 / 85** | 518,5 / 531 | 533 / 570 |
-| 1440 px, sin demora añadida | 72 / 83 | 58 / 76 | 72 / 83 | 74,5 / 94 |
+| 1440 px, sesión +450 ms | 539,5 / 579 | **74 / 86** | 539,5 / 579 | 546 / 566 |
+| 390 px, sesión +450 ms | 552,5 / 572 | **80 / 92** | 552,5 / 572 | 547 / 559 |
+| 1440 px, sin demora añadida | 106,5 / 391 | 74 / 91 | 106,5 / 391 | 96 / 142 |
 
 El contenido general alcanzó el objetivo de p95 ≤150 ms en ambos escenarios con demora. Ante un error de identidad se conserva la navegación general y se ofrece reintentar o volver a iniciar sesión. Para una recarga sin verificación válida, los datos guardados esperan en su ámbito sin mostrarse. Las pruebas usan cuentas ficticias y backend local o interceptado.
+
+También se ejecutaron las suites históricas de navegador. Algunas intentaban abrir rutas privadas sin una sesión local. Se repitieron en una copia con el fixture de acceso local para comparar la misma prueba contra `main`. Asistencia IA, énfasis, Ensayos local y varias pruebas de la hoja universal y del renderer presentan fallos en la base. Las suites afectadas conservan sus expectativas y sus capturas. La verificación de Google y Supabase reales queda fuera de esta ejecución local.
