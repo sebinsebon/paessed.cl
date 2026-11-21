@@ -31,13 +31,15 @@ const AXIS_PRESENTATION: Record<M1AxisId, { emoji: string; shortName: string; de
 
 export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: { resultOnly?: boolean; guestDraft?: boolean }) {
   const identity = useSyncIdentity();
+  const [entryChecked, setEntryChecked] = useState(false);
   useEffect(() => {
+    let mounted = true;
     const stop = watchSyncIdentity();
-    void initializeSyncIdentity();
-    return stop;
+    void initializeSyncIdentity().then(() => { if (mounted) setEntryChecked(true); });
+    return () => { mounted = false; stop(); };
   }, []);
   if (identity.status === "unavailable") return <DiagnosticShell><LearningError message="No se pudo comprobar tu sesión." retry={() => void initializeSyncIdentity()} /></DiagnosticShell>;
-  if (identity.status !== "verified") return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
+  if (!entryChecked || identity.status !== "verified") return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
   return <DiagnosticSession key={`${identity.epoch}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
 }
 
