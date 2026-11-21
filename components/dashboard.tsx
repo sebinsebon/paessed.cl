@@ -12,6 +12,7 @@ import { DEFAULT_QUESTION_INDEX } from "@/lib/learning/catalog";
 import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
 import type { LearningProfile, LearningState } from "@/lib/learning/types";
 import { Modal } from "./modal";
+import { LoadingRegion, Skeleton } from "./loading-state";
 
 import {
   AnimatePresence,
@@ -411,11 +412,8 @@ function AxisModal({ axis, onClose }: { axis: Axis | null; onClose: () => void }
   </Modal>;
 }
 
-function DailyMission({ tourFocus }: { tourFocus: boolean }) {
-  return <LearningEntryCard tourFocus={tourFocus} />;
-}
-
-function ExamsCard({ embedded = false, latest }: { embedded?: boolean; latest?: CompletedExam }) {
+function ExamsCard({ embedded = false, completed }: { embedded?: boolean; completed?: CompletedExam[] }) {
+  const latest = completed?.[0];
   return (
     <section id="tour-exams-summary" className={embedded ? "relative isolate flex h-full flex-col overflow-hidden bg-transparent p-5" : "surface relative isolate flex flex-col overflow-hidden rounded-[20px] p-5"}>
       <div className="relative z-10">
@@ -429,7 +427,11 @@ function ExamsCard({ embedded = false, latest }: { embedded?: boolean; latest?: 
       <div className="relative z-10 mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Último resultado</div>
-          <div className="mt-1 text-lg font-extrabold">{latest ? `${latest.answers.split("g").length - 1} de ${latest.answers.length} correctas` : "Sin ensayos rendidos"}</div>
+          <div className="mt-1 text-lg font-extrabold">
+            {!completed ? <LoadingRegion label="Cargando tu último resultado." className="min-h-7">
+              <Skeleton className="h-5 w-24 max-w-full" />
+            </LoadingRegion> : latest ? `${latest.answers.split("g").length - 1} de ${latest.answers.length} correctas` : "Sin ensayos rendidos"}
+          </div>
         </div>
         <div className="rounded-xl bg-[var(--surface-2)] p-3">
           <div className="text-[10px] font-bold text-[var(--muted)]">Formato</div>
@@ -451,7 +453,7 @@ function ExamsCard({ embedded = false, latest }: { embedded?: boolean; latest?: 
 }
 
 
-function ProgressOverview({ embedded = false, state }: { embedded?: boolean; state: LearningState | null }) {
+function ProgressOverview({ embedded = false, state, loading }: { embedded?: boolean; state: LearningState | null; loading: boolean }) {
   const modes = [
     { id: "diagnostic", label: "Diagnóstico" },
     { id: "learn", label: "Aprender" },
@@ -460,12 +462,19 @@ function ProgressOverview({ embedded = false, state }: { embedded?: boolean; sta
   ] as const;
   return <section id="tour-progress" className={embedded ? "h-full bg-transparent p-5" : "surface rounded-[20px] p-5"}>
     <h3 className="text-lg font-extrabold">Respuestas registradas</h3>
-    <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    {loading ? <LoadingRegion label="Cargando tus respuestas registradas." className="mt-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {modes.map(mode => <div key={mode.id} className="min-h-[76px] rounded-xl bg-[var(--surface-2)] p-3">
+          <Skeleton className="h-3 w-16 max-w-full" />
+          <Skeleton className="mt-2 h-5 w-9" />
+        </div>)}
+      </div>
+    </LoadingRegion> : <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {modes.map(mode => <div key={mode.id} className="rounded-xl bg-[var(--surface-2)] p-3">
         <dt className="text-xs font-semibold text-[var(--muted)]">{mode.label}</dt>
-        <dd className="mt-1 text-xl font-extrabold">{state?.attempts.filter(attempt => attempt.mode === mode.id).length ?? 0}</dd>
+        <dd className="mt-1 text-xl font-extrabold">{state?.attempts.filter(attempt => attempt.mode === mode.id).length ?? "—"}</dd>
       </div>)}
-    </dl>
+    </dl>}
   </section>;
 }
 
@@ -489,7 +498,10 @@ function LearnCard({ tourFocus }: { tourFocus: boolean }) {
   );
 }
 
-function DashboardCards({ missionFocus, learnFocus, completed, state }: { missionFocus: boolean; learnFocus: boolean; completed: CompletedExam[]; state: LearningState | null }) {
+function DashboardCards({ missionFocus, learnFocus, completed, state, loading, error }: {
+  missionFocus: boolean; learnFocus: boolean; completed?: CompletedExam[];
+  state: LearningState | null; loading: boolean; error: string;
+}) {
   const shellRef = useRef<HTMLDivElement>(null);
   const examsRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -549,10 +561,10 @@ function DashboardCards({ missionFocus, learnFocus, completed, state }: { missio
   return (
     <>
       <div className="mt-4 grid gap-4 lg:hidden">
-        <DailyMission tourFocus={missionFocus} />
-        <ExamsCard latest={completed[0]} />
+        <LearningEntryCard tourFocus={missionFocus} state={state} loading={loading} error={error} />
+        <ExamsCard completed={completed} />
         <LearnCard tourFocus={learnFocus} />
-        <ProgressOverview state={state} />
+        <ProgressOverview state={state} loading={loading} />
       </div>
 
       <div ref={shellRef} className="relative mt-4 hidden lg:block">
@@ -574,16 +586,16 @@ function DashboardCards({ missionFocus, learnFocus, completed, state }: { missio
         )}
 
         <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(290px,.75fr)]">
-          <DailyMission tourFocus={missionFocus} />
+          <LearningEntryCard tourFocus={missionFocus} state={state} loading={loading} error={error} />
           <div ref={examsRef}>
-            <ExamsCard embedded latest={completed[0]} />
+            <ExamsCard embedded completed={completed} />
           </div>
         </div>
 
         <div className="relative z-10 mt-4 grid gap-4 lg:grid-cols-[minmax(320px,.85fr)_minmax(0,1.4fr)]">
           <LearnCard tourFocus={learnFocus} />
           <div ref={progressRef}>
-            <ProgressOverview embedded state={state} />
+            <ProgressOverview embedded state={state} loading={loading} />
           </div>
         </div>
       </div>
@@ -646,7 +658,7 @@ function ExamCard({ exam }: { exam: CompletedExam }) {
   );
 }
 
-function LastExams({ tourFocus, exams }: { tourFocus: boolean; exams: CompletedExam[] }) {
+function LastExams({ tourFocus, exams }: { tourFocus: boolean; exams?: CompletedExam[] }) {
   return (
     <section id="tour-exams" className={`surface rounded-[24px] p-5 sm:p-6 ${tourFocus ? "tour-focus" : ""}`}>
       <div className="mb-5 flex flex-col gap-3 border-b border-[var(--border)] pb-4 sm:flex-row sm:items-end sm:justify-between">
@@ -666,10 +678,12 @@ function LastExams({ tourFocus, exams }: { tourFocus: boolean; exams: CompletedE
           <Link href="/app/ensayos" className="soft-button rounded-lg px-3 py-2 text-[10px] font-extrabold text-[var(--primary)]">Ver todos</Link>
         </div>
       </div>
-      <div className="grid gap-4 xl:grid-cols-3">
+      {!exams ? <LoadingRegion label="Cargando tu historial de ensayos." className="min-h-12">
+        <Skeleton className="h-4 w-1/2 max-w-xs" />
+      </LoadingRegion> : <div className="grid gap-4 xl:grid-cols-3">
         {exams.slice(0, 3).map(exam => <ExamCard key={exam.id} exam={exam} />)}
         {exams.length === 0 && <p className="text-sm text-[var(--muted)]">Aquí aparecerán tus ensayos del catálogo cuando los termines.</p>}
-      </div>
+      </div>}
     </section>
   );
 }
@@ -824,14 +838,15 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
   );
 }
 
-export function Dashboard({ diagnostic, displayName, state, profile, examSessions, loading, notice }: {
-  loading?: React.ReactNode;
+export function Dashboard({ diagnostic, displayName, state, profile, examSessions, learningLoading, learningError, notice }: {
+  learningLoading: boolean;
+  learningError: string;
   notice?: React.ReactNode;
   diagnostic?: ReactNode; displayName?: string; state: LearningState | null; profile: LearningProfile | null;
-  examSessions: Record<string, SavedDefaultExamSession>;
+  examSessions?: Record<string, SavedDefaultExamSession>;
 }) {
   const axes = useMemo(() => axisProgress(state, profile), [state, profile]);
-  const completed = useMemo(() => completedExams(examSessions), [examSessions]);
+  const completed = useMemo(() => examSessions && completedExams(examSessions), [examSessions]);
   const { dark, setDark, monthlyGoal, registerTour } = usePersistentAppShell();
   const [selectedAxis, setSelectedAxis] = useState<Axis | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
@@ -948,7 +963,6 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
           className="mx-auto w-full max-w-[1280px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12 lg:pt-7"
           style={tourOpen && tourStep === tourSteps.length - 1 ? { paddingBottom: "max(46vh, 220px)" } : undefined}
         >
-          {loading ?? <>
           <section className="mb-6 px-1 sm:px-[30px]">
             <PageHeadingTransition>
               <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">{displayName ? `¡Hola, ${displayName}!` : "¡Hola!"} Tu meta es de {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
@@ -959,17 +973,25 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
           {notice}
           {diagnostic}
           <div>
-              <DomainRail axes={axes} onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />
-              <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} completed={completed} state={state} />
+              {learningLoading ? <section id="tour-domains" className={tourKey === "domains" ? "tour-focus" : undefined}>
+                <LoadingRegion label="Cargando tu dominio M1." className="border-b border-[var(--border)] bg-[var(--surface)]">
+                  <div className="flex gap-3 overflow-hidden px-4 py-[10px] lg:px-5">
+                    {[1, 2, 3, 4].map(card => <div key={card} className="surface flex min-h-24 min-w-[84vw] items-center gap-3 rounded-2xl p-3 sm:min-w-[370px] lg:min-w-[292px]">
+                      <Skeleton className="size-9 shrink-0 rounded-xl" />
+                      <div className="grid flex-1 gap-2"><Skeleton className="h-3 w-4/5" /><Skeleton className="h-2 w-full" /></div>
+                    </div>)}
+                  </div>
+                </LoadingRegion>
+              </section> : <DomainRail axes={axes} onOpen={setSelectedAxis} tourFocus={tourKey === "domains"} />}
+              <DashboardCards missionFocus={tourKey === "mission"} learnFocus={tourKey === "learn"} completed={completed} state={state} loading={learningLoading} error={learningError} />
               <div className="mt-7">
                 <LastExams tourFocus={tourKey === "exams"} exams={completed} />
               </div>
           </div>
-          </>}
         </div>
       </main>
 
-      <AxisModal axis={selectedAxis} onClose={() => setSelectedAxis(null)} />
+      <AxisModal axis={learningLoading ? null : selectedAxis} onClose={() => setSelectedAxis(null)} />
       <Tour open={tourOpen} step={tourStep} setStep={setTourStep} close={closeTour} />
     </div></MotionConfig>
   );
