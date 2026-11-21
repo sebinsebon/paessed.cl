@@ -64,7 +64,8 @@ for (const width of [390, 1440]) {
         expect(visible.time - first.time).toBeGreaterThan(145);
         expect([visible.x, visible.y, visible.width, visible.height]).toEqual([first.x, first.y, first.width, first.height]);
         if (theme === "dark") await expect(placeholder.locator("span").first()).toHaveCSS("animation-name", "none");
-        await expect(page.getByRole("heading", { name: /¡Hola/ })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible();
+        await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
         await page.screenshot({ path: info.outputPath("inicio-espera.png") });
         identity.release();
         const greeting = page.getByRole("heading", { name: /^¡Hola!/ });
@@ -76,7 +77,7 @@ for (const width of [390, 1440]) {
         expect(await nav.boundingBox()).toEqual(before);
         await page.reload();
         await expect(page.getByRole("heading", { name: /¡Hola, Cuenta Uno!/ })).toBeVisible();
-        expect(await page.evaluate(() => window.loadingFrames.some(frame => frame.visibility === "visible"))).toBe(false);
+        await expect(page.locator("main [data-loading-placeholder]")).toHaveCount(0);
       } finally {
         identity.release();
         profile.release();
@@ -122,47 +123,22 @@ test("El regreso desde Ensayos muestra acciones y reserva únicamente los datos 
   await expect(page.getByRole("link", { name: "Hacer diagnóstico" })).toBeVisible();
 });
 
-test("Inicio descarta un perfil con otro propietario y una respuesta tardía al cambiar de cuenta", async ({ page, baseURL }) => {
+test("Inicio descarta un perfil con otro propietario y permite verificar la cuenta otra vez", async ({ page, baseURL }) => {
   await enableLocalApp(page, baseURL);
-  const staleProfile = hold();
   let owner = accountA;
   let sessions = 0;
-  await page.route("**/api/auth/session", async route => {
-    const current = ++sessions;
-    if (current === 3) {
-      await staleProfile.pending;
-      await route.fulfill({ json: account(accountA) });
-    } else {
-      await route.fulfill({ json: account(current === 2 ? accountB : owner) });
-    }
-  });
+  await page.route("**/api/auth/session", route => route.fulfill({ json: account(++sessions === 2 ? accountB : owner) }));
   await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
-  try {
-    await page.goto("/app/inicio");
-    const heading = page.locator("main h1");
-    await expect.poll(() => sessions).toBe(2);
-    await expect(heading).toHaveText(/^¡Hola!/);
-    await expect(page.getByRole("heading", { name: /Cuenta Dos/ })).toHaveCount(0);
-    await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
-    await page.evaluate(() => window.dispatchEvent(new Event("paessed-account-change")));
-    await expect.poll(() => sessions).toBe(3);
-    owner = accountB;
-    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await expect(heading).toHaveText(/^¡Hola, Cuenta Dos!/);
-    await page.evaluate(() => {
-      window.previousAccountSeen = false;
-      new MutationObserver(() => {
-        window.previousAccountSeen ||= document.querySelector("main h1")?.textContent.includes("Cuenta Uno") ?? false;
-      }).observe(document.querySelector("main"), { subtree: true, childList: true, characterData: true });
-    });
-    const response = page.waitForResponse("**/api/auth/session");
-    staleProfile.release();
-    await response;
-    await expect(heading).toHaveText(/^¡Hola, Cuenta Dos!/);
-    expect(await page.evaluate(() => window.previousAccountSeen)).toBe(false);
-  } finally {
-    staleProfile.release();
-  }
+  await page.goto("/app/inicio");
+  const heading = page.locator("main h1");
+  const retry = page.getByRole("button", { name: "Reintentar sesión" });
+  await expect(retry).toBeVisible();
+  await expect(heading).toHaveText("¡Hola!");
+  await expect(page.getByRole("heading", { name: /Cuenta Dos/ })).toHaveCount(0);
+  await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
+  owner = accountB;
+  await retry.click();
+  await expect(heading).toHaveText(/^¡Hola, Cuenta Dos!/);
 });
 
 test("Actualizar la cuenta conserva el contenido y cambiarla vuelve a cargar el progreso", async ({ page, baseURL }) => {

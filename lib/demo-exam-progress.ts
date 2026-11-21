@@ -4,6 +4,7 @@
  */
 import { scopedStorageKey } from "./sync/local.ts";
 export const DEMO_EXAM_STORAGE_KEY = "paessed-demo-exam-progress-v1";
+export const DEMO_EXAM_RESULT_STORAGE_KEY = "paessed-last-exam-v2";
 export const DEMO_EXAM_EVENT = "paessed-demo-exam-progress-changed";
 export const DEMO_EXAM_QUESTION_COUNT = 65;
 export const DEMO_EXAM_DURATION_SECONDS = 2 * 60 * 60 + 20 * 60;

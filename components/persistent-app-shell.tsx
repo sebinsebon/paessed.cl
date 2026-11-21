@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { sileo, Toaster } from "sileo";
 import { DashboardTopNav, MobileNav, Sidebar, SidebarToggle, useSidebarCollapsed } from "@/components/app-navigation";
 import { useTheme } from "@/components/theme-provider";
+import { useSyncIdentity } from "./use-sync-identity";
 
 type AppNavigationContextValue = {
   dark: boolean;
@@ -29,6 +30,7 @@ export function usePersistentAppShell() {
  * resetting their geometry, animations, and collapse state.
  */
 export function PersistentAppShell({ children }: { children: ReactNode }) {
+  const identity = useSyncIdentity();
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, toggleSidebar] = useSidebarCollapsed();
@@ -112,7 +114,9 @@ export function PersistentAppShell({ children }: { children: ReactNode }) {
             },
           }}
         />
-        {!standaloneResult && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed} goal={monthlyGoal} />}
+        {!standaloneResult && <Sidebar tourFocus={false} dark={dark} collapsed={visuallyCollapsed}
+          goal={identity.status === "verified" ? monthlyGoal : 780}
+          progressEpoch={identity.status === "verified" ? identity.epoch : null} />}
         {!standaloneResult && !immersiveNav && (
           <SidebarToggle collapsed={collapsed} onToggle={toggleSidebar} />
         )}

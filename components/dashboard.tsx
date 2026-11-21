@@ -838,7 +838,8 @@ function Tour({ open, step, setStep, close }: { open: boolean; step: number; set
   );
 }
 
-export function Dashboard({ diagnostic, displayName, state, profile, examSessions, learningLoading, learningError, notice }: {
+export function Dashboard({ diagnostic, displayName, state, profile, examSessions, learningLoading, learningError, notice, neutral }: {
+  neutral?: boolean;
   learningLoading: boolean;
   learningError: string;
   notice?: React.ReactNode;
@@ -965,7 +966,7 @@ export function Dashboard({ diagnostic, displayName, state, profile, examSession
         >
           <section className="mb-6 px-1 sm:px-[30px]">
             <PageHeadingTransition>
-              <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">{displayName ? `¡Hola, ${displayName}!` : "¡Hola!"} Tu meta es de {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></h1>
+              <h1 className="text-[28px] font-extrabold leading-[36px] tracking-[-.035em] sm:text-[36px] sm:leading-[44px]">{displayName ? `¡Hola, ${displayName}!` : "¡Hola!"}{!neutral && <> Tu meta es de {monthlyGoal} pts en <span className="whitespace-nowrap">M1 🚀</span></>}</h1>
             </PageHeadingTransition>
             <p className="mt-2 text-[14px] font-medium leading-6 text-[var(--muted)]">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
           </section>

@@ -37,3 +37,25 @@ Las pruebas de navegador retienen por separado la verificación inicial, la lect
 La compilación optimizada pasó. Las suites `test:base`, `test:onboarding` y `test:backend` pasaron 108 pruebas. En Chromium, `test:inicio-ui`, `test:accounts-ui` y `test:learning-integration` pasaron 43 pruebas con almacenamiento local y cuentas de prueba.
 
 Para revertir, aplicar un revert al commit de esta fase. La reversión afecta la presentación y sus pruebas, sin pasos de restauración de datos.
+
+## Corrección de aislamiento del PR #16
+
+La revisión reprodujo una ventana de exposición en la primera versión del PR. Después de un cambio de cuenta en otra pestaña, la navegación Ensayos → Inicio podía mostrar el historial del propietario anterior mientras esperaba la respuesta de sesión de la cuenta nueva.
+
+El cliente distingue ahora una sesión en comprobación, una sesión verificada y una sesión no disponible. El identificador conservado en el navegador avisa de cambios; la respuesta de sesión confirma el propietario. Mientras se comprueba, Inicio conserva el saludo neutro y sus enlaces generales. Los demás contenidos privados esperan en el layout y el diagnóstico público aplica la misma comprobación a sus borradores y resultados. Un cambio de cuenta, cierre de sesión, expiración o discrepancia confirmada invalida la presentación y descarta las respuestas de la verificación anterior, incluso si se vuelve al mismo identificador en un cambio A → B → A.
+
+La revisión cubrió aprendizaje, dominio, historial Default, diagnóstico y su incorporación, sesiones y guardados de Playground, datos de perfil, el contador del ensayo activo del sidebar, conflictos y descargas de respaldos. Las transacciones de sincronización conservan su propietario y las API siguen validando identidad y pertenencia. El guardado por cuenta sigue usando los mismos almacenes de IndexedDB. Los resultados nuevos del ensayo demo quedan bajo su ámbito de almacenamiento. Los datos del prototipo sin propietario verificable, incluido el resultado anterior, permanecen en disco y se omiten de la vista y de las exportaciones automáticas.
+
+Pruebas incorporadas en `tests/account-isolation.spec.cjs`. El cambio entre pestañas usa el evento de almacenamiento real de Chromium, mantiene en espera la respuesta de la cuenta nueva y comprueba la ausencia del historial anterior durante las mutaciones del DOM. También se cubren las respuestas tardías, las recargas, 401/503, y la separación de los resultados locales del ensayo demo.
+
+### Medición tras la corrección
+
+Mismo benchmark y 30 regresos calientes por versión y escenario. Tiempos p50 / p95 en milisegundos desde el clic. La acción general medida es «Hacer un ensayo».
+
+| Escenario | Contenido seguro en main | Contenido seguro corregido | Saludo personalizado en main | Saludo personalizado corregido |
+|---|---:|---:|---:|---:|
+| 1440 px, sesión +450 ms | 531 / 558 | **68,5 / 84** | 531 / 558 | 538 / 557 |
+| 390 px, sesión +450 ms | 518,5 / 531 | **68 / 85** | 518,5 / 531 | 533 / 570 |
+| 1440 px, sin demora añadida | 72 / 83 | 58 / 76 | 72 / 83 | 74,5 / 94 |
+
+El contenido general alcanzó el objetivo de p95 ≤150 ms en ambos escenarios con demora. Ante un error de identidad se conserva la navegación general y se ofrece reintentar o volver a iniciar sesión. Para una recarga sin verificación válida, los datos guardados esperan en su ámbito sin mostrarse. Las pruebas usan cuentas ficticias y backend local o interceptado.

@@ -1,5 +1,5 @@
 import { deleteImportedExam, listImportedExamStorageUsage, type ImportedExamStorageUsage, IMPORTED_EXAM_PROGRESS_PREFIX } from "@/lib/local-imports";
-import { DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY, DEMO_EXAM_EVENT } from "@/lib/demo-exam-progress";
+import { DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_RESULT_STORAGE_KEY, DEMO_EXAM_STORAGE_KEY, DEMO_EXAM_EVENT } from "@/lib/demo-exam-progress";
 import { readLearningState } from "@/lib/learning/repository";
 import { listExamSessions, clearLearningState } from "@/lib/learning/exam-repository";
 import { devSandboxActive, getSyncOwner, scopedStorageKey, listSavedQuestions, saveQuestion } from "./sync/local.ts";
@@ -37,6 +37,7 @@ export type LocalStorageReport = {
 
 export const CATEGORY_KEYS: Record<string, StorageCategoryId> = {
   "paessed-last-exam": "sessions",
+  [DEMO_EXAM_RESULT_STORAGE_KEY]: "sessions",
   "paessed-diagnostic": "diagnostic",
   "paessed-playground-recent-questions": "playground",
   "paessed-playground-saved-questions": "marked",
@@ -121,6 +122,9 @@ export async function inspectLocalStorage(): Promise<LocalStorageReport> {
       const scopedKey = devPrefix ? rawKey.slice(devPrefix.length) : rawKey;
       if (scopedKey.startsWith("paessed-account:") && (!accountPrefix || !scopedKey.startsWith(accountPrefix))) continue;
       if (scopedKey === "paessed-sync-owner") continue;
+      // Legacy prototype records have no trustworthy owner. Keep them on disk
+      // without presenting or including them in another account's backup.
+      if (["paessed-last-exam", "paessed-diagnostic", "paessed-user"].includes(scopedKey)) continue;
       const key = accountPrefix && scopedKey.startsWith(accountPrefix) ? scopedKey.slice(accountPrefix.length) : scopedKey;
       if (accountPrefix && scopedKey === key && CATEGORY_KEYS[key] !== "preferences") continue;
       const value = localStorage.getItem(rawKey);

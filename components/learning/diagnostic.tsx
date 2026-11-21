@@ -6,8 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DiagnosticShell } from "./diagnostic-shell";
 import { DiagnosticSkeleton } from "@/components/page-skeletons";
 import { PendingLabel } from "@/components/loading-state";
-import { guestDiagnosticHandoff, initializeSyncIdentity } from "@/lib/sync/client";
-import { getSyncOwner } from "@/lib/sync/local";
+import { guestDiagnosticHandoff, initializeSyncIdentity, watchSyncIdentity } from "@/lib/sync/client";
+import { useSyncIdentity } from "@/components/use-sync-identity";
 import { loadLearningCatalog } from "@/lib/learning/catalog";
 import { dispatchDiagnostic, readDiagnosticState, readLearningState, subscribeDiagnostic } from "@/lib/learning/repository";
 import type { LearningAction, LearningAttempt, LearningQuestion, LearningState } from "@/lib/learning/types";
@@ -30,18 +30,15 @@ const AXIS_PRESENTATION: Record<M1AxisId, { emoji: string; shortName: string; de
 };
 
 export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: { resultOnly?: boolean; guestDraft?: boolean }) {
-  const [identity, setIdentity] = useState<{ owner: string | null } | null>(null);
-  const [error, setError] = useState("");
+  const identity = useSyncIdentity();
   useEffect(() => {
-    let active = true;
-    void initializeSyncIdentity().then(value => { if (active) setIdentity(value); }).catch(err => { if (active) setError(err instanceof Error ? err.message : "No se pudo leer tu cuenta."); });
-    const changed = () => { if (active) setIdentity({ owner: getSyncOwner() }); };
-    window.addEventListener("paessed-sync-owner-change", changed);
-    return () => { active = false; window.removeEventListener("paessed-sync-owner-change", changed); };
+    const stop = watchSyncIdentity();
+    void initializeSyncIdentity();
+    return stop;
   }, []);
-  if (error) return <DiagnosticShell><LearningError message={error} /></DiagnosticShell>;
-  if (!identity) return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
-  return <DiagnosticSession key={`${identity.owner ?? "guest"}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
+  if (identity.status === "unavailable") return <DiagnosticShell><LearningError message="No se pudo comprobar tu sesión." retry={() => void initializeSyncIdentity()} /></DiagnosticShell>;
+  if (identity.status !== "verified") return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
+  return <DiagnosticSession key={`${identity.epoch}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
 }
 
 /** A diagnostic is a draft until /bienvenida confirms inclusion. In particular,
@@ -55,7 +52,7 @@ function useDiagnosticLearning(owner: string | null, guestDraft: boolean, result
   const refresh = useCallback(async () => {
     try {
       const [draft, account, questions] = await Promise.all([readDiagnosticState(scope), owner ? readLearningState(owner) : null, loadLearningCatalog()]);
-      if (guestDraft && draft.diagnostic) {
+      if (scope === null && draft.diagnostic) {
         const association = await guestDiagnosticHandoff(draft.diagnostic.id);
         if (association && association.owner !== owner) throw new Error("Este diagnóstico está asociado a otra cuenta.");
       }

@@ -5,7 +5,7 @@ import { ExternalQuestionWorkspace } from "@/components/learning/workspace/exter
 import { QuestionDialog } from "@/components/learning/workspace/question-dialog";
 import { usePersistentAppShell } from "@/components/persistent-app-shell";
 import { type PlaygroundInkStroke } from "@/components/playground-scratchpad";
-import { clearDemoExamProgress,DEMO_EXAM_DURATION_SECONDS,readDemoExamProgress,writeDemoExamProgress } from "@/lib/demo-exam-progress";
+import { clearDemoExamProgress,DEMO_EXAM_DURATION_SECONDS,DEMO_EXAM_RESULT_STORAGE_KEY,readDemoExamProgress,writeDemoExamProgress } from "@/lib/demo-exam-progress";
 import { getM1Unit,type M1UnitId } from "@/lib/m1-curriculum";
 import type { BankQuestion } from "@/lib/playground-imports";
 import { readQuestionPaperTheme } from "@/lib/question-paper";
@@ -14,6 +14,7 @@ ArrowLeft,ArrowRight,Check,ChevronLeft,
 Trophy
 } from "lucide-react";
 import Link from "next/link";
+import { scopedStorageKey } from "@/lib/sync/local";
 import { useRouter } from "next/navigation";
 import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type CSSProperties } from "react";
 
@@ -73,7 +74,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
   const [seconds, setSeconds] = useState(DEMO_EXAM_DURATION_SECONDS);
   const [restored, setRestored] = useState(false);
   const [inkSessionId, setInkSessionId] = useState("");
-  const inkSessionKey = `paessed-demo-ink-session:${sourceId ?? "practice"}`;
+  const inkSessionKey = scopedStorageKey(`paessed-demo-ink-session:${sourceId ?? "practice"}`);
   const finishedRef = useRef(false);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const [paperTheme, setPaperTheme] = useState<"auto" | "light" | "dark">("light");
@@ -147,7 +148,7 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
     const omitted = QUESTIONS.length - answered;
     const wrong = answered - correct;
     const score = Math.round(100 + (correct / QUESTIONS.length) * 900);
-    localStorage.setItem("paessed-last-exam", JSON.stringify({
+    localStorage.setItem(scopedStorageKey(DEMO_EXAM_RESULT_STORAGE_KEY), JSON.stringify({
       correct, wrong, omitted, score, secondsLeft: seconds, completedAt: new Date().toISOString(),
     }));
     finishedRef.current = true;
@@ -208,7 +209,7 @@ export function ExamResult() {
   const [data, setData] = useState<ResultData | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("paessed-last-exam");
+    const raw = localStorage.getItem(scopedStorageKey(DEMO_EXAM_RESULT_STORAGE_KEY));
     if (raw) setData(JSON.parse(raw));
     else setData({ correct: 47, wrong: 14, omitted: 4, score: 711, secondsLeft: 1800 });
   }, []);

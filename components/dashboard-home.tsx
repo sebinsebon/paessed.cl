@@ -55,7 +55,7 @@ export function DashboardHome() {
   }, [owner]);
   // SyncStatus mounts this page inside the prepared storage scope. The profile
   // read can finish later, and its result must agree with that scope.
-  const accountMatches = !account || (account.user?.id ?? null) === owner;
+  const accountMatches = account !== null && (account.user === null ? owner === null : account.user?.id === owner);
   const state = accountMatches ? learning.state : null;
   const complete = !!state && hasCompletedInitialDiagnostic(state);
   const draft = pending?.draft;
@@ -68,7 +68,7 @@ export function DashboardHome() {
       : null;
   return <Dashboard diagnostic={diagnostic}
     displayName={owner && accountMatches ? account?.profile?.displayName : undefined}
-    state={state} profile={accountMatches ? learning.profile : null}
+    state={state} profile={accountMatches ? learning.profile : null} neutral={!accountMatches}
     learningLoading={learning.loading || !accountMatches} learningError={accountMatches ? learning.error : ""}
     examSessions={accountMatches ? exams : undefined}
     notice={accountMatches && learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />} />;
