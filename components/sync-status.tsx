@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Activity, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
@@ -120,8 +120,12 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
       .then(() => { initialized = true; return prepare(); });
     return () => { active = false; stop(); unsubscribe(); stopIdentity(); stopWatching(); };
   }, []);
-  if (!ready || identity.status !== "verified" || identity.epoch !== preparedEpoch || identity.owner !== scope || scope !== getSyncOwner()) {
-    return <>
+  const prepared = ready && identity.epoch === preparedEpoch && scope === getSyncOwner();
+  const visible = prepared && identity.status === "verified" && identity.owner === scope;
+  // A routine focus check can resume the same workspace. A changed epoch
+  // removes the former workspace altogether, including its hidden DOM.
+  const workspace = prepared && <Activity key={preparedEpoch} mode={visible ? "visible" : "hidden"}>{children}</Activity>;
+  const waiting = <>
       {identity.status === "unavailable" && <div role="alert" className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-2 text-sm">
         <p>{status.message}</p>
         <button type="button" className="soft-button min-h-11 rounded-lg px-3" onClick={() => void initializeSyncIdentity()}>Reintentar sesión</button>
@@ -130,7 +134,6 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
       {pathname === "/app/inicio" ? <Dashboard learningLoading learningError="" state={null} profile={null} neutral /> :
         <AppProgressLoading key={pathname} pathname={pathname} />}
     </>;
-  }
   const conflict = !deferred ? conflicts[0] : undefined;
   const importPrompt = !deferred && !conflict && summary;
   const issue = error || (["error", "paused"].includes(status.state) ? status.message : "");
@@ -173,13 +176,14 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
     finally { if (sameScope()) setBusy(false); }
   }
   return <>
-    {showError && <section aria-label="Estado de sincronización" className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 text-sm">
+    {visible && showError && <section aria-label="Estado de sincronización" className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 text-sm">
       <p role="status" className="min-w-0 flex-1 basis-64 text-[var(--muted)]">{issue}</p>
       <button type="button" className="soft-button min-h-11 rounded-lg px-3" onClick={() => { setError(""); void synchronize(true); }}>Reintentar</button>
       {status.state === "paused" && <Link href="/login" className="soft-button inline-flex min-h-11 items-center rounded-lg px-3">Iniciar sesión</Link>}
       <button type="button" className="min-h-11 px-3" onClick={() => setDismissedError(issue)}>Cerrar aviso</button>
     </section>}
-    <Fragment key={preparedEpoch}>{children}</Fragment>
+    {workspace}
+    {!visible ? waiting : <>
     {scope && status.state === "syncing" && <motion.p role="status" className={loadingStyles.syncNotice}
       initial={reduceMotion ? false : { opacity: 0.8 }} animate={{ opacity: 1 }} transition={{ duration: reduceMotion ? 0 : 0.18 }}>
       Actualizando tu progreso…
@@ -205,5 +209,6 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
     </ProgressDialog>}
     {archived.length > 0 && !pending && <button type="button" className="soft-button fixed bottom-20 right-6 z-20 rounded-xl px-4 py-2 text-xs" onClick={() => setArchiveOpen(true)}>Ver versiones conservadas ({archived.length})</button>}
     {archiveOpen && !conflict && !importPrompt && !showError && <Modal labelledBy="archived-title" onDismiss={() => setArchiveOpen(false)}><h2 id="archived-title" tabIndex={-1} className="text-2xl font-extrabold">Versiones conservadas</h2><p className="mt-4 text-sm text-[var(--muted)]">Estas alternativas no suman métricas. Puedes descargarlas para recuperarlas.</p>{archived.map((item,index) => <article key={item.id} className="mt-4 border-t border-[var(--border)] pt-4 text-sm"><h3 className="font-bold">Versión conservada {index+1}</h3><p className="mt-2">Cuenta: {describeVersion(item.current)}</p><p className="mt-2">Recibida: {describeVersion(item.alternative)}</p><div className="mt-3 grid gap-3"><button type="button" onClick={() => void downloadVersion(item.current,"version-cuenta").catch(err=>setError(err.message))}>Descargar versión de la cuenta</button><button type="button" onClick={() => void downloadVersion(item.alternative,"version-recibida").catch(err=>setError(err.message))}>Descargar versión recibida</button></div></article>)}<button type="button" className="soft-button mt-6 rounded-xl px-4 py-3" onClick={() => setArchiveOpen(false)}>Volver</button></Modal>}
+    </>}
   </>;
 }

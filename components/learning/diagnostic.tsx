@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Activity, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DiagnosticShell } from "./diagnostic-shell";
 import { DiagnosticSkeleton } from "@/components/page-skeletons";
 import { PendingLabel } from "@/components/loading-state";
@@ -32,15 +32,27 @@ const AXIS_PRESENTATION: Record<M1AxisId, { emoji: string; shortName: string; de
 export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: { resultOnly?: boolean; guestDraft?: boolean }) {
   const identity = useSyncIdentity();
   const [entryChecked, setEntryChecked] = useState(false);
+  const lastVerified = useRef<{ owner: string | null; epoch: number } | null>(null);
   useEffect(() => {
     let mounted = true;
     const stop = watchSyncIdentity();
     void initializeSyncIdentity().then(() => { if (mounted) setEntryChecked(true); });
     return () => { mounted = false; stop(); };
   }, []);
-  if (identity.status === "unavailable") return <DiagnosticShell><LearningError message="No se pudo comprobar tu sesión." retry={() => void initializeSyncIdentity()} /></DiagnosticShell>;
-  if (!entryChecked || identity.status !== "verified") return <DiagnosticShell>{resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}</DiagnosticShell>;
-  return <DiagnosticSession key={`${identity.epoch}:${guestDraft}`} resultOnly={resultOnly} authenticatedOwner={identity.owner} guestDraft={guestDraft} />;
+  useLayoutEffect(() => {
+    if (entryChecked && identity.status === "verified") lastVerified.current = identity;
+  }, [entryChecked, identity]);
+  const session = identity.status === "verified" ? identity : lastVerified.current?.epoch === identity.epoch ? lastVerified.current : null;
+  const visible = entryChecked && identity.status === "verified";
+  return <>
+    {entryChecked && session && <Activity key={`${session.epoch}:${guestDraft}`} mode={visible ? "visible" : "hidden"}>
+      <DiagnosticSession resultOnly={resultOnly} authenticatedOwner={session.owner} guestDraft={guestDraft} />
+    </Activity>}
+    {!visible && <DiagnosticShell>{identity.status === "unavailable"
+      ? <LearningError message="No se pudo comprobar tu sesión." retry={() => void initializeSyncIdentity()} />
+      : resultOnly ? <DiagnosticSkeleton /> : <LearningLoading label="Preparando tu diagnóstico…" />}
+    </DiagnosticShell>}
+  </>;
 }
 
 /** A diagnostic is a draft until /bienvenida confirms inclusion. In particular,
