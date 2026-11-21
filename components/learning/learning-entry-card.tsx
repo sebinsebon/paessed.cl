@@ -4,18 +4,23 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Check, Play } from "lucide-react";
 import { getM1Unit } from "@/lib/m1-curriculum";
 import { hasCompletedInitialDiagnostic } from "@/lib/learning/engine";
-import { useLearning } from "./use-learning";
+import type { LearningState } from "@/lib/learning/types";
+import { LoadingRegion, Skeleton } from "../loading-state";
 import styles from "./learning-entry-card.module.css";
 
 /** Read the same planned route as Aprender; never invent a next subject or progress. */
-export function LearningEntryCard({ tourFocus }: { tourFocus: boolean }) {
-  const { state, loading, error } = useLearning();
+export function LearningEntryCard({ tourFocus, state, loading, error }: {
+  tourFocus: boolean;
+  state: LearningState | null;
+  loading: boolean;
+  error: string;
+}) {
   const diagnostic = state?.diagnostic;
   const ready = !!state && hasCompletedInitialDiagnostic(state);
   const current = ready ? state?.nodes.find(node => node.state !== "completed") : undefined;
   const completed = state?.nodes.filter(node => node.state === "completed").length ?? 0;
   const title = loading || error ? "Tu ruta de Matemática M1" : ready ? current ? getM1Unit(current.unitId)?.name ?? "Continúa tu ruta" : "Tu ruta está al día" : !diagnostic ? "Empieza con un diagnóstico" : "Tu diagnóstico está pendiente";
-  const description = error ? "Entra a Aprender para revisar tu progreso." : ready ? current ? "Sesiones de 5 preguntas, con revisión de tus errores al terminar." : "Revisa tus sesiones completadas y tu progreso en M1." : !diagnostic ? "Responde 16 preguntas para saber qué repasar primero." : `${Object.keys(diagnostic.answers).length} de 16 preguntas respondidas. Puedes seguir donde quedaste.`;
+  const description = loading || error ? "Entra a Aprender para revisar tu progreso." : ready ? current ? "Sesiones de 5 preguntas, con revisión de tus errores al terminar." : "Revisa tus sesiones completadas y tu progreso en M1." : !diagnostic ? "Responde 16 preguntas para saber qué repasar primero." : `${Object.keys(diagnostic.answers).length} de 16 preguntas respondidas. Puedes seguir donde quedaste.`;
   const href = diagnostic && !ready ? "/diagnostico" : "/app/aprender";
   const cta = loading || error ? "Ir a Aprender" : ready ? "Ver mi ruta" : !diagnostic ? "Preparar mi ruta" : "Retomar diagnóstico";
   return <section id="tour-mission" className={`${styles.card} ${tourFocus ? "tour-focus" : ""}`}>
@@ -33,8 +38,13 @@ export function LearningEntryCard({ tourFocus }: { tourFocus: boolean }) {
         <span className={styles.line} />
         <span className={styles.smallNode}><BookOpen size={22} /></span>
       </div>
-      <strong>{ready ? `${completed} ${completed === 1 ? "sesión completada" : "sesiones completadas"}` : "Diagnóstico → práctica → repaso"}</strong>
-      <span>{ready ? "Tu avance se guarda automáticamente" : "Una ruta según tus respuestas"}</span>
+      {loading ? <LoadingRegion label="Preparando tu ruta de aprendizaje.">
+        <Skeleton className="mx-auto h-4 w-32" />
+        <Skeleton className="mx-auto mt-2 h-3 w-24" />
+      </LoadingRegion> : <>
+        <strong>{ready ? `${completed} ${completed === 1 ? "sesión completada" : "sesiones completadas"}` : "Diagnóstico → práctica → repaso"}</strong>
+        <span>{ready ? "Tu avance se guarda automáticamente" : "Una ruta según tus respuestas"}</span>
+      </>}
     </div>
   </section>;
 }
