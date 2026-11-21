@@ -44,9 +44,11 @@ La revisión reprodujo una ventana de exposición en la primera versión del PR.
 
 El cliente distingue ahora una sesión en comprobación, una sesión verificada y una sesión no disponible. El identificador conservado en el navegador avisa de cambios; la respuesta de sesión confirma el propietario. Mientras se comprueba, Inicio conserva el saludo neutro y sus enlaces generales. Los demás contenidos privados esperan en el layout y el diagnóstico público aplica la misma comprobación a sus borradores y resultados. Un cambio de cuenta, cierre de sesión, expiración o discrepancia confirmada invalida la presentación y descarta las respuestas de la verificación anterior, incluso si se vuelve al mismo identificador en un cambio A → B → A.
 
+Al volver a la pestaña, un chequeo ordinario oculta la vista privada y conserva en memoria el ejercicio activo. Si se confirma la misma cuenta, se reanuda la vista. Si cambia el propietario o falla la verificación, se desmonta el contenido anterior. El cronómetro de Aprender conserva el tiempo ya guardado y sigue excluyendo el tiempo fuera de la vista.
+
 La revisión cubrió aprendizaje, dominio, historial Default, diagnóstico y su incorporación, sesiones y guardados de Playground, datos de perfil, el contador del ensayo activo del sidebar, conflictos y descargas de respaldos. Las transacciones de sincronización conservan su propietario y las API siguen validando identidad y pertenencia. El guardado por cuenta sigue usando los mismos almacenes de IndexedDB. Los resultados nuevos del ensayo demo quedan bajo su ámbito de almacenamiento. Los datos del prototipo sin propietario verificable, incluido el resultado anterior, permanecen en disco y se omiten de la vista y de las exportaciones automáticas.
 
-Pruebas incorporadas en `tests/account-isolation.spec.cjs`. El cambio entre pestañas usa el evento de almacenamiento real de Chromium, mantiene en espera la respuesta de la cuenta nueva y comprueba la ausencia del historial anterior durante las mutaciones del DOM. También se cubren las respuestas tardías, las recargas, 401/503, y la separación de los resultados locales del ensayo demo.
+Pruebas incorporadas en `tests/account-isolation.spec.cjs`. El cambio entre pestañas usa el evento de almacenamiento real de Chromium, mantiene en espera la respuesta de la cuenta nueva y comprueba la ausencia del historial anterior durante las mutaciones del DOM. También se cubren las respuestas tardías, las recargas, 401/503, la revalidación al enfocar antes de recibir el aviso de cambio y la separación de los resultados locales del ensayo demo. El caso del cronómetro se confirmó en Chromium y WebKit.
 
 ### Medición tras la corrección
 
@@ -54,10 +56,10 @@ Mismo benchmark y 30 regresos calientes por versión y escenario. Tiempos p50 / 
 
 | Escenario | Contenido seguro en main | Contenido seguro corregido | Saludo personalizado en main | Saludo personalizado corregido |
 |---|---:|---:|---:|---:|
-| 1440 px, sesión +450 ms | 539,5 / 579 | **74 / 86** | 539,5 / 579 | 546 / 566 |
-| 390 px, sesión +450 ms | 552,5 / 572 | **80 / 92** | 552,5 / 572 | 547 / 559 |
-| 1440 px, sin demora añadida | 106,5 / 391 | 74 / 91 | 106,5 / 391 | 96 / 142 |
+| 1440 px, sesión +450 ms | 501 / 511 | **55,5 / 80** | 501 / 511 | 518,5 / 583 |
+| 390 px, sesión +450 ms | 512,5 / 538 | **45 / 60** | 512,5 / 538 | 505,5 / 522 |
+| 1440 px, sin demora añadida | 75,5 / 91 | 61 / 77 | 75,5 / 91 | 77,5 / 103 |
 
-El contenido general alcanzó el objetivo de p95 ≤150 ms en ambos escenarios con demora. Ante un error de identidad se conserva la navegación general y se ofrece reintentar o volver a iniciar sesión. Para una recarga sin verificación válida, los datos guardados esperan en su ámbito sin mostrarse. Las pruebas usan cuentas ficticias y backend local o interceptado.
+El contenido general alcanzó el objetivo de p95 ≤150 ms en ambos escenarios con demora. El p95 del saludo personalizado a 1440 px aumentó 72 ms en esa tanda. Ante un error de identidad se conserva la navegación general y se ofrece reintentar o volver a iniciar sesión. Para una recarga sin verificación válida, los datos guardados esperan en su ámbito sin mostrarse. Las pruebas usan cuentas ficticias y backend local o interceptado.
 
 También se ejecutaron las suites históricas de navegador. Algunas intentaban abrir rutas privadas sin una sesión local. Se repitieron en una copia con el fixture de acceso local para comparar la misma prueba contra `main`. Asistencia IA, énfasis, Ensayos local y varias pruebas de la hoja universal y del renderer presentan fallos en la base. Las suites afectadas conservan sus expectativas y sus capturas. La verificación de Google y Supabase reales queda fuera de esta ejecución local.

@@ -146,6 +146,28 @@ test("un cambio rápido A → B → A ignora B aunque su respuesta llegue al fin
   }
 });
 
+test("al volver a la pestaña se oculta la vista anterior aunque aún no haya aviso de cambio", async ({ page, baseURL }) => {
+  const session = await openAccounts(page, baseURL);
+  await page.goto("/app/inicio");
+  await expect(greeting(page)).toContainText("Cuenta A");
+  await seedProgress(page);
+  await page.reload();
+  await expect(history(page)).toContainText(exam.title);
+  const next = hold();
+  try {
+    session.set(accountB, next);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect.poll(() => next.requests).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible();
+    await expect(page.getByText(exam.title, { exact: true })).toBeHidden();
+    await expect(page.getByRole("heading", { name: /Cuenta A/ })).toHaveCount(0);
+    session.set(accountB);
+    next.release();
+    await expect(greeting(page)).toContainText("Cuenta B");
+    await expect(page.getByText(exam.title, { exact: true })).toHaveCount(0);
+  } finally { next.release(); }
+});
+
 test("errores de sesión y recargas conservan el almacenamiento sin abrir áreas privadas", async ({ page, baseURL }) => {
   const session = await openAccounts(page, baseURL);
   await page.goto("/app/inicio");
