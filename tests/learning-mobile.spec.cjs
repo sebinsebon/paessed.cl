@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { enableLocalApp } = require('./local-app-fixture.cjs');
 const { catalog, NODE_ID, readBank, seed, ready, geometry, readState, openNode } = require('./learning-mobile-helpers.cjs');
 
 const confirm = page => page.getByRole('button', { name: /^(Comprobar|Confirmar respuesta|Confirmar nuevo intento)$/ });
@@ -184,7 +185,8 @@ test('ink storage failure warns and preserves in-memory marks when the session r
   expect(pixels).toBeGreaterThan(20);
 });
 
-test('optional timer counts active time, pauses hidden/help/menu, freezes and resumes without closed time', async ({ page }) => {
+test('optional timer counts active time, pauses hidden/help/menu, freezes and resumes without closed time', async ({ page, baseURL }) => {
+  await enableLocalApp(page, baseURL);
   await page.clock.install({ time: new Date('2026-11-08T12:00:00Z') });
   const meta = catalog[0];
   await seed(page, meta);

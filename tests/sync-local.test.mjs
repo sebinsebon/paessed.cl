@@ -36,6 +36,220 @@ async function harness(work) {
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 }
 
+async function guestImportFixture(page, context) {
+  const other = await context.newPage();
+  await other.goto(page.url());
+  await page.evaluate(async () => {
+    await window.repo.dispatchLearning({ type: "set-goal", goal: 3 }, []);
+    window.sessionOwner = window.A;
+    window.fetch = async url => url === "/api/auth/session"
+      ? Response.json({ user: window.sessionOwner ? { id: window.sessionOwner } : null })
+      : Response.json(window.reply({ capacity: { writesPaused: true } }));
+    window.client.watchSyncIdentity();
+    await window.client.initializeSyncIdentity();
+  });
+  return async owner => {
+    await page.evaluate(owner => { window.sessionOwner = owner; }, owner);
+    await other.evaluate(owner => {
+      if (owner) localStorage.setItem("paessed-sync-owner", owner);
+      else localStorage.removeItem("paessed-sync-owner");
+    }, owner);
+    await page.waitForFunction(owner => {
+      const identity = window.client.getSyncIdentity();
+      return identity.status === "verified" && identity.owner === owner;
+    }, owner);
+  };
+}
+
+async function importState(page) {
+  return page.evaluate(async () => {
+    const accounts = [];
+    for (const owner of [window.A, window.B]) {
+      const db = await window.local.openLocalDatabase(owner);
+      const confirmed = await new Promise((resolve, reject) => {
+        const tx = db.transaction("meta");
+        const request = tx.objectStore("meta").get("guest-import-confirmed");
+        tx.oncomplete = () => resolve(request.result ?? null);
+        tx.onabort = () => reject(tx.error);
+      });
+      const operations = await window.local.listPendingOperations(owner);
+      accounts.push({ confirmed, queued: operations.length, sequence: (await window.local.readSyncMeta(owner)).sequence });
+    }
+    return { accounts, guestGoal: (await window.repo.readLearningState(null)).goal };
+  });
+}
+
+const emptyImport = { confirmed: null, queued: 0, sequence: 0 };
+
+test("an unverified storage owner cannot import guest progress", async () => harness(async page => {
+  const imported = await page.evaluate(async () => {
+    await window.repo.dispatchLearning({ type: "set-goal", goal: 3 }, []);
+    window.local.setSyncOwner(window.A);
+    return window.client.importGuestProgress().then(() => true, () => false);
+  });
+  assert.equal(imported, false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+}));
+
+test("sign-out in a second tab during guest reads cancels the import", async () => harness(async (page, context) => {
+  await guestImportFixture(page, context);
+  const other = context.pages().find(tab => tab !== page);
+  await page.evaluate(() => {
+    // Leave the old storage owner in place while verification is pending.
+    window.fetch = () => new Promise(() => {});
+    window.imported = window.client.importGuestProgress().then(() => true, () => false);
+    // Pause the guest read until this tab receives the real storage event.
+    const transaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (...args) {
+      const tx = transaction.apply(this, args);
+      if (this.name === "paessed-learning" && args[1] === "readonly") {
+        const keepReading = () => {
+          if (window.client.getSyncIdentity().status === "verified") tx.objectStore("state").get("current").onsuccess = keepReading;
+        };
+        keepReading();
+      }
+      return tx;
+    };
+  });
+  await other.evaluate(() => localStorage.removeItem("paessed-sync-owner"));
+  await page.waitForFunction(() => window.client.getSyncIdentity().status === "checking");
+  const imported = await page.evaluate(() => window.imported);
+  assert.equal(imported, false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+}));
+
+test("returning A → B → A cannot revive a pending guest import", async () => harness(async (page, context) => {
+  const switchAccount = await guestImportFixture(page, context);
+  await page.evaluate(() => {
+    const transaction = IDBDatabase.prototype.transaction;
+    IDBDatabase.prototype.transaction = function (stores, mode, ...options) {
+      const tx = transaction.call(this, stores, mode, ...options);
+      if (this.name === "paessed-learning" && mode === "readonly" && Array.isArray(stores) && stores.includes("exam-sessions")) {
+        window.guestReadStarted = true;
+        const keepReading = () => {
+          if (!window.releaseGuestRead) tx.objectStore("state").get("current").onsuccess = keepReading;
+        };
+        keepReading();
+      }
+      return tx;
+    };
+    window.imported = window.client.importGuestProgress().then(() => true, () => false);
+  });
+  await page.waitForFunction(() => window.guestReadStarted);
+  await switchAccount("22222222-2222-4222-8222-222222222222");
+  await switchAccount("11111111-1111-4111-8111-111111111111");
+  const imported = await page.evaluate(() => { window.releaseGuestRead = true; return window.imported; });
+  assert.equal(imported, false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+  await page.evaluate(() => window.client.importGuestProgress());
+  const retry = await importState(page);
+  assert.equal(retry.accounts[0].confirmed, true);
+  assert.ok(retry.accounts[0].queued > 0);
+  assert.deepEqual(retry.accounts[1], emptyImport);
+  assert.equal(retry.guestGoal, 3);
+}));
+
+test("invalidation rolls back a guest import while its IDB writes are pending", async () => harness(async (page, context) => {
+  await guestImportFixture(page, context);
+  const result = await page.evaluate(async () => {
+    const put = IDBObjectStore.prototype.put;
+    let confirmationWritten = false, outboxWritten = false;
+    IDBObjectStore.prototype.put = function (value, key) {
+      const request = put.call(this, value, key);
+      if (key === "guest-import-confirmed" && value === true) {
+        request.addEventListener("success", () => { confirmationWritten = true; });
+      }
+      if (this.name === "outbox" && value.importOnly) {
+        request.addEventListener("success", () => {
+          outboxWritten = true;
+          window.client.sessionUnavailable();
+        }, { once: true });
+      }
+      return request;
+    };
+    const imported = await window.client.importGuestProgress().then(() => true, () => false);
+    return { imported, confirmationWritten, outboxWritten };
+  });
+  assert.equal(result.confirmationWritten, true, "invalidate after IndexedDB has staged the confirmation");
+  assert.equal(result.outboxWritten, true, "invalidate after IndexedDB has staged a queue entry");
+  assert.equal(result.imported, false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+}));
+
+test("a direct storage owner change cancels pending writes even if the owner is immediately restored", async () => harness(async (page, context) => {
+  await guestImportFixture(page, context);
+  const imported = await page.evaluate(async () => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      const request = put.call(this, value, key);
+      if (key === "guest-import-confirmed" && value === true) {
+        request.addEventListener("success", () => {
+          // The development account selector changes the local owner directly.
+          window.local.setSyncOwner(window.B);
+          window.local.setSyncOwner(window.A);
+        }, { once: true });
+      }
+      return request;
+    };
+    return window.client.importGuestProgress().then(() => true, () => false);
+  });
+  assert.equal(imported, false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+}));
+
+test("a sign-out in a second tab also cancels a pending decision to decline", async () => harness(async (page, context) => {
+  const switchAccount = await guestImportFixture(page, context);
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function (value, key) {
+      const request = put.call(this, value, key);
+      if (key === "guest-import-confirmed" && value === "declined") {
+        request.addEventListener("success", () => {
+          window.choiceWritten = true;
+          const keepPending = () => {
+            if (window.client.getSyncIdentity().status === "verified" && window.client.getSyncIdentity().owner) {
+              this.get(key).onsuccess = keepPending;
+            }
+          };
+          keepPending();
+        });
+      }
+      return request;
+    };
+    window.declined = window.client.declineGuestImport().then(() => true, () => false);
+  });
+  await page.waitForFunction(() => window.choiceWritten);
+  await switchAccount(null);
+  assert.equal(await page.evaluate(() => window.declined), false);
+  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+}));
+
+test("guest import reads legacy saved references without modifying guest data", async () => harness(async (page, context) => {
+  await guestImportFixture(page, context);
+  const result = await page.evaluate(async () => {
+    const removed = `personal:${"b".repeat(64)}:2`;
+    localStorage.setItem("paessed-playground-saved-questions", JSON.stringify([window.q, removed]));
+    const guest = await window.local.openLocalDatabase(null, true);
+    await new Promise(resolve => {
+      const tx = guest.transaction("saved-questions", "readwrite");
+      tx.objectStore("saved-questions").put({ questionId: removed, deleted: true }, removed);
+      tx.oncomplete = resolve;
+    });
+    await Promise.all([window.client.importGuestProgress(), window.client.importGuestProgress()]);
+    const actions = (await window.local.listPendingOperations()).filter(item => item.action.type === "saved-question");
+    const originals = await new Promise(resolve => {
+      const tx = guest.transaction(["saved-questions", "meta"]);
+      const saved = tx.objectStore("saved-questions").getAll();
+      const migrated = tx.objectStore("meta").get("legacy-saved-migrated");
+      tx.oncomplete = () => resolve({ records: saved.result, migrated: migrated.result ?? null });
+    });
+    return { imported: actions.map(item => item.action.questionId), expected: window.q, removed, ...originals };
+  });
+  assert.deepEqual(result.imported, [result.expected], "duplicate confirmations cannot duplicate the queue");
+  assert.deepEqual(result.records, [{ questionId: result.removed, deleted: true }]);
+  assert.equal(result.migrated, null);
+}));
+
 test("IndexedDB keeps ordered atomic operations, account isolation, shadows and reset tombstones", async () => harness(async (page, context) => {
   const first = await page.evaluate(async () => {
     window.local.setSyncOwner(window.A);
@@ -81,7 +295,12 @@ test("guest import includes practice and saved references and partitions a large
     const guest=await window.repo.dispatchLearning({type:"set-goal",goal:3},[]);
     await window.local.saveQuestion(window.q,true);
     await window.local.savePracticeSession("playground","playground",{id:crypto.randomUUID(),index:0,questionIds:[window.q],answers:{[window.q]:"C"}});
-    const summary=await window.client.guestProgressSummary();window.local.setSyncOwner(window.A);await window.client.importGuestProgress();
+    const summary=await window.client.guestProgressSummary();
+    window.fetch = async url => url === "/api/auth/session"
+      ? Response.json({ user: { id: window.A } })
+      : Response.json(window.reply({ capacity: { writesPaused: true } }));
+    await window.client.initializeSyncIdentity();
+    await window.client.importGuestProgress();
     const operations=await window.local.listPendingOperations();
     const big={...guest,attempts:Array.from({length:700},(_,i)=>({id:`a${i}`,questionId:`personal:${i.toString(16).padStart(64,"0")}:1`,sessionId:`session${i}`,mode:"exam",axisId:"numeros",unitId:"numeros-enteros-racionales",revision:"1",answer:"A",correct:false,eligible:false,assisted:false,at:"2026-11-11T12:00:00Z"}))};
     window.repo.validateLearningState(big);

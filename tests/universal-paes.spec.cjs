@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { enableLocalApp } = require('./local-app-fixture.cjs');
 const path = require('node:path');
 const { catalog, seed, readState } = require('./learning-mobile-helpers.cjs');
 const exam = require('../lib/default-catalog.json').exams[0];
@@ -313,7 +314,8 @@ test('imported exam delivery freezes the edited answer and survives reload', asy
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)).submittedAnswers, key)).toEqual(answers);
 });
 
-test('a new demo exam never restores the previous session ink', async ({ page }) => {
+test('a new demo exam never restores the previous session ink', async ({ page, baseURL }) => {
+  await enableLocalApp(page, baseURL);
   await openContext(page, 'demo');
   const sessionKey = 'paessed-demo-ink-session:practice';
   const oldSession = await page.evaluate(key => localStorage.getItem(key), sessionKey);
@@ -329,6 +331,7 @@ test('a new demo exam never restores the previous session ink', async ({ page })
   await expect(page.getByText('Ensayo completado', { exact: true })).toBeVisible();
   // A fresh tab shares persisted progress but cannot reuse the previous React tree.
   const fresh = await page.context().newPage();
+  await enableLocalApp(fresh, baseURL);
   fresh.on('pageerror', error => errors.get(page).push(error.message));
   await openContext(fresh, 'demo');
   const nextSession = await fresh.evaluate(key => localStorage.getItem(key), sessionKey);

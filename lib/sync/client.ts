@@ -1,7 +1,8 @@
 import { readDiagnosticState, validateLearningState } from "../learning/repository.ts";
-import { ACCOUNT_STORES, LOCAL_CHANGED, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, listPendingOperations, listPracticeSessions, listSavedQuestions, notifyLocalChange, openLocalDatabase, readSyncMeta, setSyncOwner, type QueuedOperation, type SyncMeta } from "./local.ts";
+import { ACCOUNT_STORES, LOCAL_CHANGED, LOCAL_OWNER_CHANGED, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, listPendingOperations, listPracticeSessions, listSavedQuestions, notifyLocalChange, openLocalDatabase, readGuestSavedQuestions, readSyncMeta, setSyncOwner, type QueuedOperation, type SyncMeta } from "./local.ts";
 import type { SyncResponse } from "./contracts";
 import type { OnboardingStatus, OnboardingSubmission } from "./contracts";
+import { fetchSession } from "../auth/session-fetch.ts";
 
 export type SyncStatusValue = { state: "guest" | "idle" | "syncing" | "paused" | "error"; pending: number; message: string; conflicts: number };
 let status: SyncStatusValue = { state: "guest", pending: 0, message: "Progreso guardado en este dispositivo", conflicts: 0 };
@@ -9,7 +10,14 @@ const subscribers = new Set<() => void>();
 let authenticated = false, retryAt = 0, failures = 0;
 let running: Promise<void> | undefined;
 let runningOwner: string | null = null;
-let identityRequest: Promise<{ owner: string | null }> | undefined;
+let runningEpoch = 0;
+let identityRequest: { controller: AbortController; promise: Promise<{ owner: string | null }> } | undefined;
+type SyncIdentity = { status: "checking" | "unavailable"; epoch: number } |
+  { status: "verified"; epoch: number; owner: string | null };
+const initialIdentity: SyncIdentity = { status: "checking", epoch: 0 };
+let identity: SyncIdentity = initialIdentity;
+const identityListeners = new Set<() => void>();
+let importController: AbortController | undefined;
 let activeRequest: AbortController | undefined;
 let capacityWarning = false;
 export function getSyncStatus() { return status; }
@@ -17,46 +25,131 @@ export function subscribeSyncStatus(listener: () => void) { subscribers.add(list
 function updateStatus(patch: Partial<SyncStatusValue>) { status = { ...status, ...patch }; for (const listener of subscribers) listener(); }
 const identityStorageKey = () => `${devSandboxActive() ? "paessed-dev:" : ""}paessed-sync-owner`;
 
-async function readIdentity(): Promise<{ owner: string | null }> {
+export function getSyncIdentity() { return identity; }
+export function getInitialSyncIdentity() { return initialIdentity; }
+export function subscribeSyncIdentity(listener: () => void) {
+  identityListeners.add(listener);
+  return () => { identityListeners.delete(listener); };
+}
+function cancelGuestImports() {
+  const controller = importController;
+  importController = undefined;
+  controller?.abort();
+}
+function publishIdentity(next: SyncIdentity) {
+  const previous = identity;
+  identity = next;
+  if (next.status !== "verified" || next.epoch !== previous.epoch) cancelGuestImports();
+  for (const listener of identityListeners) listener();
+}
+function invalidateIdentity(status: "checking" | "unavailable") {
+  identityRequest?.controller.abort();
+  identityRequest = undefined;
+  activeRequest?.abort();
+  authenticated = false;
+  publishIdentity({ status, epoch: identity.epoch + 1 });
+}
+function confirmIdentity(owner: string | null, remote: boolean) {
+  const changed = owner !== getSyncOwner();
+  if (changed) {
+    activeRequest?.abort();
+    retryAt = 0;
+    failures = 0;
+    capacityWarning = false;
+  }
+  setSyncOwner(owner);
+  authenticated = remote && !!owner;
+  publishIdentity({ status: "verified", owner, epoch: identity.epoch + Number(changed) });
+  if (changed || !authenticated || status.state === "paused" && status.message.startsWith("Tu sesión venció")) {
+    updateStatus({ state: owner ? "idle" : "guest", pending: 0, conflicts: 0, message: "Progreso guardado en este dispositivo" });
+  }
+}
+
+function currentOwner(owner: string, epoch: number) {
+  return identity.epoch === epoch && owner === getSyncOwner();
+}
+
+async function readIdentity(signal: AbortSignal): Promise<{ owner: string | null }> {
   if (devSandboxActive()) {
     const account = (await import("../auth/dev-accounts.ts")).selectedDevAccount();
-    activeRequest?.abort(); setSyncOwner(account?.id ?? null); authenticated = false;
+    if (signal.aborted) return { owner: null };
+    confirmIdentity(account?.id ?? null, false);
     updateStatus({ state: "guest", pending: 0, conflicts: 0, message: account ? `Cuenta de prueba · ${account.name}` : "Progreso del entorno de desarrollo" });
     return { owner: account?.id ?? null };
   }
-  let cached: string | null = null;
-  try { cached = localStorage.getItem(identityStorageKey()); } catch { /* Storage may be disabled. IndexedDB reports an actionable error separately. */ }
   try {
-    const response = await fetch("/api/auth/session", { cache: "no-store", credentials: "same-origin", signal: AbortSignal.timeout(10_000) });
+    const response = await fetchSession(signal);
     if (!response.ok) throw new Error("Sesión no disponible");
     const data = await response.json();
+    if (signal.aborted) return { owner: null };
     if (data.user?.id) {
-      if (getSyncOwner() !== data.user.id) {
-        activeRequest?.abort();
-        retryAt = 0;
-        failures = 0;
-        capacityWarning = false;
-        updateStatus({ state: "idle", pending: 0, conflicts: 0, message: "Progreso guardado en este dispositivo" });
-      }
-      setSyncOwner(data.user.id); authenticated = true;
+      confirmIdentity(data.user.id, true);
       try { localStorage.setItem(identityStorageKey(), data.user.id); } catch { /* IndexedDB still retains the scoped work. */ }
-      if (status.state === "paused" && status.message.startsWith("Tu sesión venció")) {
-        updateStatus({ state: "idle", message: "Progreso guardado en este dispositivo" });
-      }
       await synchronize();
-      return { owner: data.user.id };
+      return { owner: signal.aborted ? null : data.user.id };
     }
+    if (data.user !== null) throw new Error("La respuesta no identifica una sesión.");
     activeRequest?.abort();
-    cached = null;
+    confirmIdentity(null, false);
     try { localStorage.removeItem(identityStorageKey()); } catch { /* A verified guest still uses guest storage. */ }
-  } catch { /* An expired or unreachable session never turns account data into guest data. */ }
-  setSyncOwner(cached); authenticated = false;
-  updateStatus({ state: cached ? "paused" : "guest", message: cached ? "Sincronización en pausa. Inicia sesión para enviar los cambios pendientes." : "Progreso guardado en este dispositivo" });
-  return { owner: cached };
+  } catch {
+    if (!signal.aborted) {
+      invalidateIdentity("unavailable");
+      updateStatus({ state: "paused", message: "No se pudo comprobar tu sesión. Tu progreso sigue guardado en este dispositivo." });
+    }
+  }
+  return { owner: null };
 }
 export function initializeSyncIdentity(): Promise<{ owner: string | null }> {
-  identityRequest ??= readIdentity().finally(() => { identityRequest = undefined; });
-  return identityRequest;
+  if (identityRequest) return identityRequest.promise;
+  const controller = new AbortController();
+  const promise = readIdentity(controller.signal).finally(() => {
+    if (identityRequest?.controller === controller) identityRequest = undefined;
+  });
+  identityRequest = { controller, promise };
+  return promise;
+}
+
+let identityWatchers = 0;
+function resumeIdentity() {
+  if (document.visibilityState !== "visible" || !navigator.onLine || identityRequest) return;
+  if (identity.status !== "checking") publishIdentity({ status: "checking", epoch: identity.epoch });
+  void initializeSyncIdentity();
+}
+function signedOut() {
+  invalidateIdentity("checking");
+  confirmIdentity(null, false);
+}
+function accountStorage(event: StorageEvent) {
+  if (event.key !== identityStorageKey() && !(devSandboxActive() && event.key === "paessed-dev:active-account")) return;
+  if (!event.newValue) { invalidateIdentity("checking"); void initializeSyncIdentity(); return; }
+  if (identity.status === "verified" && event.newValue === identity.owner) return;
+  invalidateIdentity("checking");
+  void initializeSyncIdentity();
+}
+export function sessionUnavailable(message = "No se pudo comprobar tu sesión. Tu progreso sigue guardado en este dispositivo.") {
+  invalidateIdentity("unavailable");
+  updateStatus({ state: "paused", message });
+}
+export function isAccountMismatch(status: number, error: unknown) {
+  return status === 409 && typeof error === "string" && error.startsWith("La cuenta cambió en otra pestaña.");
+}
+export function watchSyncIdentity() {
+  if (++identityWatchers === 1) {
+    window.addEventListener("online", resumeIdentity);
+    window.addEventListener("focus", resumeIdentity);
+    document.addEventListener("visibilitychange", resumeIdentity);
+    window.addEventListener("paessed-auth-signed-out", signedOut);
+    window.addEventListener("storage", accountStorage);
+  }
+  return () => {
+    if (--identityWatchers !== 0) return;
+    window.removeEventListener("online", resumeIdentity);
+    window.removeEventListener("focus", resumeIdentity);
+    document.removeEventListener("visibilitychange", resumeIdentity);
+    window.removeEventListener("paessed-auth-signed-out", signedOut);
+    window.removeEventListener("storage", accountStorage);
+  };
 }
 
 /** Record the destination and any explicit choice before attempting a guest handoff. */
@@ -96,7 +189,8 @@ export async function readOnboardingStatus(owner: string): Promise<OnboardingSta
   return onboardingRequest(owner);
 }
 async function onboardingRequest(owner: string, submission?: OnboardingSubmission): Promise<OnboardingStatus> {
-  if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Vuelve a abrir tu cuenta.");
+  const epoch = identity.epoch;
+  if (identity.status !== "verified" || !currentOwner(owner, epoch)) throw new Error("La cuenta cambió. Vuelve a abrir tu cuenta.");
   let response: Response;
   try {
     response = await fetch("/api/onboarding", { credentials: "same-origin", cache: "no-store", signal: AbortSignal.timeout(15_000),
@@ -105,8 +199,9 @@ async function onboardingRequest(owner: string, submission?: OnboardingSubmissio
   } catch {
     throw new Error("No pudimos conectar con tu cuenta. Comprueba tu conexión y vuelve a intentarlo.");
   }
-  if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Tus respuestas siguen guardadas.");
   const data = await response.json().catch(() => null);
+  if (!currentOwner(owner, epoch)) throw new Error("La cuenta cambió. Tus respuestas siguen guardadas.");
+  if (response.status === 401 || isAccountMismatch(response.status, data?.error)) sessionUnavailable(data?.error);
   if (!response.ok || !data) throw new Error(data?.error ?? "El servidor no pudo confirmar tu diagnóstico.");
   if (submission) { await persistSyncResponse(owner, data.sync); await synchronize(); return data.status; }
   return data;
@@ -218,44 +313,53 @@ function retryAfter(response: Response) {
 }
 async function fetchSync(url: string, init?: RequestInit, owner = getSyncOwner()): Promise<SyncResponse> {
   if (!owner) throw new Error("Inicia sesión para sincronizar.");
+  const epoch = identity.epoch;
   const controller = new AbortController(); activeRequest = controller;
   const timeout = setTimeout(() => controller.abort(), 15_000);
   const headers = new Headers(init?.headers); headers.set("X-PAESSED-Account", owner);
   let response: Response;
   try { response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init, headers, signal: controller.signal }); }
   finally { clearTimeout(timeout); if (activeRequest === controller) activeRequest = undefined; }
-  if (owner !== getSyncOwner()) throw new Error("La cuenta cambió. El trabajo pendiente permanece en su cuenta original.");
+  if (!currentOwner(owner, epoch)) throw new Error("La cuenta cambió. El trabajo pendiente permanece en su cuenta original.");
   if (!response.ok) {
     retryAt = Date.now() + Math.max(retryAfter(response), Math.min(60000, 1000 * 2 ** Math.min(++failures, 6)));
-    if (response.status === 401) { authenticated = false; updateStatus({ state: "paused", message: "Tu sesión venció. El trabajo pendiente sigue guardado en esta cuenta." }); }
+    if (response.status === 401) sessionUnavailable("Tu sesión venció. El trabajo pendiente sigue guardado en esta cuenta.");
+    else if (response.status === 409) {
+      const data = await response.json().catch(() => null);
+      if (currentOwner(owner, epoch) && isAccountMismatch(response.status, data?.error)) sessionUnavailable(data.error);
+    }
     else if (response.status === 429) updateStatus({ state: "paused", message: "Límite temporal alcanzado. El progreso local está guardado y se reintentará automáticamente." });
     else if (response.status === 413) updateStatus({ state: "error", message: "El lote pendiente es demasiado grande. Se conserva completo en este dispositivo." });
     throw new Error(response.status === 503 ? "La sincronización remota está temporalmente en pausa." : "No se pudo sincronizar. El progreso local sigue guardado.");
   }
-  return response.json();
+  const data = await response.json();
+  if (!currentOwner(owner, epoch)) throw new Error("La cuenta cambió. El trabajo pendiente permanece en su cuenta original.");
+  return data;
 }
-async function syncNow() {
-  const owner = getSyncOwner();
-  if (!owner || !authenticated || Date.now() < retryAt || typeof navigator !== "undefined" && !navigator.onLine) return;
+async function syncNow(owner: string, epoch: number) {
+  const current = () => currentOwner(owner, epoch);
+  if (!current() || !authenticated || Date.now() < retryAt || typeof navigator !== "undefined" && !navigator.onLine) return;
   updateStatus({ state: "syncing", message: "Sincronizando…" });
   try {
     let more = true;
-    while (more && owner === getSyncOwner()) {
+    while (more && current()) {
       const meta = await readSyncMeta(owner);
+      if (!current()) return;
       const response = await fetchSync(`/api/sync?cursor=${meta.cursor}`, undefined, owner);
       await persistSyncResponse(owner, response);
-      if (owner !== getSyncOwner()) return;
+      if (!current()) return;
       more = response.hasMore;
       capacityWarning = !!response.capacity?.warning;
       if (response.capacity?.writesPaused) {
         const pending = (await listPendingOperations(owner)).length;
-        if (owner === getSyncOwner()) updateStatus({state:"paused",pending,message:"La cuenta alcanzó el umbral de capacidad remota. Tu progreso y sus cambios pendientes siguen guardados en este dispositivo."});
+        if (current()) updateStatus({state:"paused",pending,message:"La cuenta alcanzó el umbral de capacidad remota. Tu progreso y sus cambios pendientes siguen guardados en este dispositivo."});
         return;
       }
     }
     let pending = await listPendingOperations(owner);
-    while (pending.length && owner === getSyncOwner()) {
+    while (pending.length && current()) {
       const meta = await readSyncMeta(owner);
+      if (!current()) return;
       const importOnly = !!pending[0].importOnly, batch: QueuedOperation[] = [];
       for (const operation of pending.slice(0, 50)) {
         if (!!operation.importOnly !== importOnly) break;
@@ -269,29 +373,38 @@ async function syncNow() {
       await persistSyncResponse(owner, response);
       pending = await listPendingOperations(owner);
     }
+    if (!current()) return;
     const conflicts = (await listSyncConflicts()).length;
-    if (owner !== getSyncOwner()) return;
+    if (!current()) return;
     failures = 0; retryAt = 0;
     updateStatus({ state: "idle", pending: pending.length, conflicts, message: capacityWarning ? "Progreso sincronizado. La capacidad remota superó el 70 %; se suspenderán nuevos envíos al 85 %." : "Progreso sincronizado" });
   } catch (error) {
-    if (owner !== getSyncOwner()) return;
+    if (!current()) return;
     if (status.state === "syncing") updateStatus({ state: "error", message: error instanceof Error ? error.message : "El progreso pendiente permanece guardado." });
     const pending = (await listPendingOperations(owner)).length;
-    if (owner === getSyncOwner()) updateStatus({ pending });
+    if (current()) updateStatus({ pending });
   }
 }
 export async function synchronize(force = false): Promise<void> {
   if (force) retryAt = 0;
   const owner = getSyncOwner(); if (!owner) return;
-  if (running) { const previousOwner = runningOwner; await running; if (previousOwner !== owner && getSyncOwner() === owner) return synchronize(); return; }
+  const epoch = identity.epoch;
+  if (running) {
+    const same = runningOwner === owner && runningEpoch === epoch;
+    await running;
+    if (!same && currentOwner(owner, epoch)) return synchronize();
+    return;
+  }
   runningOwner = owner;
+  runningEpoch = epoch;
   running = (async () => {
-    if (navigator.locks) await navigator.locks.request(`paessed-sync:${owner}`, { ifAvailable: true }, async lock => { if (lock) await syncNow(); });
-    else await syncNow();
+    if (navigator.locks) await navigator.locks.request(`paessed-sync:${owner}`, { ifAvailable: true }, async lock => { if (lock) await syncNow(owner, epoch); });
+    else await syncNow(owner, epoch);
   })().finally(() => { running = undefined; });
   return running;
 }
 export function startSync(): () => void {
+  const stopWatching = watchSyncIdentity();
   let debounce: ReturnType<typeof setTimeout> | undefined, maximum: ReturnType<typeof setTimeout> | undefined;
   const send = () => { clearTimeout(debounce); clearTimeout(maximum); maximum = undefined; void synchronize(); };
   const changed = () => {
@@ -300,15 +413,11 @@ export function startSync(): () => void {
     clearTimeout(debounce); debounce = setTimeout(send, 2000);
     maximum ??= setTimeout(send, 10000);
   };
-  const resume = () => { if (document.visibilityState === "visible") void initializeSyncIdentity(); };
-  const signedOut = () => { authenticated = false; activeRequest?.abort(); setSyncOwner(null); updateStatus({state:"guest",pending:0,conflicts:0,message:"Progreso de invitado guardado en este dispositivo"}); };
-  const accountStorage = (event: StorageEvent) => { if (event.key !== identityStorageKey()) return; if (!event.newValue) signedOut(); else resume(); };
   const channel = getSyncOwner() ? new BroadcastChannel(databaseName()) : null;
   if (channel) channel.onmessage = changed;
-  window.addEventListener(LOCAL_CHANGED, changed); window.addEventListener("online", resume); window.addEventListener("focus", resume); document.addEventListener("visibilitychange", resume);
-  window.addEventListener("paessed-auth-signed-out", signedOut); window.addEventListener("storage", accountStorage);
+  window.addEventListener(LOCAL_CHANGED, changed);
   const interval = setInterval(() => { if (document.visibilityState === "visible") void synchronize(); }, 60000);
-  return () => { clearTimeout(debounce); clearTimeout(maximum); clearInterval(interval); channel?.close(); window.removeEventListener(LOCAL_CHANGED, changed); window.removeEventListener("online", resume); window.removeEventListener("focus", resume); document.removeEventListener("visibilitychange", resume); window.removeEventListener("paessed-auth-signed-out", signedOut); window.removeEventListener("storage", accountStorage); };
+  return () => { stopWatching(); clearTimeout(debounce); clearTimeout(maximum); clearInterval(interval); channel?.close(); window.removeEventListener(LOCAL_CHANGED, changed); };
 }
 export async function resolveSyncConflict(id: string, choice: "incoming" | "current") {
   const owner = getSyncOwner(); if (!owner) return;
@@ -330,9 +439,69 @@ export async function guestProgressSummary(): Promise<{ attempts: number; sessio
   })]);
   return { ...learning, sessions: learning.sessions + practice.length, savedQuestions: saved.length };
 }
+type ImportIdentity = { owner: string; epoch: number; signal: AbortSignal };
+const changedImportIdentity = () => new Error("La cuenta cambió. Vuelve a confirmar la incorporación.");
+function verifiedImportIdentity() {
+  if (identity.status !== "verified" || !identity.owner || identity.owner !== getSyncOwner()) throw changedImportIdentity();
+  if (!importController) {
+    importController = new AbortController();
+    window.addEventListener(LOCAL_OWNER_CHANGED, cancelGuestImports, { once: true, signal: importController.signal });
+  }
+  return { owner: identity.owner, epoch: identity.epoch, signal: importController.signal };
+}
+function isCurrentImport({ owner, epoch, signal }: ImportIdentity) {
+  return !signal.aborted && identity.status === "verified" && identity.owner === owner && currentOwner(owner, epoch);
+}
+async function recordGuestImport(
+  verified: ImportIdentity,
+  decision: true | "declined",
+  queue?: (tx: IDBTransaction) => void,
+): Promise<boolean> {
+  if (!isCurrentImport(verified)) throw changedImportIdentity();
+  const db = await openLocalDatabase(verified.owner);
+  if (!isCurrentImport(verified)) throw changedImportIdentity();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(queue ? ["outbox", "meta"] : ["meta"], "readwrite");
+    let failure: unknown;
+    let recorded = false;
+    const cancelIfInvalid = () => {
+      if (isCurrentImport(verified)) return false;
+      failure = changedImportIdentity();
+      try {
+        tx.abort();
+      } catch (error) {
+        // IndexedDB can already be committing when the next browser event is delivered.
+        if (!(error instanceof DOMException && error.name === "InvalidStateError")) throw error;
+      }
+      return true;
+    };
+    verified.signal.addEventListener("abort", cancelIfInvalid, { once: true });
+    const cleanup = () => verified.signal.removeEventListener("abort", cancelIfInvalid);
+    tx.oncomplete = () => { cleanup(); resolve(recorded); };
+    tx.onabort = () => { cleanup(); reject(failure ?? tx.error ?? new Error("No se pudo guardar la incorporación.")); };
+    const meta = tx.objectStore("meta");
+    const choice = meta.get("guest-import-confirmed");
+    choice.onsuccess = () => {
+      if (cancelIfInvalid() || choice.result) return;
+      try {
+        queue?.(tx);
+        meta.put(decision, "guest-import-confirmed");
+        recorded = true;
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
+export async function declineGuestImport(): Promise<void> {
+  await recordGuestImport(verifiedImportIdentity(), "declined");
+}
+
 /** Only called after the account's explicit summary/confirmation. Guest originals remain untouched. */
 export async function importGuestProgress(): Promise<void> {
-  const owner = getSyncOwner(); if (!owner) throw new Error("Inicia sesión para incorporar tu progreso.");
+  const verified = verifiedImportIdentity();
   const guest = await openLocalDatabase(null);
   const snapshot = await new Promise<{ state: unknown; sessions: unknown[]; keys: IDBValidKey[] }>((resolve, reject) => {
     const tx = guest.transaction(["state", "exam-sessions"], "readonly"), state = tx.objectStore("state").get("current"), sessions = tx.objectStore("exam-sessions").getAll(), keys = tx.objectStore("exam-sessions").getAllKeys();
@@ -345,19 +514,17 @@ export async function importGuestProgress(): Promise<void> {
     state.attempts = state.attempts.filter(a => a.mode !== "diagnostic");
     state.exposures = state.exposures.filter(e => e.mode !== "diagnostic");
   }
-  const [practice, saved] = await Promise.all([listPracticeSessions(null), listSavedQuestions(null)]);
-  if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Vuelve a confirmar la incorporación.");
-  const db = await openLocalDatabase(owner);
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(["outbox", "meta"], "readwrite");
+  const [practice, saved] = await Promise.all([listPracticeSessions(null), readGuestSavedQuestions()]);
+  const recorded = await recordGuestImport(verified, true, tx => {
     if (state && (state.attempts.length || state.exposures.length || state.nodes.some(node => node.state !== "future") || state.goal !== 2 || state.pendingGoal)) {
       enqueueLearningRestore(tx, state);
     }
     snapshot.sessions.forEach((session, i) => enqueueOperation(tx, { type: "session", mode: "exam", sourceId: `default:${snapshot.keys[i]}`, session: session as never }, true));
     practice.forEach(record => enqueueOperation(tx, { type: "session", ...record }, true));
     saved.forEach(questionId => enqueueOperation(tx, { type: "saved-question", questionId, deleted: false }, true));
-    tx.objectStore("meta").put(true, "guest-import-confirmed");
-    tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error);
   });
-  notifyLocalChange(); await synchronize();
+  if (recorded && isCurrentImport(verified)) {
+    notifyLocalChange();
+    await synchronize();
+  }
 }

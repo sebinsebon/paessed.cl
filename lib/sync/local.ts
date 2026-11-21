@@ -8,6 +8,7 @@ let owner: string | null = null;
 const connections = new Map<string, Promise<IDBDatabase>>();
 export const ACCOUNT_STORES = ["state", "exam-sessions", "playground-sessions", "saved-questions", "outbox", "meta", "conflicts", "remote"];
 export const LOCAL_CHANGED = "paessed-sync-local-change";
+export const LOCAL_OWNER_CHANGED = "paessed-sync-owner-change";
 export type SyncMeta = { deviceId: string; sequence: number; revision: number; generation: number; catalogRevision: string; cursor: number };
 export type PracticeSession = { id: string; index: number; questionIds?: string[]; answers: Record<string, string>; completedAt?: string; assisted?: string[]; confirmed?: string[]; evidenceDelivered?: boolean; sourceRevision?: string };
 export type QueuedOperation = SyncOperation & { importOnly?: boolean };
@@ -17,7 +18,7 @@ export function setSyncOwner(value: string | null) {
   if (value !== null && !/^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(value)) throw new Error("Cuenta inválida.");
   if (owner === value) return;
   owner = value;
-  if (typeof window !== "undefined") window.dispatchEvent(new Event("paessed-sync-owner-change"));
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(LOCAL_OWNER_CHANGED));
 }
 export function devSandboxActive() { return typeof window !== "undefined" && (window as Window & { __PAESSED_DEV_SANDBOX__?: boolean }).__PAESSED_DEV_SANDBOX__ === true; }
 export function databaseName(value: string | null = owner) { return `${devSandboxActive() ? "paessed-dev:" : ""}${value ? `paessed-account-${value}-v3` : "paessed-learning"}`; }
@@ -152,10 +153,37 @@ export async function listPracticeSessions(value: string | null = owner): Promis
   const db=await openLocalDatabase(value,!value);
   return new Promise((resolve,reject)=>{const tx=db.transaction("playground-sessions","readonly"),store=tx.objectStore("playground-sessions"),keys=store.getAllKeys(),values=store.getAll();tx.oncomplete=()=>resolve(keys.result.map((key,i)=>{const text=String(key),colon=text.indexOf(":");return {mode:text.slice(0,colon)as"exam"|"playground",sourceId:text.slice(colon+1),session:values.result[i]};}));tx.onerror=()=>reject(tx.error);});
 }
+function readLegacySavedQuestionIds(): string[] {
+  const values: unknown = JSON.parse(localStorage.getItem("paessed-playground-saved-questions") ?? "[]");
+  if (!Array.isArray(values)) throw new Error("Preguntas guardadas inválidas.");
+  return values.filter((id): id is string => typeof id === "string" && /^(?:demre|personal):[a-f\d]{64}:\d+$/.test(id));
+}
+
+/** Read the guest references for import without migrating or writing them. */
+export async function readGuestSavedQuestions(): Promise<string[]> {
+  const db = await openLocalDatabase(null, true);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(["saved-questions", "meta"]);
+    const saved = tx.objectStore("saved-questions").getAll();
+    const migrated = tx.objectStore("meta").get("legacy-saved-migrated");
+    tx.oncomplete = () => {
+      const ids = new Set<string>(saved.result.filter(value => !value.deleted).map(value => value.questionId));
+      if (!migrated.result && typeof localStorage !== "undefined") {
+        try {
+          const known = new Set(saved.result.map(value => value.questionId));
+          for (const id of readLegacySavedQuestionIds()) if (!known.has(id)) ids.add(id);
+        } catch { /* Preserve malformed originals for manual recovery. */ }
+      }
+      resolve([...ids]);
+    };
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
 export async function listSavedQuestions(value: string | null = owner): Promise<string[]> {
   const db = await openLocalDatabase(value, !value);
   if(!value && typeof localStorage!=="undefined") {
-    await new Promise<void>((resolve,reject)=>{const tx=db.transaction(["meta","saved-questions"],"readwrite"),meta=tx.objectStore("meta"),request=meta.get("legacy-saved-migrated");request.onsuccess=()=>{if(request.result)return;try{const values=JSON.parse(localStorage.getItem("paessed-playground-saved-questions")??"[]");if(!Array.isArray(values))throw new Error("Preguntas guardadas inválidas.");for(const questionId of values){if(typeof questionId!=="string"||!/^(?:demre|personal):[a-f\d]{64}:\d+$/.test(questionId))continue;const store=tx.objectStore("saved-questions"),existing=store.get(questionId);existing.onsuccess=()=>{if(existing.result===undefined)store.put({questionId,deleted:false},questionId);};}meta.put(true,"legacy-saved-migrated");}catch{ /* Preserve malformed originals for manual recovery. */ }};tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});
+    await new Promise<void>((resolve,reject)=>{const tx=db.transaction(["meta","saved-questions"],"readwrite"),meta=tx.objectStore("meta"),request=meta.get("legacy-saved-migrated");request.onsuccess=()=>{if(request.result)return;try{for(const questionId of readLegacySavedQuestionIds()){const store=tx.objectStore("saved-questions"),existing=store.get(questionId);existing.onsuccess=()=>{if(existing.result===undefined)store.put({questionId,deleted:false},questionId);};}meta.put(true,"legacy-saved-migrated");}catch{ /* Preserve malformed originals for manual recovery. */ }};tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});
   }
   return new Promise((resolve, reject) => {
     const tx = db.transaction("saved-questions", "readonly"), request = tx.objectStore("saved-questions").getAll();

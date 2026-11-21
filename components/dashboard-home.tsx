@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { HomeSkeleton } from "./page-skeletons";
 import { LearningError } from "./learning/question-card";
 import { Dashboard } from "./dashboard";
 import { useLearning } from "./learning/use-learning";
@@ -19,7 +18,7 @@ type Draft = NonNullable<LearningState["diagnostic"]>;
 
 export function DashboardHome() {
   const learning = useLearning();
-  const { account, loading: accountLoading } = useAccount();
+  const { account } = useAccount();
   const owner = getSyncOwner();
   const [pending, setPending] = useState<{ draft: Draft | null; guest: boolean }>();
   const [exams, setExams] = useState<Record<string, SavedDefaultExamSession>>();
@@ -54,18 +53,25 @@ export function DashboardHome() {
     window.addEventListener(LOCAL_CHANGED, refresh);
     return () => { active = false; window.removeEventListener(LOCAL_CHANGED, refresh); };
   }, [owner]);
-  const complete = !!learning.state && hasCompletedInitialDiagnostic(learning.state);
+  // SyncStatus mounts this page inside the prepared storage scope. The profile
+  // read can finish later, and its result must agree with that scope.
+  const accountMatches = account !== null && (account.user === null ? owner === null : account.user?.id === owner);
+  const state = accountMatches ? learning.state : null;
+  const complete = !!state && hasCompletedInitialDiagnostic(state);
   const draft = pending?.draft;
   const answered = Object.keys(draft?.answers ?? {}).length;
   const pendingSave = !!draft?.completedAt && !!owner;
-  const diagnostic = pending && learning.state && !learning.error && (!complete || pendingSave)
+  const diagnostic = pending && state && !learning.error && (!complete || pendingSave)
     ? <DiagnosticReminder answered={answered} href={pendingSave ? "/bienvenida" : pending.guest ? "/diagnostico?invitado=1" : "/diagnostico"} pendingSave={pendingSave} />
-    : complete && learning.state?.diagnostic?.completedAt
+    : pending && complete && state?.diagnostic?.completedAt
       ? <Link href="/diagnostico/resultado" className={styles.resultLink}>Ver resultado del diagnóstico</Link>
       : null;
-  return <Dashboard diagnostic={diagnostic} displayName={account?.profile?.displayName} state={learning.state} profile={learning.profile} examSessions={exams ?? {}}
-    loading={learning.loading || accountLoading || !pending || !exams ? <HomeSkeleton /> : undefined}
-    notice={learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />} />;
+  return <Dashboard diagnostic={diagnostic}
+    displayName={owner && accountMatches ? account?.profile?.displayName : undefined}
+    state={state} profile={accountMatches ? learning.profile : null} neutral={!accountMatches}
+    learningLoading={learning.loading || !accountMatches} learningError={accountMatches ? learning.error : ""}
+    examSessions={accountMatches ? exams : undefined}
+    notice={accountMatches && learning.error && <LearningError message={learning.error} retry={() => void learning.refresh()} />} />;
 }
 
 function DiagnosticReminder({ answered, href, pendingSave }: { answered: number; href: string; pendingSave: boolean }) {

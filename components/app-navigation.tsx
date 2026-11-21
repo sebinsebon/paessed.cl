@@ -69,17 +69,21 @@ export function Sidebar({
   dark,
   collapsed,
   goal,
+  progressEpoch,
 }: {
   tourFocus: boolean;
   dark: boolean;
   collapsed: boolean;
   goal: number;
+  progressEpoch: number | null;
 }) {
   const pathname = usePathname();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
-  const [inProgress, setInProgress] = useState<DemoExamProgress | null>(null);
+  const [exam, setExam] = useState<{ epoch: number; progress: DemoExamProgress | null }>();
+  const inProgress = exam?.epoch === progressEpoch ? exam.progress : null;
   useEffect(() => {
-    const syncProgress = () => setInProgress(readDemoExamProgress());
+    if (progressEpoch === null) return;
+    const syncProgress = () => setExam({ epoch: progressEpoch, progress: readDemoExamProgress() });
     syncProgress();
     window.addEventListener(DEMO_EXAM_EVENT, syncProgress);
     window.addEventListener("storage", syncProgress);
@@ -89,7 +93,7 @@ export function Sidebar({
       window.removeEventListener("storage", syncProgress);
       window.removeEventListener("focus", syncProgress);
     };
-  }, []);
+  }, [progressEpoch]);
   // The selected item responds to a click before the next route has rendered.
   // Once navigation completes, the URL becomes the source of truth again.
   useEffect(() => setPendingHref(null), [pathname]);

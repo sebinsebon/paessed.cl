@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-provider";
-import { guestDiagnosticHandoff, initializeSyncIdentity, readCompletedDiagnostic, readOnboardingStatus, submitGuestDiagnostic, synchronize } from "@/lib/sync/client";
+import { getSyncIdentity, guestDiagnosticHandoff, initializeSyncIdentity, readCompletedDiagnostic, readOnboardingStatus, submitGuestDiagnostic, synchronize, watchSyncIdentity } from "@/lib/sync/client";
+import { useSyncIdentity } from "./use-sync-identity";
 import { clearAccountDiagnosticDraft, readLearningState } from "@/lib/learning/repository";
 import type { OnboardingSubmission } from "@/lib/sync/contracts";
 import styles from "./learning/diagnostic-flow.module.css";
 
 export function OnboardingHandoff({ ownerId }: { ownerId: string }) {
   const router = useRouter();
+  const activeIdentity = useSyncIdentity();
+  const ownsHandoff = activeIdentity.status === "verified" && activeIdentity.owner === ownerId;
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(true), [error, setError] = useState("");
   const inFlight = useRef(false);
@@ -22,17 +25,29 @@ export function OnboardingHandoff({ ownerId }: { ownerId: string }) {
     try {
       const identity = await initializeSyncIdentity();
       if (identity.owner !== ownerId) throw new Error("La sesión cambió. Vuelve a iniciar sesión para continuar.");
+      const epoch = getSyncIdentity().epoch;
+      const assertOwner = () => {
+        const current = getSyncIdentity();
+        if (current.status !== "verified" || current.epoch !== epoch || current.owner !== ownerId) {
+          throw new Error("La sesión cambió. Vuelve a iniciar sesión para continuar.");
+        }
+      };
+      assertOwner();
       const own = await readCompletedDiagnostic(ownerId);
       const value = own ?? await readCompletedDiagnostic();
+      assertOwner();
       if (!value) { router.replace(takeAuthReturnTo()); return; }
       const id = value.diagnostic.id;
       let handoff = own ? undefined : await guestDiagnosticHandoff(id);
+      assertOwner();
       if (handoff && (handoff.owner !== ownerId || handoff.confirmed)) { router.replace(takeAuthReturnTo()); return; }
       // Save a manual choice before any network request that could fail.
       if (!own && choice !== undefined) handoff = await guestDiagnosticHandoff(id, { owner: ownerId, choice });
       if (handoff && handoff.owner !== ownerId) { router.replace(takeAuthReturnTo()); return; }
       await synchronize(true);
+      assertOwner();
       let status = await readOnboardingStatus(ownerId);
+      assertOwner();
       let includeEvidence: OnboardingSubmission["includeEvidence"] = own ? true : handoff?.choice ?? "if-empty";
       const needsChoice = () => includeEvidence === "if-empty" && (status.hasEvidence || status.hasDiagnostic);
       if (!status.handledDiagnosticIds.includes(id)) {
@@ -49,6 +64,7 @@ export function OnboardingHandoff({ ownerId }: { ownerId: string }) {
         }
       }
       const saved = await readLearningState(ownerId);
+      assertOwner();
       if (saved.initialDiagnostic?.sourceId !== id && !saved.diagnosticHandoffs?.some(receipt => receipt.sourceId === id) && saved.diagnostic?.id !== id) {
         throw new Error("Tu cuenta recibió el diagnóstico. Falta actualizar el resultado en este dispositivo.");
       }
@@ -59,7 +75,11 @@ export function OnboardingHandoff({ ownerId }: { ownerId: string }) {
     } catch (err) { setError(err instanceof Error ? err.message : "No se pudo preparar tu cuenta."); }
     finally { inFlight.current = false; setBusy(false); }
   }, [ownerId, router]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const stop = watchSyncIdentity();
+    void load();
+    return stop;
+  }, [load]);
   return <main className={styles.page}>
     <header className={styles.header}>
       <Link href="/" aria-label="Paessed, inicio" className={styles.logo}>
@@ -69,8 +89,8 @@ export function OnboardingHandoff({ ownerId }: { ownerId: string }) {
       <ThemeToggle />
     </header>
     <div className={styles.content}><section className={styles.card} aria-busy={busy}>
-      <h1 className={styles.title}>{ask ? "¿Sumar este diagnóstico a tu avance?" : error ? "Guardado pendiente" : "Preparando tu ruta"}</h1>
-      {ask && <><p className={styles.description}>Puedes incorporar estas respuestas para orientar tus próximas prácticas.</p><p className={styles.footnote}>Se conservan tu ruta y tus sesiones. Las preguntas repetidas no suman dominio ni XP.</p>
+      <h1 className={styles.title}>{ownsHandoff && ask ? "¿Sumar este diagnóstico a tu avance?" : error ? "Guardado pendiente" : "Preparando tu ruta"}</h1>
+      {ownsHandoff && ask && <><p className={styles.description}>Puedes incorporar estas respuestas para orientar tus próximas prácticas.</p><p className={styles.footnote}>Se conservan tu ruta y tus sesiones. Las preguntas repetidas no suman dominio ni XP.</p>
         <div className={styles.stackedActions}>
           <button type="button" disabled={busy} className={`${styles.primary} tactile-primary`} onClick={() => void load(true)}>Sí, incorporar respuestas <ArrowRight size={17} /></button>
           <button type="button" disabled={busy} className={styles.secondary} onClick={() => void load(false)}>No, mantener mi dominio actual</button>

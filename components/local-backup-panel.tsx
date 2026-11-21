@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PendingLabel } from "./loading-state";
 import { sileo } from "sileo";
+import { getSyncIdentity } from "@/lib/sync/client";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Archive, Check, Download, FileUp, RotateCcw, ShieldCheck, X } from "lucide-react";
 import {
@@ -72,12 +73,15 @@ export function LocalBackupPanel({ report, onRestored }: Props) {
 
   async function download() {
     if (!report || !exportSelected.length || inFlight.current) return;
+    const epoch = getSyncIdentity().epoch;
     inFlight.current = true;
     setBusy("export");
     setMessage(null);
     setError(null);
     try {
       const blob = await createLocalBackup(exportSelected, report);
+      const identity = getSyncIdentity();
+      if (identity.status !== "verified" || identity.epoch !== epoch) return;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;

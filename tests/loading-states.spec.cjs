@@ -22,7 +22,7 @@ function account(id) {
 
 for (const width of [390, 1440]) {
   for (const theme of ["light", "dark"]) {
-    test(`Inicio verifica esperas rápidas y lentas a ${width} px en tema ${theme}`, async ({ page, baseURL }, info) => {
+    test(`Inicio conserva el acceso seguro durante las esperas a ${width} px en tema ${theme}`, async ({ page, baseURL }, info) => {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ reducedMotion: theme === "dark" ? "reduce" : "no-preference" });
       await enableLocalApp(page, baseURL);
@@ -43,8 +43,10 @@ for (const width of [390, 1440]) {
         requestAnimationFrame(record);
       });
       const identity = hold();
+      const profile = hold();
+      let sessions = 0;
       await page.route("**/api/auth/session", async route => {
-        await identity.pending;
+        await (++sessions === 1 ? identity.pending : profile.pending);
         await route.fulfill({ json: account(accountA) });
       });
       await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
@@ -62,20 +64,82 @@ for (const width of [390, 1440]) {
         expect(visible.time - first.time).toBeGreaterThan(145);
         expect([visible.x, visible.y, visible.width, visible.height]).toEqual([first.x, first.y, first.width, first.height]);
         if (theme === "dark") await expect(placeholder.locator("span").first()).toHaveCSS("animation-name", "none");
-        await expect(page.getByRole("heading", { name: /¡Hola/ })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible();
+        await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
         await page.screenshot({ path: info.outputPath("inicio-espera.png") });
         identity.release();
+        const greeting = page.getByRole("heading", { name: /^¡Hola!/ });
+        await expect(greeting).toBeVisible();
+        await expect(page.getByRole("link", { name: "Hacer un ensayo" }).filter({ visible: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: /Cuenta Uno/ })).toHaveCount(0);
+        profile.release();
         await expect(page.getByRole("heading", { name: /¡Hola, Cuenta Uno!/ })).toBeVisible();
         expect(await nav.boundingBox()).toEqual(before);
         await page.reload();
         await expect(page.getByRole("heading", { name: /¡Hola, Cuenta Uno!/ })).toBeVisible();
-        expect(await page.evaluate(() => window.loadingFrames.some(frame => frame.visibility === "visible"))).toBe(false);
+        await expect(page.locator("main [data-loading-placeholder]")).toHaveCount(0);
       } finally {
         identity.release();
+        profile.release();
       }
     });
   }
 }
+
+test("El regreso desde Ensayos muestra acciones y reserva únicamente los datos locales pendientes", async ({ page, baseURL }) => {
+  await enableLocalApp(page, baseURL);
+  await page.route("**/api/auth/session", route => route.fulfill({ json: account(accountA) }));
+  await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
+  await page.goto("/app/ensayos");
+  await expect(page.getByRole("heading", { name: "Tus ensayos" })).toBeVisible();
+  await page.evaluate(() => {
+    const complete = Object.getOwnPropertyDescriptor(IDBTransaction.prototype, "oncomplete");
+    window.releaseDashboardReads = new EventTarget();
+    Object.defineProperty(IDBTransaction.prototype, "oncomplete", {
+      ...complete,
+      set(callback) {
+        if (!this.objectStoreNames.contains("state") && !this.objectStoreNames.contains("exam-sessions")) {
+          return complete.set.call(this, callback);
+        }
+        complete.set.call(this, event => {
+          window.releaseDashboardReads.addEventListener("release", () => callback.call(this, event), { once: true });
+        });
+      },
+    });
+    window.releaseDashboardReads.addEventListener("release", () => {
+      Object.defineProperty(IDBTransaction.prototype, "oncomplete", complete);
+    }, { once: true });
+  });
+  await page.getByRole("link", { name: "Inicio", exact: true }).filter({ visible: true }).first().click();
+  await expect(page.getByRole("heading", { name: /¡Hola/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Hacer un ensayo" }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ir a Aprender" }).filter({ visible: true })).toBeVisible();
+  await expect(page.locator("#tour-domains [data-loading-placeholder]")).toBeVisible();
+  await expect(page.getByText("Sin ensayos rendidos")).toHaveCount(0);
+  await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
+  await page.evaluate(() => window.releaseDashboardReads.dispatchEvent(new Event("release")));
+  await expect(page.getByText("Sin ensayos rendidos").filter({ visible: true })).toBeVisible();
+  await expect(page.locator('[id="tour-progress"]:visible dd')).toHaveText(["0", "0", "0", "0"]);
+  await expect(page.getByRole("link", { name: "Hacer diagnóstico" })).toBeVisible();
+});
+
+test("Inicio descarta un perfil con otro propietario y permite verificar la cuenta otra vez", async ({ page, baseURL }) => {
+  await enableLocalApp(page, baseURL);
+  let owner = accountA;
+  let sessions = 0;
+  await page.route("**/api/auth/session", route => route.fulfill({ json: account(++sessions === 2 ? accountB : owner) }));
+  await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
+  await page.goto("/app/inicio");
+  const heading = page.locator("main h1");
+  const retry = page.getByRole("button", { name: "Reintentar sesión" });
+  await expect(retry).toBeVisible();
+  await expect(heading).toHaveText("¡Hola!");
+  await expect(page.getByRole("heading", { name: /Cuenta Dos/ })).toHaveCount(0);
+  await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
+  owner = accountB;
+  await retry.click();
+  await expect(heading).toHaveText(/^¡Hola, Cuenta Dos!/);
+});
 
 test("Actualizar la cuenta conserva el contenido y cambiarla vuelve a cargar el progreso", async ({ page, baseURL }) => {
   await enableLocalApp(page, baseURL);

@@ -2,11 +2,42 @@
  * Resumable progress for the prototype 65-question M1 essay.
  * Local-only by design: the imported .paessed viewer has a separate data flow.
  */
-import { scopedStorageKey } from "./sync/local.ts";
+import { getSyncOwner, scopedStorageKey } from "./sync/local.ts";
 export const DEMO_EXAM_STORAGE_KEY = "paessed-demo-exam-progress-v1";
+export const DEMO_EXAM_RESULT_STORAGE_KEY = "paessed-last-exam-v2";
+export const LEGACY_DEMO_EXAM_RESULT_STORAGE_KEY = "paessed-last-exam";
 export const DEMO_EXAM_EVENT = "paessed-demo-exam-progress-changed";
 export const DEMO_EXAM_QUESTION_COUNT = 65;
 export const DEMO_EXAM_DURATION_SECONDS = 2 * 60 * 60 + 20 * 60;
+
+export type DemoExamResult = { correct: number; wrong: number; omitted: number; score: number; secondsLeft: number };
+
+export function parseDemoExamResult(raw: string): DemoExamResult | null {
+  let value: Partial<DemoExamResult> | null;
+  try { value = JSON.parse(raw); } catch { return null; }
+  const within = (entry: unknown, minimum: number, maximum: number): entry is number =>
+    typeof entry === "number" && Number.isInteger(entry) && entry >= minimum && entry <= maximum;
+  if (!value || typeof value !== "object") return null;
+  const { correct, wrong, omitted, score, secondsLeft } = value;
+  if (!within(correct, 0, DEMO_EXAM_QUESTION_COUNT) || !within(wrong, 0, DEMO_EXAM_QUESTION_COUNT) ||
+    !within(omitted, 0, DEMO_EXAM_QUESTION_COUNT) || correct + wrong + omitted !== DEMO_EXAM_QUESTION_COUNT ||
+    !within(score, 100, 1000) || !within(secondsLeft, 0, DEMO_EXAM_DURATION_SECONDS)) return null;
+  return { correct, wrong, omitted, score, secondsLeft };
+}
+
+export function readDemoExamResult(): DemoExamResult | null {
+  try {
+    const raw = localStorage.getItem(scopedStorageKey(DEMO_EXAM_RESULT_STORAGE_KEY));
+    if (raw !== null) return parseDemoExamResult(raw);
+    // Previous explicit backups could restore the old key into an account.
+    // The raw prototype key on a shared browser never establishes ownership.
+    if (getSyncOwner()) {
+      const legacy = localStorage.getItem(scopedStorageKey(LEGACY_DEMO_EXAM_RESULT_STORAGE_KEY));
+      if (legacy !== null) return parseDemoExamResult(legacy);
+    }
+  } catch { /* Storage can be disabled. */ }
+  return null;
+}
 
 export type SavedInkStroke = {
   color: string;

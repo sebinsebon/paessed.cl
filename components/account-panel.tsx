@@ -24,10 +24,17 @@ export function AccountPanel() {
   const [error, setError] = useState("");
   useEffect(() => {
     let live = true;
-    getAccount().then(value => { if (live) { setAccount(value); setName(value.profile?.displayName ?? ""); } })
+    const request = new AbortController();
+    const owner = getSyncOwner();
+    getAccount(request.signal).then(value => {
+      if (!live || owner !== getSyncOwner()) return;
+      if ((value.user?.id ?? null) !== owner) throw new Error("La cuenta cambió. Vuelve a comprobar tu sesión.");
+      setAccount(value);
+      setName(value.profile?.displayName ?? "");
+    })
       .catch(failure => { if (live) setError(failure.message); })
       .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
+    return () => { live = false; request.abort(); };
   }, [loadAttempt]);
   async function run(action: string, values: Record<string, unknown> = {}) {
     const accountId = account?.user?.id;
