@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const JSZip = require("jszip");
 const { enableLocalApp } = require("./local-app-fixture.cjs");
 const { exams, questions } = require("../lib/default-catalog.json");
 
@@ -27,6 +28,7 @@ async function openAccounts(page, baseURL) {
     const code = status;
     const waiting = blocked;
     if (waiting) { waiting.requests++; await waiting.pending; }
+    if (code === "disconnected") return route.abort("connectionfailed");
     const displayName = id === accountA ? "Cuenta A" : "Cuenta B";
     await route.fulfill({ status: code, json: {
       configured: true, user: id ? { id, email: id === accountA ? "alumna-a@example.test" : "alumna-b@example.test", providers: ["email"] } : null,
@@ -205,9 +207,64 @@ test("el resultado demo está aislado y el resultado antiguo no se atribuye a un
   await expect(score).toHaveText("999 pts");
   await session.select(accountB);
   await expect(score).toHaveText("711 pts");
+  await page.evaluate(owner => {
+    localStorage.setItem(`paessed-account:${owner}:paessed-last-exam`, JSON.stringify({
+      correct: 64, wrong: 1, omitted: 0, secondsLeft: 1800, score: 986,
+    }));
+  }, accountB);
+  await page.reload();
+  await expect(score).toHaveText("986 pts");
   await session.select(null);
   await expect(score).toHaveText("711 pts");
   await page.reload();
   await expect(score).toHaveText("711 pts");
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("paessed-last-exam")).score)).toBe(998);
+});
+
+test("una recarga sin conexión a sesión protege el historial y lo recupera al verificar la cuenta", async ({ page, baseURL }) => {
+  const session = await openAccounts(page, baseURL);
+  await page.goto("/app/inicio");
+  await expect(greeting(page)).toContainText("Cuenta A");
+  await seedProgress(page);
+  await page.reload();
+  await expect(history(page)).toContainText(exam.title);
+  session.set(accountA, undefined, "disconnected");
+  await page.reload();
+  const retry = page.getByRole("button", { name: "Reintentar sesión" });
+  await expect(retry).toBeVisible();
+  await expect(greeting(page)).toHaveText("¡Hola!");
+  await expect(page.getByRole("link", { name: "Hacer un ensayo" }).filter({ visible: true })).toBeVisible();
+  await expect(history(page)).not.toContainText(exam.title);
+  await expect(page.locator("#tour-progress dd")).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("paessed-sync-owner"))).toBe(accountA);
+  session.set(accountA);
+  await retry.click();
+  await expect(greeting(page)).toContainText("Cuenta A");
+  await expect(history(page)).toContainText(exam.title);
+});
+
+test("un respaldo antiguo elegido en Perfil recupera el resultado demo solo para esa cuenta", async ({ page, baseURL }) => {
+  const session = await openAccounts(page, baseURL);
+  const result = JSON.stringify({ correct: 61, wrong: 3, omitted: 1, score: 945, secondsLeft: 1000, completedAt: "2026-11-01T12:00:00Z" });
+  const zip = new JSZip();
+  zip.file("manifest.json", JSON.stringify({
+    format: "paessed-browser-backup", version: 1, createdAt: "2026-11-01T12:00:00Z",
+    categories: ["sessions"], items: [{ key: "paessed-last-exam", category: "sessions", value: result }], exams: [],
+  }));
+  await page.goto("/app/perfil");
+  await expect(page.getByTestId("backup-panel")).toHaveAttribute("data-ready", "true");
+  await page.locator('input[aria-label="Seleccionar respaldo PAESSED"]').setInputFiles({
+    name: "respaldo-demo-v1.zip", mimeType: "application/zip", buffer: await zip.generateAsync({ type: "nodebuffer" }),
+  });
+  await page.getByRole("button", { name: "Restaurar datos" }).click();
+  await page.getByRole("button", { name: "Confirmar restauración" }).click();
+  await expect(page.getByText(/Restauración terminada/)).toBeVisible();
+  await page.goto("/app/ensayos/resultado");
+  const score = page.locator("main h1");
+  await expect(score).toHaveText("945 pts");
+  await session.select(accountB);
+  await expect(score).toHaveText("711 pts");
+  await session.select(accountA);
+  await expect(score).toHaveText("945 pts");
+  expect(await page.evaluate(() => localStorage.getItem("paessed-last-exam"))).toBeNull();
 });

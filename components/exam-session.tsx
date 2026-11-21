@@ -5,7 +5,7 @@ import { ExternalQuestionWorkspace } from "@/components/learning/workspace/exter
 import { QuestionDialog } from "@/components/learning/workspace/question-dialog";
 import { usePersistentAppShell } from "@/components/persistent-app-shell";
 import { type PlaygroundInkStroke } from "@/components/playground-scratchpad";
-import { clearDemoExamProgress,DEMO_EXAM_DURATION_SECONDS,DEMO_EXAM_RESULT_STORAGE_KEY,readDemoExamProgress,writeDemoExamProgress } from "@/lib/demo-exam-progress";
+import { clearDemoExamProgress,DEMO_EXAM_DURATION_SECONDS,DEMO_EXAM_RESULT_STORAGE_KEY,readDemoExamProgress,readDemoExamResult,writeDemoExamProgress,type DemoExamResult } from "@/lib/demo-exam-progress";
 import { getM1Unit,type M1UnitId } from "@/lib/m1-curriculum";
 import type { BankQuestion } from "@/lib/playground-imports";
 import { readQuestionPaperTheme } from "@/lib/question-paper";
@@ -203,15 +203,11 @@ export function ExamSession({ sourceId, sourceTitle = "Ensayo M1 de práctica" }
 
 }
 
-type ResultData = { correct: number; wrong: number; omitted: number; score: number; secondsLeft: number };
-
 export function ExamResult() {
-  const [data, setData] = useState<ResultData | null>(null);
+  const [data, setData] = useState<DemoExamResult | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem(scopedStorageKey(DEMO_EXAM_RESULT_STORAGE_KEY));
-    if (raw) setData(JSON.parse(raw));
-    else setData({ correct: 47, wrong: 14, omitted: 4, score: 711, secondsLeft: 1800 });
+    setData(readDemoExamResult() ?? { correct: 47, wrong: 14, omitted: 4, score: 711, secondsLeft: 1800 });
   }, []);
 
   const accuracy = useMemo(() => data ? Math.round((data.correct / Math.max(1, data.correct + data.wrong)) * 100) : 0, [data]);

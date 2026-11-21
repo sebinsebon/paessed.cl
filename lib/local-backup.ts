@@ -6,7 +6,8 @@ import type { SavedDefaultExamSession } from "@/lib/learning/exam-repository";
 import { getSyncOwner, listPracticeSessions, listSavedQuestions, savePracticeSession, saveQuestion, scopedStorageKey, validatePracticeSession, type PracticeSession } from "@/lib/sync/local";
 import {
   DEMO_EXAM_DURATION_SECONDS, DEMO_EXAM_EVENT,
-  DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_STORAGE_KEY,
+  DEMO_EXAM_QUESTION_COUNT, DEMO_EXAM_RESULT_STORAGE_KEY, DEMO_EXAM_STORAGE_KEY,
+  LEGACY_DEMO_EXAM_RESULT_STORAGE_KEY, parseDemoExamResult,
 } from "@/lib/demo-exam-progress";
 import {
   getImportedExam, listImportedExams, saveImportedExam,
@@ -187,6 +188,7 @@ export async function createLocalBackup(categories: BackupCategory[], report: Lo
     const savedKeys = report.categories.find((item) => item.id === category)?.keys ?? [];
     for (const key of [...new Set(savedKeys)]) {
       if (!categoryMatchesKey(category, key)) continue;
+      if (key === LEGACY_DEMO_EXAM_RESULT_STORAGE_KEY && savedKeys.includes(DEMO_EXAM_RESULT_STORAGE_KEY)) continue;
       const raw = localStorage.getItem(scopedStorageKey(key));
       if (raw === null) continue;
       manifest.items.push({
@@ -239,12 +241,18 @@ function validateManifest(value: unknown): BackupManifest {
         !categoryMatchesKey(candidate.category, candidate.key)) {
       throw new Error("El respaldo contiene claves de almacenamiento no reconocidas.");
     }
-    const identity = candidate.category + ":" + candidate.key;
+    // A selected legacy archive can recover the result in the current scope.
+    // The unscoped result left in browser storage is never consulted.
+    const key = candidate.key === LEGACY_DEMO_EXAM_RESULT_STORAGE_KEY ? DEMO_EXAM_RESULT_STORAGE_KEY : candidate.key;
+    const identity = candidate.category + ":" + key;
     if (seen.has(identity)) throw new Error("El respaldo contiene claves duplicadas.");
     seen.add(identity);
     if (candidate.value.length > 12 * 1024 * 1024) throw new Error("Una entrada del respaldo es demasiado grande.");
-    if (isProgressKey(candidate.key)) parseSlice(candidate.key, candidate.category, candidate.value);
-    items.push({ category: candidate.category, key: candidate.key, value: candidate.value });
+    if (isProgressKey(key)) parseSlice(key, candidate.category, candidate.value);
+    if (key === DEMO_EXAM_RESULT_STORAGE_KEY && !parseDemoExamResult(candidate.value)) {
+      throw new Error("El respaldo contiene un resultado de ensayo de ejemplo inválido.");
+    }
+    items.push({ category: candidate.category, key, value: candidate.value });
   }
   const exams: ExamDescriptor[] = [];
   const examIds = new Set<string>();

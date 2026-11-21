@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { AppProgressLoading } from "./page-skeletons";
 import loadingStyles from "./loading-state.module.css";
 import { getSyncOwner, openLocalDatabase } from "@/lib/sync/local";
-import { getSyncIdentity, getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, resolveSyncConflict, startSync, subscribeSyncIdentity, subscribeSyncStatus, synchronize, watchSyncIdentity, type SyncStatusValue } from "@/lib/sync/client";
+import { declineGuestImport, getSyncIdentity, getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, resolveSyncConflict, startSync, subscribeSyncIdentity, subscribeSyncStatus, synchronize, watchSyncIdentity, type SyncStatusValue } from "@/lib/sync/client";
 import { ProgressDialog, type ProgressChoice } from "./progress-dialog";
 import { Modal } from "./modal";
 import { Dashboard } from "./dashboard";
@@ -162,18 +162,11 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
   }
   async function chooseImport(choice: ProgressChoice) {
     if (choice === "later") { setDeferred(true); return; }
-    if (choice === "save") {
-      await updateConflicts(async () => { await importGuestProgress(); if (sameScope()) setSummary(null); }, "No se pudo incorporar el progreso.");
-      return;
-    }
-    setBusy(true); setError("");
-    try {
-      const owner = getSyncOwner(); if (!owner || owner !== scope) throw new Error("La cuenta cambió. Vuelve a intentarlo.");
-      const db = await openLocalDatabase(owner);
-      await new Promise<void>((resolve, reject) => { const tx = db.transaction("meta", "readwrite"); tx.objectStore("meta").put("declined", "guest-import-confirmed"); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+    await updateConflicts(async () => {
+      if (choice === "save") await importGuestProgress();
+      else await declineGuestImport();
       if (sameScope()) setSummary(null);
-    } catch (err) { if (sameScope()) setError(err instanceof Error ? err.message : "No se pudo guardar tu elección."); }
-    finally { if (sameScope()) setBusy(false); }
+    }, choice === "save" ? "No se pudo incorporar el progreso." : "No se pudo guardar tu elección.");
   }
   return <>
     {visible && showError && <section aria-label="Estado de sincronización" className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-2 text-sm">

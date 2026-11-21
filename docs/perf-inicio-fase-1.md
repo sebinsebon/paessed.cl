@@ -63,3 +63,44 @@ Mismo benchmark y 30 regresos calientes por versión y escenario. Tiempos p50 / 
 El contenido general alcanzó el objetivo de p95 ≤150 ms en ambos escenarios con demora. El p95 del saludo personalizado a 1440 px aumentó 72 ms en esa tanda. Ante un error de identidad se conserva la navegación general y se ofrece reintentar o volver a iniciar sesión. Para una recarga sin verificación válida, los datos guardados esperan en su ámbito sin mostrarse. Las pruebas usan cuentas ficticias y backend local o interceptado.
 
 También se ejecutaron las suites históricas de navegador. Algunas intentaban abrir rutas privadas sin una sesión local. Se repitieron en una copia con el fixture de acceso local para comparar la misma prueba contra `main`. Asistencia IA, énfasis, Ensayos local y varias pruebas de la hoja universal y del renderer presentan fallos en la base. Las suites afectadas conservan sus expectativas y sus capturas. La verificación de Google y Supabase reales queda fuera de esta ejecución local.
+
+## Seguimiento de la auditoría de integridad
+
+La auditoría reprodujo una incorporación de progreso iniciada en una pestaña justo antes de cerrar sesión en otra. `main` rechazaba la operación y dejaba la cola vacía. El PR en `1fc7619` anotaba la confirmación y encolaba siete operaciones para la cuenta anterior mientras comprobaba la sesión.
+
+La incorporación y su rechazo explícito capturan el propietario verificado, su `epoch` y una señal de cancelación. El cliente verifica estos tres elementos antes de abrir la escritura y al acceder a la confirmación dentro de IndexedDB. Una invalidación observada por la pestaña aborta la transacción si todavía está pendiente. Confirmación, cola y secuencia se escriben juntas. Una segunda confirmación concurrente conserva la decisión ya guardada y evita duplicar la cola. Las lecturas para incorporar progreso conservan los datos del invitado, incluidas las referencias antiguas de preguntas guardadas y sus marcas de eliminación.
+
+Las pruebas permanentes en `tests/sync-local.test.mjs` verifican el cierre entre dos pestañas, A → B → A, un propietario de almacenamiento aún sin verificar, el cambio directo que usa el selector de desarrollo, el rechazo explícito y la reversión de escrituras aceptadas por IndexedDB antes del commit. Comprobar la cola, su secuencia y la confirmación permite detectar efectos parciales. El navegador solo puede abortar una transacción que aún admite cancelación. Un cierre recibido después de que IndexedDB inició el commit no revierte una incorporación confirmada bajo la identidad anterior, que permanece en su propio ámbito. [Especificación de IndexedDB](https://w3c.github.io/IndexedDB/#dom-idbtransaction-abort)
+
+### Sesión inalcanzable y compatibilidad
+
+Una recarga con la API de sesión inalcanzable muestra el saludo neutro y las acciones de Inicio. El historial y el resto del progreso privado siguen guardados en el ámbito original y se recuperan después de verificar la cuenta, como cubre `tests/account-isolation.spec.cjs`. La verificación de cuenta depende de `/api/auth/session` y de la validación del usuario en el servidor. El cliente actual carece de una prueba de propiedad que pueda validar offline. El identificador persistido en el navegador avisa de cambios y puede seguir presente tras perder la sesión. Por eso el comportamiento de `main`, que abría el ámbito anterior en esa situación, queda deshabilitado.
+
+Un respaldo histórico elegido y confirmado en Perfil puede restituir el puntaje demo en el ámbito activo. Los resultados que ya se habían restaurado bajo la clave antigua dentro de un ámbito de cuenta siguen siendo legibles. Se prefiere el resultado moderno cuando existen ambos y se exporta una sola versión. El resultado sin ámbito, el perfil y el diagnóstico antiguos sin propietario verificable se conservan en disco y se omiten de la recuperación automática. Los formatos de archivo y la restauración de progreso de Aprender se mantienen.
+
+### Reproducciones de la auditoría
+
+| Escenario | `main` (`ce0dc58`) | PR antes (`1fc7619`) | PR con la corrección |
+|---|---|---|---|
+| Cierre en otra pestaña mientras se lee progreso invitado | Rechazada, sin confirmación ni elementos en cola | Confirmada, 7 elementos en cola | Rechazada, sin confirmación ni elementos en cola |
+| Recarga con la API de sesión inalcanzable | El historial previo queda visible | Historial oculto y opción de reintentar | Historial oculto y opción de reintentar. El historial reaparece tras verificar la cuenta |
+
+### Ensayos → Inicio después del seguimiento
+
+Mismo script y 30 recorridos calientes por versión y escenario, con compilaciones optimizadas en localhost, Chromium, respuestas de sesión interceptadas y cuentas ficticias. Tiempos p50 / p95 en milisegundos.
+
+| Escenario | General en `main` | General corregido | Saludo personalizado en `main` | Saludo personalizado corregido |
+|---|---:|---:|---:|---:|
+| 1440 px, sesión +450 ms | 504 / 511 | **42 / 51** | 504 / 511 | 503 / 512 |
+| 390 px, sesión +450 ms | 500 / 513 | **39 / 46** | 500 / 513 | 501 / 506 |
+| 1440 px, sin demora añadida | 51,5 / 69 | 47 / 57 | 51,5 / 69 | 52 / 74 |
+
+Se cumple el p95 ≤150 ms para el primer contenido general en ambos anchos con latencia simulada. El p95 del saludo personalizado subió 1 ms en escritorio y bajó 7 ms a 390 px respecto de la base en esta tanda.
+
+### Verificación y riesgos pendientes
+
+La compilación optimizada pasó. `test:backend` pasó 54 pruebas e incluye la regresión de IndexedDB en Chromium. La misma suite de sincronización local pasó 11 pruebas en WebKit. También pasaron `test:onboarding` (25), `test:base` (36), `test:inicio-ui` (38), `test:accounts-ui` (5), `test:learning-integration` (7) y `test:learning-ui` (2).
+
+Con el mismo acceso local en las dos versiones, se reprodujeron de nuevo dos fallos históricos. La prueba de Asistencia IA busca un control con el texto «Activar Preguntar a la IA» y la de énfasis espera formato cursivo en las alternativas. Ambos fallan también en `main`. La hoja universal y las capturas visuales quedan fuera de la reejecución completa de este seguimiento.
+
+La validación local usa cuentas ficticias. Antes de producción quedan por comprobar en un entorno aislado el inicio de sesión por correo y Google, la caducidad y revocación reales, la reconexión con operaciones pendientes y la resolución de conflictos desde un segundo dispositivo. El PR queda en borrador mientras esas comprobaciones estén pendientes.

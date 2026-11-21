@@ -1,5 +1,5 @@
 import { readDiagnosticState, validateLearningState } from "../learning/repository.ts";
-import { ACCOUNT_STORES, LOCAL_CHANGED, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, listPendingOperations, listPracticeSessions, listSavedQuestions, notifyLocalChange, openLocalDatabase, readSyncMeta, setSyncOwner, type QueuedOperation, type SyncMeta } from "./local.ts";
+import { ACCOUNT_STORES, LOCAL_CHANGED, LOCAL_OWNER_CHANGED, databaseName, devSandboxActive, enqueueOperation, enqueueLearningRestore, getSyncOwner, listPendingOperations, listPracticeSessions, listSavedQuestions, notifyLocalChange, openLocalDatabase, readGuestSavedQuestions, readSyncMeta, setSyncOwner, type QueuedOperation, type SyncMeta } from "./local.ts";
 import type { SyncResponse } from "./contracts";
 import type { OnboardingStatus, OnboardingSubmission } from "./contracts";
 import { fetchSession } from "../auth/session-fetch.ts";
@@ -17,6 +17,7 @@ type SyncIdentity = { status: "checking" | "unavailable"; epoch: number } |
 const initialIdentity: SyncIdentity = { status: "checking", epoch: 0 };
 let identity: SyncIdentity = initialIdentity;
 const identityListeners = new Set<() => void>();
+let importController: AbortController | undefined;
 let activeRequest: AbortController | undefined;
 let capacityWarning = false;
 export function getSyncStatus() { return status; }
@@ -30,8 +31,15 @@ export function subscribeSyncIdentity(listener: () => void) {
   identityListeners.add(listener);
   return () => { identityListeners.delete(listener); };
 }
+function cancelGuestImports() {
+  const controller = importController;
+  importController = undefined;
+  controller?.abort();
+}
 function publishIdentity(next: SyncIdentity) {
+  const previous = identity;
   identity = next;
+  if (next.status !== "verified" || next.epoch !== previous.epoch) cancelGuestImports();
   for (const listener of identityListeners) listener();
 }
 function invalidateIdentity(status: "checking" | "unavailable") {
@@ -431,9 +439,69 @@ export async function guestProgressSummary(): Promise<{ attempts: number; sessio
   })]);
   return { ...learning, sessions: learning.sessions + practice.length, savedQuestions: saved.length };
 }
+type ImportIdentity = { owner: string; epoch: number; signal: AbortSignal };
+const changedImportIdentity = () => new Error("La cuenta cambió. Vuelve a confirmar la incorporación.");
+function verifiedImportIdentity() {
+  if (identity.status !== "verified" || !identity.owner || identity.owner !== getSyncOwner()) throw changedImportIdentity();
+  if (!importController) {
+    importController = new AbortController();
+    window.addEventListener(LOCAL_OWNER_CHANGED, cancelGuestImports, { once: true, signal: importController.signal });
+  }
+  return { owner: identity.owner, epoch: identity.epoch, signal: importController.signal };
+}
+function isCurrentImport({ owner, epoch, signal }: ImportIdentity) {
+  return !signal.aborted && identity.status === "verified" && identity.owner === owner && currentOwner(owner, epoch);
+}
+async function recordGuestImport(
+  verified: ImportIdentity,
+  decision: true | "declined",
+  queue?: (tx: IDBTransaction) => void,
+): Promise<boolean> {
+  if (!isCurrentImport(verified)) throw changedImportIdentity();
+  const db = await openLocalDatabase(verified.owner);
+  if (!isCurrentImport(verified)) throw changedImportIdentity();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(queue ? ["outbox", "meta"] : ["meta"], "readwrite");
+    let failure: unknown;
+    let recorded = false;
+    const cancelIfInvalid = () => {
+      if (isCurrentImport(verified)) return false;
+      failure = changedImportIdentity();
+      try {
+        tx.abort();
+      } catch (error) {
+        // IndexedDB can already be committing when the next browser event is delivered.
+        if (!(error instanceof DOMException && error.name === "InvalidStateError")) throw error;
+      }
+      return true;
+    };
+    verified.signal.addEventListener("abort", cancelIfInvalid, { once: true });
+    const cleanup = () => verified.signal.removeEventListener("abort", cancelIfInvalid);
+    tx.oncomplete = () => { cleanup(); resolve(recorded); };
+    tx.onabort = () => { cleanup(); reject(failure ?? tx.error ?? new Error("No se pudo guardar la incorporación.")); };
+    const meta = tx.objectStore("meta");
+    const choice = meta.get("guest-import-confirmed");
+    choice.onsuccess = () => {
+      if (cancelIfInvalid() || choice.result) return;
+      try {
+        queue?.(tx);
+        meta.put(decision, "guest-import-confirmed");
+        recorded = true;
+      } catch (error) {
+        failure = error;
+        tx.abort();
+      }
+    };
+  });
+}
+
+export async function declineGuestImport(): Promise<void> {
+  await recordGuestImport(verifiedImportIdentity(), "declined");
+}
+
 /** Only called after the account's explicit summary/confirmation. Guest originals remain untouched. */
 export async function importGuestProgress(): Promise<void> {
-  const owner = getSyncOwner(); if (!owner) throw new Error("Inicia sesión para incorporar tu progreso.");
+  const verified = verifiedImportIdentity();
   const guest = await openLocalDatabase(null);
   const snapshot = await new Promise<{ state: unknown; sessions: unknown[]; keys: IDBValidKey[] }>((resolve, reject) => {
     const tx = guest.transaction(["state", "exam-sessions"], "readonly"), state = tx.objectStore("state").get("current"), sessions = tx.objectStore("exam-sessions").getAll(), keys = tx.objectStore("exam-sessions").getAllKeys();
@@ -446,19 +514,17 @@ export async function importGuestProgress(): Promise<void> {
     state.attempts = state.attempts.filter(a => a.mode !== "diagnostic");
     state.exposures = state.exposures.filter(e => e.mode !== "diagnostic");
   }
-  const [practice, saved] = await Promise.all([listPracticeSessions(null), listSavedQuestions(null)]);
-  if (getSyncOwner() !== owner) throw new Error("La cuenta cambió. Vuelve a confirmar la incorporación.");
-  const db = await openLocalDatabase(owner);
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(["outbox", "meta"], "readwrite");
+  const [practice, saved] = await Promise.all([listPracticeSessions(null), readGuestSavedQuestions()]);
+  const recorded = await recordGuestImport(verified, true, tx => {
     if (state && (state.attempts.length || state.exposures.length || state.nodes.some(node => node.state !== "future") || state.goal !== 2 || state.pendingGoal)) {
       enqueueLearningRestore(tx, state);
     }
     snapshot.sessions.forEach((session, i) => enqueueOperation(tx, { type: "session", mode: "exam", sourceId: `default:${snapshot.keys[i]}`, session: session as never }, true));
     practice.forEach(record => enqueueOperation(tx, { type: "session", ...record }, true));
     saved.forEach(questionId => enqueueOperation(tx, { type: "saved-question", questionId, deleted: false }, true));
-    tx.objectStore("meta").put(true, "guest-import-confirmed");
-    tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error);
   });
-  notifyLocalChange(); await synchronize();
+  if (recorded && isCurrentImport(verified)) {
+    notifyLocalChange();
+    await synchronize();
+  }
 }
