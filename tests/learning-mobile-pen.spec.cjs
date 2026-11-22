@@ -85,7 +85,7 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   const desktopPencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(desktopEraser).toBeVisible();
   await expect(desktopSettings).toBeVisible();
-  await expect.poll(() => page.getByTestId('pen-toolbox').last().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
+  await expect.poll(() => page.getByTestId('pen-toolbox').first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
   const desktopPositions = await Promise.all([desktopSettings, desktopEraser, desktopPencil].map(button => button.boundingBox()));
   expect(desktopPositions[0].x).toBeLessThan(desktopPositions[1].x);
   expect(desktopPositions[1].x).toBeLessThan(desktopPositions[2].x);
