@@ -127,6 +127,13 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   expect(desktopHeaderAfter.height).toBeCloseTo(desktopBefore.header.height, 0);
   expect(desktopHeaderAfter.width).toBeCloseTo(desktopBefore.header.width, 0);
 
+  // Wait until the spring settles before asserting seamless geometry.
+  await expect.poll(() => page.evaluate(() => {
+    const anchor = document.querySelector('header [data-testid="pen-toolbox"]');
+    const pencil = anchor.querySelector('[aria-label="Desactivar lápiz"]').getBoundingClientRect();
+    const tray = anchor.querySelector('[class*="penFlyout"]').getBoundingClientRect();
+    return Math.abs(pencil.left - tray.right) + Math.abs(pencil.top - tray.top);
+  })).toBeLessThanOrEqual(1.5);
   // The tray and pencil must read as ONE continuous box, not two rounded cards.
   const connected = await page.evaluate(() => {
     const anchor = document.querySelector('header [data-testid="pen-toolbox"]');
