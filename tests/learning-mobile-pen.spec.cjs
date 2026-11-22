@@ -97,6 +97,82 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   await expect(page.getByRole('radio').first()).toBeEnabled();
 });
 
+test('mobile ink pans with two touches and draws directly over lower alternatives', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Multi-touch pointer events require CDP touch emulation');
+  const meta = catalog[0];
+  await page.setViewportSize({ width: 390, height: 560 });
+  await seed(page, meta);
+  const sheet = page.getByTestId('learning-ink-sheet');
+  await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
+  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+
+  // Force enough paper to require scrolling even with a short sample question.
+  await sheet.evaluate(element => { element.style.paddingBottom = '800px'; });
+  const scroll = page.getByTestId('learning-question-scroll');
+  await expect.poll(() => scroll.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(300);
+  const canvas = sheet.locator('canvas');
+  const bounds = await canvas.boundingBox();
+  const x1 = bounds.x + 70, x2 = bounds.x + 170, y = bounds.y + 150;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
+  const send = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(p => ({ x: p.x, y: p.y, id: p.id })) });
+
+  await send('touchStart', [{ id: 1, x: x1, y }]);
+  await send('touchStart', [{ id: 1, x: x1, y }, { id: 2, x: x2, y }]);
+  for (let i = 1; i <= 12; i++) {
+    await send('touchMove', [{ id: 1, x: x1, y: y - i * 18 }, { id: 2, x: x2, y: y - i * 18 }]);
+  }
+  await send('touchEnd', [{ id: 1, x: x1, y: y - 216 }]);
+  await send('touchEnd', []);
+  await expect.poll(() => scroll.evaluate(el => el.scrollTop)).toBeGreaterThan(100);
+  const storageKey = `paessed-learning-ink:${NODE_ID}:${meta.id}`;
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(0);
+
+  const option = page.getByRole('radio').last();
+  await option.scrollIntoViewIfNeeded();
+  const optionBox = await option.boundingBox();
+  const canvasBox = await canvas.boundingBox();
+  // The ink layer must cover the alternative itself, not stop after the stem.
+  expect(canvasBox.left).toBeLessThanOrEqual(optionBox.left);
+  expect(canvasBox.right).toBeGreaterThanOrEqual(optionBox.right);
+  expect(canvasBox.top).toBeLessThanOrEqual(optionBox.top);
+  expect(canvasBox.bottom).toBeGreaterThanOrEqual(optionBox.bottom);
+  const targetY = optionBox.y + optionBox.height / 2;
+  const targetX = optionBox.x + 18;
+  await send('touchStart', [{ id: 3, x: targetX, y: targetY }]);
+  await send('touchMove', [{ id: 3, x: targetX + 48, y: targetY + 3 }]);
+  await send('touchEnd', []);
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(1);
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+
+  // Answers remain usable once the pencil is deactivated.
+  await page.getByRole('button', { name: 'Desactivar lápiz', exact: true }).click();
+  await option.click();
+  await expect(option).toHaveAttribute('aria-checked', 'true');
+});
+
+test('fast eraser movement removes every crossed stroke, without bringing earlier strokes back', async ({ page }) => {
+  await seed(page, catalog[0]);
+  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  const canvas = page.getByTestId('learning-ink-sheet').locator('canvas');
+  const box = await canvas.boundingBox();
+  for (const offset of [30, 75, 120]) {
+    await page.mouse.move(box.x + 35, box.y + offset);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 115, box.y + offset, { steps: 5 });
+    await page.mouse.up();
+  }
+  const storageKey = `paessed-learning-ink:${NODE_ID}:${catalog[0].id}`;
+  const count = () => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey);
+  await expect.poll(count).toBe(3);
+  await page.getByRole('button', { name: 'Goma de borrar', exact: true }).click();
+  await page.mouse.move(box.x + 74, box.y + 30);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 74, box.y + 120, { steps: 9 });
+  await page.mouse.up();
+  await expect.poll(count).toBe(0);
+});
+
 test('pen quick actions remain visible until pencil is toggled off, including on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await seed(page);
