@@ -410,7 +410,9 @@ test("cambiar de cuenta con Playground en segundo plano sigue invalidando la hoj
       document.dispatchEvent(new Event("visibilitychange"));
       window.dispatchEvent(new Event("focus"));
     });
-    await expect(sheet).toBeVisible();
+    // The previous owner's practice must not be restored under B's account.
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Comenzar práctica" })).toBeVisible();
     await expect(page.getByText("Cuenta A", { exact: true })).toHaveCount(0);
   } finally { next.release(); }
 });
