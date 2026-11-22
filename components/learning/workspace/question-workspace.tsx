@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import { ChevronLeft, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { QuestionTopicTags } from "@/components/question-topic-tags";
 import styles from "./mobile-question.module.css";
 
@@ -23,7 +24,8 @@ export interface QuestionWorkspaceProps {
   paperStyle: CSSProperties;
   contentKey: string;
   modeLabel?: string;
-  mobile?: { steps: { number: number; answered: boolean; current: boolean }[]; menu: ReactNode; footer: ReactNode };
+  mobile?: { steps: { number: number; answered: boolean; current: boolean }[]; menu: ReactNode; footer: ReactNode;
+    compact?: boolean; showAction?: boolean; actionKey?: string; compactAction?: ReactNode; floatingPen?: ReactNode };
 }
 
 /**
@@ -54,6 +56,7 @@ export function QuestionWorkspace({
   modeLabel = "Aprender",
 }: QuestionWorkspaceProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (document.body.style.overflow === "hidden") return;
     const previous = document.body.style.overflow;
@@ -180,9 +183,25 @@ export function QuestionWorkspace({
               ========================================================================== */}
           <footer
             data-testid="learning-session-actions"
-            className={`${mobile ? styles.footer : ""} shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3`}
+            className={`${mobile ? styles.footer : ""} ${mobile?.compact ? styles.compactFrameFooter : ""} shrink-0 border-t border-[var(--pg-border)] bg-[var(--pg-footer)] px-3 py-2.5 sm:px-7 sm:py-3`}
           >
-            {mobile ? mobile.footer : footer}
+            {mobile?.compact ? <>
+              <div className={styles.desktopOnly}>{mobile.footer}</div>
+              <div className={styles.compactMobileOnly}>
+                <AnimatePresence initial={false} mode="wait">
+                  {mobile.showAction && <motion.div
+                    key={mobile.actionKey ?? "review"}
+                    data-testid="mobile-review-dock"
+                    className={styles.compactActionDock}
+                    initial={reducedMotion ? false : { opacity: 0, y: 45, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={reducedMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: 22, scale: 0.94 }}
+                    transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 600, damping: 31, mass: 0.67 }}
+                  >{mobile.compactAction}</motion.div>}
+                </AnimatePresence>
+                {mobile.floatingPen}
+              </div>
+            </> : mobile ? mobile.footer : footer}
           </footer>
         </article>
       </main>
