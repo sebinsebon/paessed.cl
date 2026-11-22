@@ -57,6 +57,39 @@ test('phone uses a fixed pencil, menu tools, and localized eraser strokes', asyn
   await expect(page.getByRole('button', { name: 'Activar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('review and next animate in only after choosing an alternative; the button sits above ink', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await seed(page);
+  const review = page.getByTestId('mobile-review-dock');
+  const pencil = page.getByRole('button', { name: 'Activar lápiz', exact: true });
+  await expect(pencil).toBeVisible();
+  await expect(review).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Comprobar', exact: true })).toHaveCount(0);
+
+  const initialPencil = await pencil.boundingBox();
+  const scroll = page.getByTestId('learning-question-scroll');
+  const initialHeight = await scroll.evaluate(el => el.clientHeight);
+  await page.getByRole('radio').first().click();
+  await expect(review).toBeVisible();
+  const action = review.getByRole('button', { name: 'Comprobar', exact: true });
+  await expect(action).toBeEnabled();
+  await expect(action).toHaveCSS('background-color', /rgb\\(16, 185, 129\\)/);
+  const afterSelection = await pencil.boundingBox();
+  expect(afterSelection.x).toBeCloseTo(initialPencil.x, 0);
+  expect(afterSelection.y).toBeCloseTo(initialPencil.y, 0);
+  expect(await scroll.evaluate(el => el.clientHeight)).toBe(initialHeight);
+  const layering = await page.evaluate(() => ({
+    footer: parseInt(getComputedStyle(document.querySelector('[data-testid="learning-session-actions"]')).zIndex, 10),
+    canvas: parseInt(getComputedStyle(document.querySelector('[data-testid="learning-ink-sheet"] canvas')).zIndex, 10),
+  }));
+  expect(layering.footer).toBeGreaterThan(layering.canvas);
+
+  await action.click();
+  const next = review.getByRole('button', { name: /Continuar|Siguiente pregunta|Ver resultado/ });
+  await expect(next).toBeVisible();
+  await expect(review).toHaveCSS('opacity', '1');
+});
+
 test('mobile ink pans with two touches and draws directly over lower alternatives', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Multi-touch pointer events require CDP touch emulation');
   const meta = catalog[0];
