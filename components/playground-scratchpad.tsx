@@ -15,6 +15,7 @@ export function PlaygroundScratchpad({
   onInteractionStart,
   singlePointer = false,
   doubleTapErase = false,
+  optionTapToSelect = false,
 }: {
   enabled: boolean;
   mode: "pen" | "eraser";
@@ -25,6 +26,8 @@ export function PlaygroundScratchpad({
   /** Aprender can opt into cancellation-safe, single-pointer drawing. */
   singlePointer?: boolean;
   doubleTapErase?: boolean;
+  /** Mobile: a stroke beginning inside an alternative selects it; strokes begun outside can cross it. */
+  optionTapToSelect?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const liveStrokeRef = useRef<PlaygroundInkStroke | null>(null);
@@ -38,6 +41,7 @@ export function PlaygroundScratchpad({
   const touchPanY = useRef<number | null>(null);
   const touchGesture = useRef(false);
   const paintFrame = useRef(0);
+  const optionTap = useRef<{ id: number; x: number; y: number; moved: boolean; button: HTMLButtonElement } | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -147,6 +151,7 @@ export function PlaygroundScratchpad({
           liveStrokeRef.current = null;
           activePointer.current = null;
           lastTap.current = null;
+          optionTap.current = null;
           touchPanY.current = [...touchPositions.current.values()].reduce((a, b) => a + b, 0) / touchPositions.current.size;
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -158,10 +163,27 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
+        optionTap.current = null;
         schedulePaint();
         return;
       }
       activePointer.current = event.pointerId;
+    }
+    if (optionTapToSelect && mode === "pen") {
+      const options = event.currentTarget.closest('[data-testid="learning-ink-sheet"]')?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+      const button = [...(options ?? [])].find(candidate => {
+        if (candidate.disabled) return false;
+        const rect = candidate.getBoundingClientRect();
+        return event.clientX >= rect.left && event.clientX <= rect.right &&
+          event.clientY >= rect.top && event.clientY <= rect.bottom;
+      });
+      if (button) {
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        optionTap.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, button };
+        liveStrokeRef.current = null;
+        return;
+      }
     }
     event.preventDefault();
     pointerStarted.current = performance.now();
@@ -191,6 +213,11 @@ export function PlaygroundScratchpad({
       }
     }
     if (singlePointer && (touchGesture.current || activePointer.current !== event.pointerId)) return;
+    const option = optionTap.current;
+    if (option && option.id === event.pointerId) {
+      if (Math.hypot(event.clientX - option.x, event.clientY - option.y) > 10) option.moved = true;
+      return;
+    }
     const points = pointerPoints(event);
     if (mode === "eraser") {
       eraseAt(points);
@@ -218,6 +245,14 @@ export function PlaygroundScratchpad({
       activePointer.current = null;
     }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    const option = optionTap.current;
+    if (option && option.id === event.pointerId) {
+      optionTap.current = null;
+      if (!option.moved && Math.hypot(event.clientX - option.x, event.clientY - option.y) <= 10 && !option.button.disabled && option.button.isConnected) {
+        option.button.click();
+      }
+      return;
+    }
     const stroke = liveStrokeRef.current;
     liveStrokeRef.current = null;
     if (stroke) {
@@ -252,6 +287,7 @@ export function PlaygroundScratchpad({
     if (event.pointerType === "touch") touchPositions.current.delete(event.pointerId);
     if (!touchPositions.current.size) { touchGesture.current = false; touchPanY.current = null; }
     lastTap.current = null;
+    optionTap.current = null;
     activePointer.current = null;
     liveStrokeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -260,7 +296,7 @@ export function PlaygroundScratchpad({
   useEffect(() => {
     if (!enabled && singlePointer) {
       activePointer.current = null; contacts.current.clear(); touchPositions.current.clear(); touchGesture.current = false;
-      touchPanY.current = null; liveStrokeRef.current = null; lastTap.current = null; schedulePaint();
+      touchPanY.current = null; liveStrokeRef.current = null; lastTap.current = null; optionTap.current = null; schedulePaint();
     }
   }, [enabled, singlePointer, draw]);
   useEffect(() => {
@@ -273,6 +309,7 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
+        optionTap.current = null;
         touchGesture.current = true;
         schedulePaint();
       }
@@ -285,6 +322,7 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
+        optionTap.current = null;
         schedulePaint();
       }
     };
