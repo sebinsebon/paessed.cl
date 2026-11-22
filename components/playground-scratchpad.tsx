@@ -32,6 +32,12 @@ export function PlaygroundScratchpad({
   const contacts = useRef(new Set<number>());
   const pointerStarted = useRef(0);
   const lastTap = useRef<{ time: number; x: number; y: number; target: number; before: PlaygroundInkStroke[] } | null>(null);
+  const strokesRef = useRef(strokes);
+  strokesRef.current = strokes;
+  const touchPositions = useRef(new Map<number, number>());
+  const touchPanY = useRef<number | null>(null);
+  const touchGesture = useRef(false);
+  const paintFrame = useRef(0);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -51,7 +57,7 @@ export function PlaygroundScratchpad({
     ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const stroke of [...strokes, ...(liveStrokeRef.current ? [liveStrokeRef.current] : [])]) {
+    for (const stroke of [...strokesRef.current, ...(liveStrokeRef.current ? [liveStrokeRef.current] : [])]) {
       if (!stroke.points.length) continue;
       ctx.beginPath();
       ctx.strokeStyle = stroke.color;
@@ -67,7 +73,15 @@ export function PlaygroundScratchpad({
         ctx.stroke();
       }
     }
-  }, [strokes]);
+  }, []);
+
+  // Paint once per frame, even when a finger/stylus delivers many pointer events.
+  const schedulePaint = () => {
+    if (paintFrame.current) return;
+    paintFrame.current = requestAnimationFrame(() => { paintFrame.current = 0; draw(); });
+  };
+  useEffect(() => () => cancelAnimationFrame(paintFrame.current), []);
+  useEffect(() => { schedulePaint(); }, [strokes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     draw();
@@ -78,15 +92,23 @@ export function PlaygroundScratchpad({
     return () => observer.disconnect();
   }, [draw, enabled]);
 
-  const pointOf = (event: ReactPointerEvent<HTMLCanvasElement>): PlaygroundInkPoint => {
-    const rect = event.currentTarget.getBoundingClientRect();
+  const pointOfCoords = (x: number, y: number, canvas: HTMLCanvasElement): PlaygroundInkPoint => {
+    const rect = canvas.getBoundingClientRect();
     return {
-      x: Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width))),
-      y: Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height))),
+      x: Math.max(0, Math.min(1, (x - rect.left) / Math.max(1, rect.width))),
+      y: Math.max(0, Math.min(1, (y - rect.top) / Math.max(1, rect.height))),
     };
   };
+  const pointOf = (event: ReactPointerEvent<HTMLCanvasElement>) =>
+    pointOfCoords(event.clientX, event.clientY, event.currentTarget);
+  const pointerPoints = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const coalesced = event.nativeEvent.getCoalescedEvents?.() ?? [];
+    const points = coalesced.map(pointer => pointOfCoords(pointer.clientX, pointer.clientY, event.currentTarget));
+    points.push(pointOf(event)); // Safari may not include the final event in the coalesced batch.
+    return points;
+  };
 
-  const hitsAt = (point: PlaygroundInkPoint, source = strokes): number[] => {
+  const hitsAt = (point: PlaygroundInkPoint, source = strokesRef.current): number[] => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return [];
     const px = point.x * rect.width;
@@ -102,21 +124,41 @@ export function PlaygroundScratchpad({
       segmentDistance(vertex, stroke.points[Math.min(index + 1, stroke.points.length - 1)]) < 14
     ) ? [strokeIndex] : []);
   };
-  const eraseAt = (point: PlaygroundInkPoint) => {
-    const hits = hitsAt(point);
-    const updated = strokes.filter((_, index) => !hits.includes(index));
-    if (updated.length !== strokes.length) onChange(updated);
+  const eraseAt = (points: PlaygroundInkPoint[]) => {
+    const current = strokesRef.current;
+    const hits = new Set(points.flatMap(point => hitsAt(point, current)));
+    if (!hits.size) return;
+    const updated = current.filter((_, index) => !hits.has(index));
+    // Update synchronously: rapid eraser moves must not resurrect a previous stroke.
+    strokesRef.current = updated;
+    onChange(updated);
+    schedulePaint();
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!enabled) return;
     if (singlePointer) {
       contacts.current.add(event.pointerId);
-      if (contacts.current.size > 1 || !event.isPrimary || event.button !== 0) {
+      if (event.pointerType === "touch") {
+        touchPositions.current.set(event.pointerId, event.clientY);
+        if (touchPositions.current.size > 1) {
+          // A second finger cancels the in-progress mark and starts a pan.
+          touchGesture.current = true;
+          liveStrokeRef.current = null;
+          activePointer.current = null;
+          lastTap.current = null;
+          touchPanY.current = [...touchPositions.current.values()].reduce((a, b) => a + b, 0) / touchPositions.current.size;
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          schedulePaint();
+          return;
+        }
+      }
+      if (contacts.current.size > 1 || touchGesture.current || !event.isPrimary || event.button !== 0) {
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        draw();
+        schedulePaint();
         return;
       }
       activePointer.current = event.pointerId;
@@ -127,24 +169,50 @@ export function PlaygroundScratchpad({
     onInteractionStart?.();
     const point = pointOf(event);
     if (mode === "eraser") {
-      eraseAt(point);
+      eraseAt([point]);
       return;
     }
     liveStrokeRef.current = { color, points: [point] };
-    draw();
+    schedulePaint();
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!enabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    if (singlePointer && activePointer.current !== event.pointerId) return;
+    if (singlePointer && event.pointerType === "touch" && touchPositions.current.has(event.pointerId)) {
+      touchPositions.current.set(event.pointerId, event.clientY);
+      if (touchGesture.current) {
+        if (touchPositions.current.size > 1) {
+          const averageY = [...touchPositions.current.values()].reduce((a, b) => a + b, 0) / touchPositions.current.size;
+          const scroll = event.currentTarget.closest<HTMLElement>('[data-testid="learning-question-scroll"]');
+          if (scroll && touchPanY.current !== null) scroll.scrollTop -= averageY - touchPanY.current;
+          touchPanY.current = averageY;
+        }
+        event.preventDefault();
+        return;
+      }
+    }
+    if (singlePointer && (touchGesture.current || activePointer.current !== event.pointerId)) return;
+    const points = pointerPoints(event);
     if (mode === "eraser") {
-      eraseAt(pointOf(event));
+      eraseAt(points);
     } else if (liveStrokeRef.current) {
-      liveStrokeRef.current.points.push(pointOf(event));
-      draw();
+      for (const point of points) {
+        const previous = liveStrokeRef.current.points.at(-1);
+        if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) > 0.0001) liveStrokeRef.current.points.push(point);
+      }
+      schedulePaint();
     }
   };
   const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (singlePointer) {
+      if (event.pointerType === "touch") {
+        touchPositions.current.delete(event.pointerId);
+        if (touchGesture.current) {
+          contacts.current.delete(event.pointerId);
+          if (!touchPositions.current.size) { touchGesture.current = false; touchPanY.current = null; }
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+          return;
+        }
+      }
       contacts.current.delete(event.pointerId);
       if (activePointer.current !== event.pointerId) return;
       activePointer.current = null;
@@ -161,27 +229,39 @@ export function PlaygroundScratchpad({
         const x = first.x * rect.width, y = first.y * rect.height;
         if (tap && previous && performance.now() - previous.time < 340 && Math.hypot(x - previous.x, y - previous.y) < 24 && previous.target >= 0) {
           lastTap.current = null;
-          onChange(previous.before.filter((_, index) => index !== previous.target));
+          const updated = previous.before.filter((_, index) => index !== previous.target);
+          strokesRef.current = updated;
+          onChange(updated);
+          schedulePaint();
           return;
         }
-        const hits = hitsAt(first);
-        lastTap.current = tap ? { time: performance.now(), x, y, target: hits.at(-1) ?? -1, before: strokes } : null;
+        const current = strokesRef.current;
+        const hits = hitsAt(first, current);
+        lastTap.current = tap ? { time: performance.now(), x, y, target: hits.at(-1) ?? -1, before: current } : null;
       }
-      onChange([...strokes, stroke]);
+      const updated = [...strokesRef.current, stroke];
+      strokesRef.current = updated;
+      onChange(updated);
+      schedulePaint();
     }
   };
   const cancelStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!singlePointer) { finishStroke(event); return; }
     if (event.type === "lostpointercapture" && activePointer.current !== event.pointerId) return;
     contacts.current.delete(event.pointerId);
+    if (event.pointerType === "touch") touchPositions.current.delete(event.pointerId);
+    if (!touchPositions.current.size) { touchGesture.current = false; touchPanY.current = null; }
     lastTap.current = null;
     activePointer.current = null;
     liveStrokeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    draw();
+    schedulePaint();
   };
   useEffect(() => {
-    if (!enabled && singlePointer) { activePointer.current = null; contacts.current.clear(); liveStrokeRef.current = null; lastTap.current = null; draw(); }
+    if (!enabled && singlePointer) {
+      activePointer.current = null; contacts.current.clear(); touchPositions.current.clear(); touchGesture.current = false;
+      touchPanY.current = null; liveStrokeRef.current = null; lastTap.current = null; schedulePaint();
+    }
   }, [enabled, singlePointer, draw]);
   useEffect(() => {
     if (!singlePointer || !enabled) return;
@@ -193,16 +273,19 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        draw();
+        touchGesture.current = true;
+        schedulePaint();
       }
     };
     const ended = (event: PointerEvent) => {
       contacts.current.delete(event.pointerId);
+      if (event.pointerType === "touch") touchPositions.current.delete(event.pointerId);
+      if (!contacts.current.size) { touchGesture.current = false; touchPanY.current = null; }
       if (event.type === "pointercancel" && activePointer.current === event.pointerId) {
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        draw();
+        schedulePaint();
       }
     };
     owner.addEventListener("pointerdown", down, true);
@@ -218,7 +301,7 @@ export function PlaygroundScratchpad({
   return (
     <canvas
       ref={canvasRef}
-      aria-label={mode === "eraser" ? "Borrar trazos de la hoja" : "Escribir cálculos sobre la hoja"}
+      aria-label={mode === "eraser" ? "Borrar trazos de la hoja; desliza con dos dedos para desplazarte" : "Escribir cálculos sobre la hoja; desliza con dos dedos para desplazarte"}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishStroke}
