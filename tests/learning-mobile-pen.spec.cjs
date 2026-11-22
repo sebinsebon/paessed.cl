@@ -71,6 +71,7 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
 
   await eraser.click();
   await expect(eraser).toHaveAttribute('aria-pressed', 'true');
+  await expect(toolbox).toHaveAttribute('data-active-tool', 'eraser');
   await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(canvas).toHaveCSS('cursor', /eraser\.svg/);
   await page.mouse.click(box.x + 60, box.y + 30);
@@ -125,6 +126,49 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   });
   expect(desktopHeaderAfter.height).toBeCloseTo(desktopBefore.header.height, 0);
   expect(desktopHeaderAfter.width).toBeCloseTo(desktopBefore.header.width, 0);
+
+  // The tray and pencil must read as ONE continuous box, not two rounded cards.
+  const connected = await page.evaluate(() => {
+    const anchor = document.querySelector('header [data-testid="pen-toolbox"]');
+    const pencil = anchor.querySelector('[aria-label="Desactivar lápiz"]');
+    const flyout = anchor.querySelector('[class*="penFlyout"]');
+    const penRect = pencil.getBoundingClientRect();
+    const trayRect = flyout.getBoundingClientRect();
+    return {
+      leftRadius: getComputedStyle(pencil).borderTopLeftRadius,
+      pencilLeftBorder: getComputedStyle(pencil).borderLeftWidth,
+      flyoutRightBorder: getComputedStyle(flyout).borderRightWidth,
+      topGap: Math.abs(penRect.top - trayRect.top),
+      joinedGap: Math.abs(penRect.left - trayRect.right),
+    };
+  });
+  expect(connected.leftRadius).toBe('0px');
+  expect(connected.pencilLeftBorder).toBe('0px');
+  expect(connected.flyoutRightBorder).toBe('0px');
+  expect(connected.topGap).toBeLessThan(1);
+  expect(connected.joinedGap).toBeLessThanOrEqual(1.5);
+
+  await desktopEraser.click();
+  await expect(desktopEraser).toHaveAttribute('aria-pressed', 'true');
+  await expect(desktopPencil).toHaveAttribute('aria-pressed', 'false');
+  const selection = await page.evaluate(() => {
+    const anchor = document.querySelector('header [data-testid="pen-toolbox"]');
+    const pencil = anchor.querySelector('[aria-label="Desactivar lápiz"]');
+    const eraser = anchor.querySelector('[aria-label="Goma de borrar"]');
+    const flyout = anchor.querySelector('[class*="penFlyout"]');
+    return {
+      tool: anchor.getAttribute('data-active-tool'),
+      pencilBg: getComputedStyle(pencil).backgroundColor,
+      eraserBg: getComputedStyle(eraser).backgroundColor,
+      flyoutBg: getComputedStyle(flyout).backgroundColor,
+      pencilColor: getComputedStyle(pencil).color,
+      eraserColor: getComputedStyle(eraser).color,
+    };
+  });
+  expect(selection.tool).toBe('eraser');
+  expect(selection.pencilBg).toBe(selection.flyoutBg);
+  expect(selection.eraserBg).not.toBe(selection.pencilBg);
+  expect(selection.eraserColor).not.toBe(selection.pencilColor);
   await desktopPencil.click();
   await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ajustes del lápiz', exact: true })).toHaveCount(0);
