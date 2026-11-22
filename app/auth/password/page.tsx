@@ -1,3 +1,9 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  description: "Paessed - Cambiar contraseña",
+};
+
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/auth-form";
 import { authOrigin, requireAccount, requireRecent } from "@/lib/server/auth";
