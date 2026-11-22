@@ -133,6 +133,7 @@ export function Sidebar({
                   <Link
                     key={label}
                     href={href}
+                    prefetch={true}
                     onClick={(event) => selectLink(event, href)}
                     data-active={active ? "true" : undefined}
                     aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined}
@@ -548,7 +549,7 @@ export function MobileNav() {
       {navigationItems.map(({mobileLabel: label, emoji, href}) => {
         const active = selectedPath === href || selectedPath.startsWith(href + "/");
         return (
-          <Link key={label} href={href} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-[var(--nav-active-text)]" : "text-[var(--muted)]"}`}>
+          <Link key={label} href={href} prefetch={true} onClick={(event) => selectLink(event, href)} data-active={active ? "true" : undefined} aria-current={pathname === href || pathname.startsWith(href + "/") ? "page" : undefined} className={`paessed-mobile-nav-link relative isolate flex min-w-[58px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[9px] font-extrabold ${active ? "text-[var(--nav-active-text)]" : "text-[var(--muted)]"}`}>
             <span aria-hidden="true" className="paessed-mobile-active-indicator pointer-events-none absolute inset-0 -z-10 rounded-xl" />
             <NavigationEmoji code={emoji} mobile />
             <span className="relative z-10">{label}</span>
