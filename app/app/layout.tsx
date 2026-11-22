@@ -5,6 +5,7 @@ import { SyncStatus } from "@/components/sync-status";
 import { requireAppEntry } from "@/lib/server/entry";
 
 export const metadata: Metadata = {
+  title: "Paessed - Dashboard",
   description: "Paessed - Dashboard",
 };
 

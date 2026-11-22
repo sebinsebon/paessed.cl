@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  title: "Paessed - Cambiar contraseña",
   description: "Paessed - Cambiar contraseña",
 };
 
