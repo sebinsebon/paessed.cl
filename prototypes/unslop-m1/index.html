@@ -26,7 +26,7 @@
   </header>
   <main id="main">
     <section id="home" class="screen home" aria-labelledby="home-title">
-      <div class="actual-sidebar" data-only="actual">
+      <div class="sidebar">
         <img class="sidebar-brand" src="assets/paessed-logo.svg" alt="" width="178" height="34">
         <p class="sidebar-subtitle">Matemática M1</p>
         <ul class="sidebar-items" aria-label="Secciones de Paessed">
@@ -38,19 +38,11 @@
         </ul>
       </div>
       <div class="home-inner wrap">
-        <div class="intro home-intro">
-          <div>
-            <p class="eyebrow" data-only="proposal">Matemática M1</p>
-            <h1 id="home-title" tabindex="-1">
-              <span data-only="proposal">Tu preparación M1</span>
-              <span data-only="actual">¡Hola! Tu meta es de 780 pts en M1 🚀</span>
-            </h1>
-            <p data-only="actual">Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
-            <p data-only="proposal">Retoma tu ensayo y revisa cómo vas en cada eje.</p>
-          </div>
-          <span class="sample-label" data-only="proposal">Datos de ejemplo</span>
+        <div class="home-intro">
+          <h1 id="home-title" tabindex="-1">¡Hola! Tu meta es de 780 pts en M1 🚀</h1>
+          <p>Mira cómo estás progresando y qué vale más la pena practicar hoy.</p>
         </div>
-        <div class="actual-diagnostic" data-only="actual">
+        <div class="diagnostic-summary">
           <span aria-hidden="true">🎯</span>
           <div><strong>Tu diagnóstico M1</strong><p>16 preguntas para conocer tu punto de partida. Puedes hacerlas a tu ritmo.</p></div>
         </div>
@@ -59,12 +51,10 @@
             <div class="essay-copy">
               <p class="eyebrow" id="essay-status">Ensayo en curso</p>
               <h2 id="essay-title">Ensayo M1 de práctica</h2>
-              <p id="essay-description">Te queda la última pregunta.</p>
               <button type="button" class="primary" id="resume"><span id="resume-label">Continuar ensayo</span><span class="arrow" aria-hidden="true">→</span></button>
             </div>
             <div class="essay-progress">
-              <div class="progress-copy"><strong id="count-home">64/65</strong><span>respondidas</span></div>
-              <div class="answer-map" id="answer-map" aria-hidden="true"></div>
+              <span id="count-home">64/65</span>
               <progress class="real-progress" id="home-progress" value="64" max="65" aria-label="Preguntas respondidas"></progress>
               <p id="essay-position">Pregunta 65 de 65</p>
             </div>
@@ -81,19 +71,15 @@
           </aside>
         </div>
         <section class="axis" aria-label="Dominio por eje">
-          <div class="section-title" data-only="proposal">
-            <h2>Dominio por eje</h2>
-            <p>Diagnóstico M1 pendiente</p>
-          </div>
           <ul class="axis-grid" id="axis-grid" aria-label="Dominio por eje"></ul>
         </section>
-        <div class="actual-cards" data-only="actual">
-          <article class="actual-learning">
+        <div class="home-cards">
+          <article class="learning-card">
             <div>
               <p>Aprender</p><h2>Empieza con un diagnóstico</h2>
               <p>Responde 16 preguntas para saber qué repasar primero.</p>
             </div>
-            <div class="actual-learning-flow">
+            <div class="learning-flow">
               <div aria-hidden="true"><span>📖</span><span>▶</span><span>📖</span></div>
               <p>Diagnóstico → práctica → repaso</p>
               <p>Una ruta según tus respuestas</p>
@@ -102,7 +88,7 @@
           <article>
             <p>Ensayos</p><h2>¿Listo para realizar un ensayo?</h2>
             <p>Mide tu progreso real en M1 y actualiza tu perfil de dominio con un resultado completo.</p>
-            <div class="actual-format"><span>Formato</span><strong>65 preguntas</strong></div>
+            <div class="exam-format"><span>Formato</span><strong>65 preguntas</strong></div>
           </article>
         </div>
       </div>
@@ -112,7 +98,7 @@
       <div class="wrap question-inner">
         <div class="screen-top">
           <button type="button" class="back" data-go-home aria-label="Guardar y salir"><span class="back-arrow" aria-hidden="true">←</span><span class="back-label">Guardar y salir</span></button>
-          <div class="mobile-question-steps" data-only="actual" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="mobile-question-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           <p class="eyebrow"><span class="question-context">Ensayo M1 de práctica · </span><b id="count-question">64/65</b><span class="question-context"> respondidas</span></p>
         </div>
         <div class="paper">
@@ -153,12 +139,11 @@
       <div class="wrap result-inner">
         <div class="screen-top">
           <button type="button" class="back" data-go-home><span aria-hidden="true">←</span> Volver al Inicio</button>
-          <p class="eyebrow" data-only="proposal">Ensayo M1 de práctica</p>
-          <img data-only="actual" class="result-logo" src="assets/paessed-logo.svg" alt="" width="132" height="25">
+          <img class="result-logo" src="assets/paessed-logo.svg" alt="" width="132" height="25">
         </div>
-        <div class="result-summary">
+        <div>
           <div class="result-score">
-            <span class="trophy" data-only="actual" aria-hidden="true"><img src="assets/trophy.svg" alt="" width="24" height="24"></span>
+            <span class="trophy" aria-hidden="true"><img src="assets/trophy.svg" alt="" width="24" height="24"></span>
             <p class="eyebrow">Ensayo completado</p>
             <h1 id="result-title" tabindex="-1"><span id="score"></span> <small>pts</small></h1>
             <p>Puntaje estimado de la demo</p>
@@ -187,14 +172,14 @@
             <p>El 15% de $80.000 son $12.000. Al sumar ese aumento al precio inicial, obtienes <strong>$92.000</strong>.</p>
           </div>
         </article>
-        <div class="actual-result-cards" data-only="actual">
+        <div class="result-cards">
           <article>
             <h2>Qué haría Paessed ahora</h2>
             <ul><li>Recalibrar dominio por eje y unidad.</li><li>Separar errores conceptuales de omisiones.</li><li>Priorizar temas para repasar.</li></ul>
           </article>
           <article>
             <h2>Siguiente paso recomendado</h2>
-            <div class="actual-priority"><span>Prioridad</span><strong>Geometría</strong><p>Repasa semejanza y Teorema de Tales antes del siguiente ensayo completo.</p></div>
+            <div class="recommended-topic"><span>Prioridad</span><strong>Geometría</strong><p>Repasa semejanza y Teorema de Tales antes del siguiente ensayo completo.</p></div>
           </article>
         </div>
       </div>

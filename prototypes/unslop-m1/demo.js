@@ -7,7 +7,6 @@ const answerForm = document.querySelector("#answer-form");
 const answerInputs = [...answerForm.querySelectorAll("input[name=answer]")];
 const dialog = document.querySelector("#finish-dialog");
 const viewButtons = [...document.querySelectorAll("[data-set-view]")];
-const answerMap = document.querySelector("#answer-map");
 const numberOfQuestions = 65;
 const correctAnswer = "C";
 
@@ -29,7 +28,6 @@ function setText(id, value) {
 
 function setView(view) {
   document.body.dataset.view = view;
-  axisGrid.tabIndex = view === "actual" && window.matchMedia("(max-width: 790px)").matches ? 0 : -1;
   for (const button of viewButtons) {
     button.setAttribute("aria-pressed", String(button.dataset.setView === view));
   }
@@ -51,10 +49,8 @@ function renderAttempt() {
   setText("count-home", count);
   setText("count-question", count);
   document.querySelector("#home-progress").value = answered;
-  answerMap.dataset.complete = String(selected !== null);
 
   setText("essay-status", submitted ? "Ensayo completado" : "Ensayo en curso");
-  setText("essay-description", submitted ? "Revisa tu resultado y la corrección." : selected ? "Marcaste la última pregunta." : "Te queda la última pregunta.");
   setText("resume-label", submitted ? "Ver resultado" : "Continuar ensayo");
   setText("essay-position", submitted ? "Entrega completada" : "Pregunta 65 de 65");
 
@@ -83,13 +79,11 @@ function renderAttempt() {
   document.querySelector("#correction").dataset.correct = String(isCorrect);
 }
 
-for (let index = 0; index < numberOfQuestions; index += 1) {
-  const square = document.createElement("span");
-  if (index === priorAnswers.length) square.dataset.current = "";
-  answerMap.append(square);
-}
-
 const axisGrid = document.querySelector("#axis-grid");
+const mobileLayout = window.matchMedia("(max-width: 790px)");
+const setAxisTabStop = () => { axisGrid.tabIndex = mobileLayout.matches ? 0 : -1; };
+mobileLayout.addEventListener("change", setAxisTabStop);
+setAxisTabStop();
 for (const name of ["Números", "Álgebra y funciones", "Geometría", "Probabilidad y estadística"]) {
   const card = document.createElement("li");
   const title = document.createElement("h3");

@@ -93,11 +93,16 @@ try {
       }
 
       await expect(proposal).toHaveAttribute("aria-pressed", "true");
-      await expect(page.getByRole("heading", { name: "Tu preparación M1" })).toBeVisible();
+      const homeHeading = page.getByRole("heading", { name: /Tu meta es de 780 pts/ });
+      await expect(homeHeading).toBeVisible();
       await expect(page.locator("#count-home")).toHaveText("64/65");
+      await expect(page.locator(".diagnostic-summary")).toHaveCSS("border-top-left-radius", "16px");
+      await expect(page.locator(".home-cards article").first()).toHaveCSS("border-top-left-radius", "16px");
+      await expect(start).toHaveCSS("height", "48px");
       await capture("inicio", "propuesta");
       await actual.click();
-      await expect(page.getByRole("heading", { name: /Tu meta es de 780 pts/ })).toBeVisible();
+      await expect(homeHeading).toBeVisible();
+      await expect(page.locator(".diagnostic-summary")).toHaveCSS("border-top-left-radius", "20px");
       await capture("inicio", "actual");
       await proposal.click();
       if (name === "desktop") {
@@ -124,6 +129,7 @@ try {
         await expect(page.locator("#question-title")).toBeVisible();
         await expect(correctOption).toBeChecked();
         await expect(page.locator("#count-question")).toHaveText("65/65");
+        await expect(page.locator(".options label").first()).toHaveCSS("border-top-left-radius", view === actual ? "6px" : "12px");
         for (const item of await page.locator(".price-figure, .options label").all()) {
           const bounds = await item.boundingBox();
           assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= contextOptions.viewport.width);
