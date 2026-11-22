@@ -171,7 +171,7 @@ export function QuestionWorkspace({
             ref={scrollRef}
             key={contentKey}
             data-testid="learning-question-scroll"
-            className={`${mobile ? styles.scroll : ""} min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12`}
+            className={`${mobile ? styles.scroll : ""} ${mobile?.compact && mobile.showAction ? styles.compactScrollWithAction : ""} min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-9 sm:py-5 lg:px-12`}
           >
             <div className="relative flex min-h-full flex-col">
               {children}
