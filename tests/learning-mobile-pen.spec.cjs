@@ -20,10 +20,11 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   await expect(settings).toHaveAttribute('aria-haspopup', 'dialog');
   const toolbox = page.getByTestId('learning-session-actions').getByTestId('pen-toolbox');
   await expect(toolbox).toHaveAttribute('data-expanded', 'true');
+  await expect.poll(() => toolbox.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
   const positions = await page.evaluate(() => {
     const group = [...document.querySelectorAll('[data-testid="pen-toolbox"]')].find(element => element.getBoundingClientRect().width && getComputedStyle(element).visibility !== 'hidden' && element.closest('footer'));
     const buttons = [...group.querySelectorAll('button')];
-    const rect = element => element.getBoundingClientRect();
+    const rect = element => { const { x, left, right } = element.getBoundingClientRect(); return { x, left, right }; };
     const byLabel = label => rect(buttons.find(button => button.getAttribute('aria-label') === label));
     return { group: rect(group), settings: byLabel('Ajustes del lápiz'), eraser: byLabel('Goma de borrar'), pen: byLabel('Desactivar lápiz'), screen: innerWidth };
   });
@@ -84,6 +85,7 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   const desktopPencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(desktopEraser).toBeVisible();
   await expect(desktopSettings).toBeVisible();
+  await expect.poll(() => page.getByTestId('pen-toolbox').last().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
   const desktopPositions = await Promise.all([desktopSettings, desktopEraser, desktopPencil].map(button => button.boundingBox()));
   expect(desktopPositions[0].x).toBeLessThan(desktopPositions[1].x);
   expect(desktopPositions[1].x).toBeLessThan(desktopPositions[2].x);
