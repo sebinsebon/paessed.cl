@@ -33,15 +33,18 @@
 .drawingToggle { min-width:44px; min-height:44px; border:1px solid var(--pg-border); background:var(--pg-soft); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--pg-fg); }
 .drawingToggle[aria-pressed=true] { color:var(--primary); border-color:var(--primary); background:var(--pg-selected); }
 .sessionActions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
-/* Reserve only the pencil's original footprint. Its toolbox floats outside nav layout. */
+/* Only the pencil reserves navigation space; the connected tools float over the page. */
 .penAnchor { position:relative; flex:0 0 48px; width:48px; height:44px; isolation:isolate; z-index:20; }
 .penButton { position:relative; width:48px; height:44px; min-width:48px; min-height:44px; padding:0!important; transition:background-color 140ms,border-color 140ms,transform 140ms; }
 .penButton:active:not(:disabled) { transform:scale(.94); }
-.penAnchor[data-expanded=true] .penButton { border-color:color-mix(in srgb,var(--primary) 35%,var(--pg-border)); }
-.penFlyout { position:absolute; display:flex; align-items:center; gap:2px; right:calc(100% - 1px); top:0; height:44px; padding:0 3px; border:1px solid color-mix(in srgb,var(--primary) 30%,var(--pg-border)); border-right:0; border-radius:12px 0 0 12px; background:var(--pg-soft); box-shadow:-3px 3px 12px rgb(0 0 0 / .08); transform-origin:right center; white-space:nowrap; }
+.penAnchor[data-expanded=true] .penButton { border-color:var(--pg-border); border-left:0; border-radius:0 12px 12px 0; background:var(--pg-soft); color:var(--pg-fg); }
+.penAnchor[data-active-tool=pen] .penButton { background:var(--pg-selected); color:var(--primary); }
+.penAnchor[data-active-tool=eraser] .penButton { background:var(--pg-soft); color:var(--pg-fg); border-color:var(--pg-border); box-shadow:none; }
+.penAnchor[data-active-tool=pen] .penButton[aria-pressed=true] { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 25%,transparent); }
+.penFlyout { position:absolute; display:flex; align-items:center; gap:2px; right:calc(100% - 1px); top:0; height:44px; padding:0 3px; border:1px solid var(--pg-border); border-right:0; border-radius:12px 0 0 12px; background:var(--pg-soft); box-shadow:-3px 3px 12px rgb(0 0 0 / .06); transform-origin:right center; white-space:nowrap; }
 .penFlyoutButton { display:grid; flex:0 0 44px; place-items:center; width:44px; height:40px; min-width:44px; min-height:40px; padding:0!important; border:0; border-radius:9px; background:transparent; color:var(--pg-fg); transition:background-color 130ms,color 130ms,transform 130ms; }
 .penFlyoutButton:hover:not(:disabled) { background:color-mix(in srgb,var(--primary) 9%,var(--pg-soft)); }
-.penFlyoutButton[aria-pressed=true] { color:var(--primary); background:var(--pg-selected); }
+.penFlyoutButton[aria-pressed=true] { color:var(--primary); background:var(--pg-selected); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 30%,transparent); }
 .penFlyoutButton:active:not(:disabled) { transform:scale(.92); }
 .penFlyoutButton:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
 .penFlyoutButton:disabled { cursor:default; }
@@ -49,6 +52,8 @@
   /* Leftmost mobile pencil: float the left-opening tray above it so no tool clips off-screen. */
   .penAnchor { height:48px; }
   .penButton { height:48px; min-height:48px; }
+  /* On narrow screens the tray is separate and sits above the unchanged pencil. */
+  .penAnchor[data-expanded=true] .penButton { border-left:1px solid var(--pg-border); border-radius:12px; }
   .penFlyout { top:auto; bottom:calc(100% + 9px); left:0; right:auto; height:48px; border:1px solid color-mix(in srgb,var(--primary) 30%,var(--pg-border)); border-radius:12px; transform-origin:left bottom; box-shadow:0 5px 20px rgb(0 0 0 / .12); }
   .penFlyoutButton { height:42px; min-height:42px; }
 }
