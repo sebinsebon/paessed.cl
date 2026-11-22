@@ -73,7 +73,7 @@ test('review and next animate in only after choosing an alternative; the button 
   await expect(review).toBeVisible();
   const action = review.getByRole('button', { name: 'Comprobar', exact: true });
   await expect(action).toBeEnabled();
-  await expect(action).toHaveCSS('background-color', /rgb\\(16, 185, 129\\)/);
+  await expect(action).toHaveCSS('background-color', 'rgb(16, 185, 129)');
   const afterSelection = await pencil.boundingBox();
   expect(afterSelection.x).toBeCloseTo(initialPencil.x, 0);
   expect(afterSelection.y).toBeCloseTo(initialPencil.y, 0);
