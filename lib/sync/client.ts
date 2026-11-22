@@ -26,6 +26,9 @@ let identityWatchers = 0;
 let syncIdentityWatchers = 0;
 let identityRequest: { controller: AbortController; revision: string | null; promise: Promise<VerifiedIdentity | undefined> } | undefined;
 let bootstrap: { epoch: number; promise: Promise<void> } | undefined;
+// A tab hidden long enough to verify its owner need not verify twice on return.
+let backgroundCheck: { epoch: number; owner: string | null; revision: string | null } | undefined;
+let lastBackgroundResumeAt = 0;
 const identityListeners = new Set<() => void>();
 let importController: AbortController | undefined;
 let activeRequest: AbortController | undefined;
@@ -72,6 +75,7 @@ function cancelIdentityRequest() {
   identityRequest = undefined;
 }
 function invalidateIdentity(status: "checking" | "unavailable") {
+  backgroundCheck = undefined;
   cancelIdentityRequest();
   activeRequest?.abort();
   authenticated = false;
@@ -174,9 +178,38 @@ function scheduleIdentityExpiry() {
     identityExpiry = setTimeout(resumeIdentity, Math.max(0, verifiedUntil - Date.now()));
   }
 }
-function resumeIdentity() {
+function resumeIdentity(event?: Event) {
   if (recheckBrowserSession() || document.visibilityState !== "visible" || !navigator.onLine || identityRequest) return;
+  const returning = event?.type === "focus" || event?.type === "visibilitychange";
+  if (returning && Date.now() - lastBackgroundResumeAt < 750) return;
+  const previous = backgroundCheck;
+  backgroundCheck = undefined;
+  if (returning && previous && identity.status === "verified" &&
+      previous.epoch === identity.epoch && previous.owner === identity.owner &&
+      previous.revision === browserSessionRevision() && matchesBrowserSession() &&
+      Date.now() < verifiedUntil) {
+    // The same owner was checked after the tab became hidden. Reuse that
+    // verification instead of hiding the question for a duplicate GET.
+    lastBackgroundResumeAt = Date.now();
+    if (syncIdentityWatchers && authenticated) void synchronize();
+    return;
+  }
   refreshIdentity();
+}
+function visibilityChanged(event: Event) {
+  if (document.visibilityState !== "hidden") { resumeIdentity(event); return; }
+  backgroundCheck = undefined;
+  if (!navigator.onLine || identity.status !== "verified" || !matchesBrowserSession()) return;
+  const { epoch, owner } = identity, revision = browserSessionRevision();
+  // Verify while hidden; a changed/revoked identity still invalidates the
+  // workspace, but a successful same-owner check finishes before returning.
+  void verifyIdentity(true).then(verified => {
+    if (verified && identity === verified && verified.epoch === epoch &&
+        verified.owner === owner && revision === browserSessionRevision() &&
+        matchesBrowserSession() && document.visibilityState === "hidden") {
+      backgroundCheck = { epoch, owner, revision };
+    }
+  });
 }
 function refreshIdentity() {
   const previousEpoch = identity.epoch;
@@ -239,7 +272,7 @@ export function watchSyncIdentity(synchronizeOnRefresh = true) {
     window.addEventListener("focus", resumeIdentity);
     window.addEventListener("pagehide", pageHidden);
     window.addEventListener("pageshow", pageRestored);
-    document.addEventListener("visibilitychange", resumeIdentity);
+    document.addEventListener("visibilitychange", visibilityChanged);
     window.addEventListener("paessed-auth-signed-out", signedOut);
     window.addEventListener("paessed-account-change", accountChanged);
     window.addEventListener("storage", accountStorage);
@@ -254,7 +287,7 @@ export function watchSyncIdentity(synchronizeOnRefresh = true) {
     window.removeEventListener("focus", resumeIdentity);
     window.removeEventListener("pagehide", pageHidden);
     window.removeEventListener("pageshow", pageRestored);
-    document.removeEventListener("visibilitychange", resumeIdentity);
+    document.removeEventListener("visibilitychange", visibilityChanged);
     window.removeEventListener("paessed-auth-signed-out", signedOut);
     window.removeEventListener("paessed-account-change", accountChanged);
     window.removeEventListener("storage", accountStorage);
