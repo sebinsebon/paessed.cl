@@ -63,6 +63,24 @@
 @keyframes pen-backdrop-in { from { opacity:0; } to { opacity:1; } }
 @media (max-width:767px) { .dialogEntrance[open] { transform-origin:center top; } }
 @media (prefers-reduced-motion:reduce) { .dialogEntrance[open],.dialogEntrance[open]::backdrop { animation:none; } .penButton,.penFlyoutButton { transition:none; } .penButton:active:not(:disabled),.penFlyoutButton:active:not(:disabled) { transform:none; } }
+/* Compact instant-feedback phone mode: a floating pencil and no permanent bottom navigation. */
+.compactMobileOnly { display:none; }
+@media (max-width:767px) {
+  .compactFrameFooter { position:absolute; inset-inline:0; bottom:0; z-index:42; height:calc(76px + env(safe-area-inset-bottom)); min-height:0!important; padding:0!important; border:0!important; background:transparent!important; pointer-events:none; }
+  .compactMobileOnly { display:block; }
+  .floatingPencil { position:absolute; right:max(16px,env(safe-area-inset-right)); bottom:calc(17px + env(safe-area-inset-bottom)); z-index:2; width:54px; height:54px; display:grid; place-items:center; border-radius:16px; border:1px solid var(--pg-border); background:var(--pg-bg); color:var(--pg-fg); box-shadow:0 4px 0 color-mix(in srgb,var(--pg-border) 80%,#000 12%),0 6px 20px #00000012; pointer-events:auto; transition:transform 150ms cubic-bezier(.2,1,.3,1),background-color 150ms,color 150ms; }
+  .floatingPencil[aria-pressed=true] { border-color:var(--primary); background:var(--pg-selected); color:var(--primary); box-shadow:0 4px 0 color-mix(in srgb,var(--primary) 52%,#000 20%),0 6px 20px #00000012; }
+  .floatingPencil:active:not(:disabled) { transform:translateY(3px) scale(.96); }
+  .floatingPencil:focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+  .compactActionDock { position:absolute; z-index:1; left:max(16px,env(safe-area-inset-left)); right:calc(max(16px,env(safe-area-inset-right)) + 68px); bottom:calc(17px + env(safe-area-inset-bottom)); min-width:0; pointer-events:auto; transform-origin:bottom center; }
+  .compactActionDock > div, .compactActionDock > div > div { width:100%; min-width:0; margin:0; padding:0; }
+  .compactActionDock .footerFeedback, .compactActionDock :global(button[aria-label="Pregunta anterior"]) { display:none!important; }
+  .compactActionDock :global(button) { display:flex; align-items:center; justify-content:center; width:100%; min-width:0; min-height:54px; gap:8px; padding:12px 10px; border:0; border-radius:15px; background:var(--success)!important; color:#fff!important; box-shadow:0 5px 0 color-mix(in srgb,var(--success) 70%,#064e3b); font-size:15px; line-height:1.15; font-weight:900; text-align:center; letter-spacing:.015em; transition:transform 150ms,box-shadow 150ms,filter 150ms; }
+  .compactActionDock :global(button:not(:disabled):active) { transform:translateY(4px); box-shadow:0 1px 0 color-mix(in srgb,var(--success) 70%,#064e3b); }
+  .compactActionDock :global(button:disabled) { opacity:.58; }
+  .compactActionDock :global(button:focus-visible) { outline:2px solid var(--success); outline-offset:3px; }
+}
+@media (prefers-reduced-motion:reduce) { .floatingPencil,.compactActionDock :global(button) { transition:none; } }
 .penSettingsIcon { position:relative; display:grid; width:26px; height:26px; place-items:center; }
 .penSettingsGear { position:absolute; right:-2px; bottom:-3px; border-radius:3px; background:var(--pg-soft); }
 .answerEffects { position:fixed; inset:0; z-index:65; overflow:hidden; pointer-events:none; --result-color:#10b981; }
