@@ -329,6 +329,92 @@ test("al volver a la pestaña se oculta la vista anterior aunque aún no haya av
   } finally { next.release(); }
 });
 
+test("Playground conserva la pregunta al regresar tras verificar la misma cuenta en segundo plano", async ({ page, baseURL }) => {
+  await enableLocalApp(page, baseURL);
+  let sessionGets = 0;
+  await page.route("**/api/auth/session", route => {
+    sessionGets++;
+    return route.fulfill({ json: {
+      configured: true, user: { id: accountA, providers: ["email"] },
+      profile: { displayName: "Cuenta A" },
+    } });
+  });
+  await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
+  await page.goto("/app/playground");
+  await page.getByRole("button", { name: "Comenzar práctica" }).click();
+  const sheet = page.getByLabel("Modo práctica de Playground");
+  await expect(sheet).toBeVisible();
+  const answer = page.getByRole("radio").first();
+  await expect(answer).toBeVisible();
+  await answer.check();
+  await expect(answer).toBeChecked();
+  expect(sessionGets).toBe(1);
+
+  // Simulate the browser hiding the document, then allow the verification to
+  // complete while hidden, before bringing the document back to the foreground.
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect.poll(() => sessionGets).toBe(2);
+  await expect(sheet).toBeVisible();
+
+  await page.evaluate(() => {
+    window.playgroundReturnFlashed = false;
+    const visible = element => !!element && element.getClientRects().length > 0 &&
+      getComputedStyle(element).visibility === "visible";
+    window.playgroundReturnObserver = new MutationObserver(() => {
+      if (!visible(document.querySelector('[aria-label="Modo práctica de Playground"]')) ||
+          [...document.querySelectorAll("[data-loading-placeholder]")].some(visible)) {
+        window.playgroundReturnFlashed = true;
+      }
+    });
+    window.playgroundReturnObserver.observe(document.body, {
+      subtree: true, childList: true, attributes: true, characterData: true,
+    });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  await page.waitForTimeout(250);
+  const flashed = await page.evaluate(() => {
+    window.playgroundReturnObserver.disconnect();
+    return window.playgroundReturnFlashed;
+  });
+  expect(flashed).toBe(false);
+  expect(sessionGets).toBe(2);
+  await expect(sheet).toBeVisible();
+  await expect(answer).toBeChecked();
+});
+
+test("cambiar de cuenta con Playground en segundo plano sigue invalidando la hoja anterior", async ({ page, baseURL }) => {
+  const session = await openAccounts(page, baseURL);
+  await page.goto("/app/playground");
+  await page.getByRole("button", { name: "Comenzar práctica" }).click();
+  const sheet = page.getByLabel("Modo práctica de Playground");
+  await expect(sheet).toBeVisible();
+  const next = hold();
+  try {
+    session.set(accountB, next);
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect.poll(() => next.requests).toBeGreaterThan(0);
+    await expect(sheet).toBeHidden();
+    session.set(accountB);
+    next.release();
+    await expect.poll(() => next.finished).toBeGreaterThan(0);
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expect(sheet).toBeVisible();
+    await expect(page.getByText("Cuenta A", { exact: true })).toHaveCount(0);
+  } finally { next.release(); }
+});
+
 test("una sesión en memoria se vuelve a verificar al vencer su vigencia", async ({ page, baseURL }) => {
   await page.clock.install();
   const session = await openAccounts(page, baseURL);
