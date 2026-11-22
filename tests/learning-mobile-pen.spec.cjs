@@ -131,6 +131,12 @@ test('mobile ink pans with two touches and draws directly over lower alternative
   const option = page.getByRole('radio').last();
   await option.scrollIntoViewIfNeeded();
   const optionBox = await option.boundingBox();
+  const canvasBox = await canvas.boundingBox();
+  // The ink layer must cover the alternative itself, not stop after the stem.
+  expect(canvasBox.left).toBeLessThanOrEqual(optionBox.left);
+  expect(canvasBox.right).toBeGreaterThanOrEqual(optionBox.right);
+  expect(canvasBox.top).toBeLessThanOrEqual(optionBox.top);
+  expect(canvasBox.bottom).toBeGreaterThanOrEqual(optionBox.bottom);
   const targetY = optionBox.y + optionBox.height / 2;
   const targetX = optionBox.x + 18;
   await send('touchStart', [{ id: 3, x: targetX, y: targetY }]);
