@@ -1,4 +1,4 @@
-import type { AccountInfo } from "./client";
+import type { AccountInfo } from "./session-fetch";
 import { createAccountLearningState, devSandboxActive, getSyncOwner, notifyLocalChange, openLocalDatabase, setSyncOwner } from "../sync/local.ts";
 import type { OnboardingSubmission, OnboardingStatus } from "../sync/contracts";
 

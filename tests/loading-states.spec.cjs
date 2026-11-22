@@ -43,13 +43,17 @@ for (const width of [390, 1440]) {
         requestAnimationFrame(record);
       });
       const identity = hold();
-      const profile = hold();
+      const synchronization = hold();
       let sessions = 0;
       await page.route("**/api/auth/session", async route => {
-        await (++sessions === 1 ? identity.pending : profile.pending);
+        sessions++;
+        await identity.pending;
         await route.fulfill({ json: account(accountA) });
       });
-      await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
+      await page.route("**/api/sync?**", async route => {
+        await synchronization.pending;
+        await route.fulfill({ json: emptySync });
+      });
       try {
         await page.goto("/app/inicio");
         const nav = page.getByRole("link", { name: "Aprender", exact: true }).filter({ visible: true }).first();
@@ -72,15 +76,16 @@ for (const width of [390, 1440]) {
         await expect(greeting).toBeVisible();
         await expect(page.getByRole("link", { name: "Hacer un ensayo" }).filter({ visible: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: /Cuenta Uno/ })).toHaveCount(0);
-        profile.release();
+        synchronization.release();
         await expect(page.getByRole("heading", { name: /¡Hola, Cuenta Uno!/ })).toBeVisible();
+        expect(sessions).toBe(1);
         expect(await nav.boundingBox()).toEqual(before);
         await page.reload();
         await expect(page.getByRole("heading", { name: /¡Hola, Cuenta Uno!/ })).toBeVisible();
         await expect(page.locator("main [data-loading-placeholder]")).toHaveCount(0);
       } finally {
         identity.release();
-        profile.release();
+        synchronization.release();
       }
     });
   }
@@ -123,20 +128,19 @@ test("El regreso desde Ensayos muestra acciones y reserva únicamente los datos 
   await expect(page.getByRole("link", { name: "Hacer diagnóstico" })).toBeVisible();
 });
 
-test("Inicio descarta un perfil con otro propietario y permite verificar la cuenta otra vez", async ({ page, baseURL }) => {
+test("Inicio exige una respuesta que identifique la sesión antes de mostrar datos privados", async ({ page, baseURL }) => {
   await enableLocalApp(page, baseURL);
-  let owner = accountA;
-  let sessions = 0;
-  await page.route("**/api/auth/session", route => route.fulfill({ json: account(++sessions === 2 ? accountB : owner) }));
+  let missingUser = true;
+  await page.route("**/api/auth/session", route => route.fulfill({ json: missingUser ? { configured: true, profile: { displayName: "Cuenta Uno" } } : account(accountB) }));
   await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
   await page.goto("/app/inicio");
   const heading = page.locator("main h1");
   const retry = page.getByRole("button", { name: "Reintentar sesión" });
   await expect(retry).toBeVisible();
   await expect(heading).toHaveText("¡Hola!");
-  await expect(page.getByRole("heading", { name: /Cuenta Dos/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /Cuenta Uno/ })).toHaveCount(0);
   await expect(page.locator('[id="tour-progress"] dd')).toHaveCount(0);
-  owner = accountB;
+  missingUser = false;
   await retry.click();
   await expect(heading).toHaveText(/^¡Hola, Cuenta Dos!/);
 });

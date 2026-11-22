@@ -11,7 +11,7 @@ import { useAccount } from "./use-account";
 import { AuthDialog } from "./auth-dialog";
 
 export function Landing({ accountsAvailable = true }: { accountsAvailable?: boolean }) {
-  const { account, loading } = useAccount();
+  const { account, loading } = useAccount(true);
   const [auth, setAuth] = useState<"login" | "register" | null>(null);
   const [diagnostic, setDiagnostic] = useState(false);
   const openLogin = () => { setDiagnostic(false); setAuth("login"); };

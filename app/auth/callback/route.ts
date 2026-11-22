@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { AUTH_FLOW_COOKIE, authDestination, canSetGooglePassword, nonceHash } from "@/lib/auth/security";
 import { completeAuthCallback, parseAuthCallback, redirectTypeOf } from "@/lib/auth/callback";
+import { SESSION_REVISION_COOKIE } from "@/lib/auth/session-revision";
 import { authClient, authConfigured, authOrigin, flowSecret, markReauthenticated } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
 import { enforceRequestLimit } from "@/lib/server/limits";
@@ -25,6 +26,9 @@ export async function GET(request: Request) {
       },
       exchange: async () => {
         const { data, error } = await client.auth.exchangeCodeForSession(flow.code!, flow.flowId ? { flowId: flow.flowId } : undefined);
+        if (data.session) {
+          jar.set(SESSION_REVISION_COOKIE, crypto.randomUUID(), { path: "/", sameSite: "lax", httpOnly: false, secure: authOrigin().startsWith("https:") });
+        }
         if (error || !data.user || !data.session) throw new Error("Invalid code");
         return { value: { user: data.user, session: data.session }, identity: { userId: data.user.id, verified: !!data.user.email_confirmed_at, hasGoogle: !!data.user.identities?.some(i => i.provider === "google"), redirectType: redirectTypeOf(data) } };
       },

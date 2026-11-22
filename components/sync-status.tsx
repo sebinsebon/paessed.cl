@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { AppProgressLoading } from "./page-skeletons";
 import loadingStyles from "./loading-state.module.css";
 import { getSyncOwner, openLocalDatabase } from "@/lib/sync/local";
-import { declineGuestImport, getSyncIdentity, getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, resolveSyncConflict, startSync, subscribeSyncIdentity, subscribeSyncStatus, synchronize, watchSyncIdentity, type SyncStatusValue } from "@/lib/sync/client";
+import { declineGuestImport, ensureSyncBootstrap, getSyncIdentity, getSyncStatus, guestProgressSummary, importGuestProgress, initializeSyncIdentity, listSyncConflicts, matchesBrowserSession, resolveSyncConflict, startSync, subscribeSyncIdentity, subscribeSyncStatus, synchronize, watchSyncIdentity, type SyncStatusValue } from "@/lib/sync/client";
 import { ProgressDialog, type ProgressChoice } from "./progress-dialog";
 import { Modal } from "./modal";
 import { Dashboard } from "./dashboard";
@@ -96,7 +96,10 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
       if (!active || verified.status !== "verified") return;
       const { epoch, owner } = verified;
       preparingEpoch = epoch;
-      const current = () => active && epoch === getSyncIdentity().epoch && owner === getSyncOwner();
+      const current = () => active && epoch === getSyncIdentity().epoch && owner === getSyncOwner() && matchesBrowserSession();
+      try { await ensureSyncBootstrap(verified); }
+      catch (err) { if (current()) setError(err instanceof Error ? err.message : "No se pudo sincronizar tu progreso."); }
+      if (!current()) return;
       setScope(owner);
       stop();
       stop = startSync();
@@ -115,7 +118,7 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
         if (current()) { setPreparedEpoch(epoch); setReady(true); }
       }
     }
-    void initializeSyncIdentity()
+    void initializeSyncIdentity(true)
       .catch(err => { if (active) setError(err instanceof Error ? err.message : "No se pudo comprobar la cuenta."); })
       .then(() => { initialized = true; return prepare(); });
     return () => { active = false; stop(); unsubscribe(); stopIdentity(); stopWatching(); };

@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { authAction, getAccount, type AccountInfo } from "@/lib/auth/client";
+import { useRef, useState, type FormEvent } from "react";
+import { authAction } from "@/lib/auth/client";
+import { getVerifiedAccount, initializeSyncIdentity } from "@/lib/sync/client";
 import { getSyncOwner } from "@/lib/sync/local";
 import { sileo } from "sileo";
 import { LoadingRegion, PendingLabel, Skeleton } from "./loading-state";
 import { Captcha } from "./auth-form";
+import { useAccount } from "./use-account";
 
 export function AccountPanel() {
-  const [account, setAccount] = useState<AccountInfo | null>(null);
-  const [name, setName] = useState("");
+  const { account, loading } = useAccount();
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const name = draftName ?? account?.profile?.displayName ?? "";
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [captchaToken, setCaptchaToken] = useState("");
@@ -18,34 +21,21 @@ export function AccountPanel() {
   const [actionInFlight, setActionInFlight] = useState<string | null>(null);
   const lock = useRef(false);
   const busy = actionInFlight !== null;
-  const [loading, setLoading] = useState(true);
-  const [loadAttempt, setLoadAttempt] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  useEffect(() => {
-    let live = true;
-    const request = new AbortController();
-    const owner = getSyncOwner();
-    getAccount(request.signal).then(value => {
-      if (!live || owner !== getSyncOwner()) return;
-      if ((value.user?.id ?? null) !== owner) throw new Error("La cuenta cambió. Vuelve a comprobar tu sesión.");
-      setAccount(value);
-      setName(value.profile?.displayName ?? "");
-    })
-      .catch(failure => { if (live) setError(failure.message); })
-      .finally(() => { if (live) setLoading(false); });
-    return () => { live = false; request.abort(); };
-  }, [loadAttempt]);
   async function run(action: string, values: Record<string, unknown> = {}) {
     const accountId = account?.user?.id;
-    if (lock.current || !accountId) return;
+    if (lock.current || !accountId || getVerifiedAccount()?.user?.id !== accountId) return;
     lock.current = true;
     setActionInFlight(action); setMessage(""); setError("");
     try {
       const result = await authAction(action, values, accountId);
       if (result.url) { window.location.assign(result.url); return; }
       if (action === "logout" || action === "delete") { window.location.assign("/login"); return; }
-      if (action === "profile") sileo.success({ title: result.message ?? "Perfil guardado" });
+      if (action === "profile") {
+        setDraftName(previous => previous === values.displayName ? null : previous);
+        sileo.success({ title: result.message ?? "Perfil guardado" });
+      }
       else setMessage(result.message ?? "Listo.");
       setPassword("");
     } catch (failure) { setError(failure instanceof Error ? failure.message : "No se pudo completar la solicitud."); }
@@ -59,7 +49,7 @@ export function AccountPanel() {
       <p className="mt-2 text-sm text-[var(--muted)]">{account.user.email}</p>
       <p className="mt-1 text-xs text-[var(--muted)]">Accesos vinculados: {account.user.providers.map(p => p === "email" ? "correo y contraseña" : p === "google" ? "Google" : p).join(", ")}</p>
       <form className="mt-5 space-y-3" onSubmit={(event: FormEvent) => { event.preventDefault(); void run("profile", { displayName: name, timezone: "America/Santiago" }); }}>
-        <label className="block text-xs font-bold">Nombre<input required minLength={2} maxLength={80} value={name} onChange={event => setName(event.target.value)} className={`mt-2 ${input}`} autoComplete="name" /></label>
+        <label className="block text-xs font-bold">Nombre<input required minLength={2} maxLength={80} value={name} onChange={event => setDraftName(event.target.value)} className={`mt-2 ${input}`} autoComplete="name" /></label>
         <p className="text-xs text-[var(--muted)]">Zona horaria de tu progreso: America/Santiago.</p>
         <button disabled={busy} className={button}><PendingLabel pending={actionInFlight === "profile"} label="Guardando…">Guardar perfil</PendingLabel></button>
       </form>
@@ -99,7 +89,7 @@ export function AccountPanel() {
           <Skeleton className="h-10 w-full rounded-xl" />
         </div>
       </>}
-    </LoadingRegion> : <button type="button" className={`mt-3 ${button}`} onClick={() => { setError(""); setLoading(true); setLoadAttempt(value => value + 1); }}>Reintentar</button>}
+    </LoadingRegion> : <button type="button" className={`mt-3 ${button}`} onClick={() => { setError(""); void initializeSyncIdentity(); }}>Reintentar</button>}
     {error && <p role="alert" className="mt-4 text-sm text-red-600">{error} <Link href="/login" className="underline">Iniciar sesión</Link></p>}
     {message && <p role="status" className="mt-4 text-sm text-emerald-700">{message}</p>}
   </section>;

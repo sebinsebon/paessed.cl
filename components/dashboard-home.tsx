@@ -53,8 +53,7 @@ export function DashboardHome() {
     window.addEventListener(LOCAL_CHANGED, refresh);
     return () => { active = false; window.removeEventListener(LOCAL_CHANGED, refresh); };
   }, [owner]);
-  // SyncStatus mounts this page inside the prepared storage scope. The profile
-  // read can finish later, and its result must agree with that scope.
+  // The session and prepared local storage must agree before showing private data.
   const accountMatches = account !== null && (account.user === null ? owner === null : account.user?.id === owner);
   const state = accountMatches ? learning.state : null;
   const complete = !!state && hasCompletedInitialDiagnostic(state);
