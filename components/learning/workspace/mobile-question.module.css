@@ -33,24 +33,31 @@
 .drawingToggle { min-width:44px; min-height:44px; border:1px solid var(--pg-border); background:var(--pg-soft); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--pg-fg); }
 .drawingToggle[aria-pressed=true] { color:var(--primary); border-color:var(--primary); background:var(--pg-selected); }
 .sessionActions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
-/* One shared toolbox: the pencil stays anchored at the right as actions unfold left. */
-.penControls { display:inline-flex; flex-shrink:0; align-items:center; gap:2px; padding:3px; border:1px solid var(--pg-border); border-radius:15px; background:var(--pg-soft); box-shadow:0 1px 2px rgb(0 0 0 / .04); transition:border-color 150ms,box-shadow 160ms,background-color 150ms; }
-.penControls[data-expanded=true] { border-color:color-mix(in srgb,var(--primary) 32%,var(--pg-border)); box-shadow:0 3px 12px color-mix(in srgb,var(--primary) 12%,transparent); }
-.penControls .drawingToggle { display:grid; place-items:center; position:relative; flex:0 0 44px; width:44px; height:44px; min-width:44px; min-height:44px; padding:0!important; border:0; border-radius:11px; background:transparent; color:var(--pg-fg); transition:background-color 130ms,color 130ms,transform 130ms; }
-.penControls .drawingToggle:hover:not(:disabled) { background:color-mix(in srgb,var(--primary) 9%,var(--pg-soft)); }
-.penControls .drawingToggle:active:not(:disabled) { transform:scale(.92); }
-.penControls .drawingToggle[aria-pressed=true] { color:var(--primary); background:var(--pg-selected); }
-.penControls .drawingToggle:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
-.penControls .drawingToggle:disabled { cursor:default; }
-.penActionSlot { display:flex; flex-shrink:0; align-items:center; height:44px; overflow:hidden; }
-.penExpandIndicator { position:absolute; top:50%; left:0; opacity:.65; transform:translateY(-50%); transition:transform 160ms cubic-bezier(.22,1,.36,1),opacity 130ms; }
-.penExpandIndicator[data-open=true] { transform:translateY(-50%) rotate(180deg); opacity:.9; }
+/* Reserve only the pencil's original footprint. Its toolbox floats outside nav layout. */
+.penAnchor { position:relative; flex:0 0 48px; width:48px; height:44px; isolation:isolate; z-index:20; }
+.penButton { position:relative; width:48px; height:44px; min-width:48px; min-height:44px; padding:0!important; transition:background-color 140ms,border-color 140ms,transform 140ms; }
+.penButton:active:not(:disabled) { transform:scale(.94); }
+.penAnchor[data-expanded=true] .penButton { border-color:color-mix(in srgb,var(--primary) 35%,var(--pg-border)); }
+.penFlyout { position:absolute; display:flex; align-items:center; gap:2px; right:calc(100% - 1px); top:0; height:44px; padding:0 3px; border:1px solid color-mix(in srgb,var(--primary) 30%,var(--pg-border)); border-right:0; border-radius:12px 0 0 12px; background:var(--pg-soft); box-shadow:-3px 3px 12px rgb(0 0 0 / .08); transform-origin:right center; white-space:nowrap; }
+.penFlyoutButton { display:grid; flex:0 0 44px; place-items:center; width:44px; height:40px; min-width:44px; min-height:40px; padding:0!important; border:0; border-radius:9px; background:transparent; color:var(--pg-fg); transition:background-color 130ms,color 130ms,transform 130ms; }
+.penFlyoutButton:hover:not(:disabled) { background:color-mix(in srgb,var(--primary) 9%,var(--pg-soft)); }
+.penFlyoutButton[aria-pressed=true] { color:var(--primary); background:var(--pg-selected); }
+.penFlyoutButton:active:not(:disabled) { transform:scale(.92); }
+.penFlyoutButton:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
+.penFlyoutButton:disabled { cursor:default; }
+@media (max-width:767px) {
+  /* Leftmost mobile pencil: float the left-opening tray above it so no tool clips off-screen. */
+  .penAnchor { height:48px; }
+  .penButton { height:48px; min-height:48px; }
+  .penFlyout { top:auto; bottom:calc(100% + 9px); left:0; right:auto; height:48px; border:1px solid color-mix(in srgb,var(--primary) 30%,var(--pg-border)); border-radius:12px; transform-origin:left bottom; box-shadow:0 5px 20px rgb(0 0 0 / .12); }
+  .penFlyoutButton { height:42px; min-height:42px; }
+}
 .dialogEntrance[open] { transform-origin:top right; animation:pen-dialog-in 180ms cubic-bezier(.18,1,.3,1) both; }
 .dialogEntrance[open]::backdrop { animation:pen-backdrop-in 180ms ease-out both; }
 @keyframes pen-dialog-in { from { opacity:0; transform:translateY(-7px) scale(.94); } 75% { opacity:1; transform:translateY(0) scale(1.015); } to { opacity:1; transform:translateY(0) scale(1); } }
 @keyframes pen-backdrop-in { from { opacity:0; } to { opacity:1; } }
 @media (max-width:767px) { .dialogEntrance[open] { transform-origin:center top; } }
-@media (prefers-reduced-motion:reduce) { .dialogEntrance[open],.dialogEntrance[open]::backdrop { animation:none; } .penControls,.penControls .drawingToggle,.penExpandIndicator { transition:none; } .penControls .drawingToggle:active:not(:disabled) { transform:none; } }
+@media (prefers-reduced-motion:reduce) { .dialogEntrance[open],.dialogEntrance[open]::backdrop { animation:none; } .penButton,.penFlyoutButton { transition:none; } .penButton:active:not(:disabled),.penFlyoutButton:active:not(:disabled) { transform:none; } }
 .penSettingsIcon { position:relative; display:grid; width:26px; height:26px; place-items:center; }
 .penSettingsGear { position:absolute; right:-2px; bottom:-3px; border-radius:3px; background:var(--pg-soft); }
 .answerEffects { position:fixed; inset:0; z-index:65; overflow:hidden; pointer-events:none; --result-color:#10b981; }
