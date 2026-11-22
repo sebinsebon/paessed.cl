@@ -224,8 +224,9 @@ export function PlaygroundScratchpad({
       onPointerUp={finishStroke}
       onPointerCancel={cancelStroke}
       onLostPointerCapture={singlePointer ? cancelStroke : undefined}
+      style={enabled && mode === "eraser" ? { cursor: 'url("/cursors/eraser.svg") 7 26, crosshair' } : undefined}
       className={"absolute inset-0 z-10 h-full w-full " +
-        (enabled ? (mode === "eraser" ? "pointer-events-auto cursor-cell touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
+        (enabled ? (mode === "eraser" ? "pointer-events-auto touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
     />
   );
 }
