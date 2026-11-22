@@ -25,7 +25,7 @@ test('figure zoom and tool dialogs restore their trigger focus', async ({ page }
 test('phone widths, landscape, desktop boundaries, keyboard and immutable answer', async ({ page }, testInfo) => {
   const meta = catalog[0];
   await seed(page, meta);
-  await expect(confirm(page)).toBeDisabled();
+  await expect(confirm(page)).toHaveCount(0);
   for (const [width, height] of [[320, 740], [360, 800], [375, 812], [390, 844], [430, 932], [844, 390], [768, 1024], [1024, 768], [1440, 1000]]) {
     await page.setViewportSize({ width, height });
     await ready(page, meta);
@@ -80,12 +80,12 @@ test('original package failure and retry never enable confirmation prematurely',
   await page.reload();
   await openNode(page);
   await expect(page.getByRole('alert').filter({ hasText: 'No se pudo cargar' })).toBeVisible();
-  await expect(confirm(page)).toBeDisabled();
+  await expect(confirm(page)).toHaveCount(0);
   expect((await readState(page)).attempts).toHaveLength(0);
   await page.unroute('**/default/gold/**');
   await page.getByRole('button', { name: 'Reintentar carga', exact: true }).click();
   await ready(page, catalog[0]);
-  await expect(confirm(page)).toBeDisabled();
+  await expect(confirm(page)).toHaveCount(0);
   await page.getByRole('radio').first().click();
   await expect(confirm(page)).toBeEnabled();
 });
