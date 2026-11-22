@@ -328,7 +328,7 @@ test("lost HTTP acknowledgements retry stable operations with account assertion 
     };
     await window.client.initializeSyncIdentity();const retained=(await window.local.listPendingOperations()).length;
     await window.client.synchronize();const drained=(await window.local.listPendingOperations()).length;
-    window.fetch=async()=>new Response("",{status:401});await window.client.initializeSyncIdentity();
+    window.fetch=async()=>new Response("",{status:401});await window.client.initializeSyncIdentity(true);
     return {retained,drained,sent:window.sent,owner:window.local.getSyncOwner(),paused:window.client.getSyncStatus().state};
   });
   assert.equal(result.retained,1);assert.equal(result.drained,0);assert.equal(result.sent[0].body.operations[0].id,result.sent[1].body.operations[0].id);

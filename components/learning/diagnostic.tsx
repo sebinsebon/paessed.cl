@@ -36,7 +36,7 @@ export function LearningDiagnostic({ resultOnly = false, guestDraft = false }: {
   useEffect(() => {
     let mounted = true;
     const stop = watchSyncIdentity();
-    void initializeSyncIdentity().then(() => { if (mounted) setEntryChecked(true); });
+    void initializeSyncIdentity(true).then(() => { if (mounted) setEntryChecked(true); });
     return () => { mounted = false; stop(); };
   }, []);
   useLayoutEffect(() => {

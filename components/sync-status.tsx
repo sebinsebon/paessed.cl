@@ -115,7 +115,7 @@ export function SyncStatus({ children }: { children?: ReactNode }) {
         if (current()) { setPreparedEpoch(epoch); setReady(true); }
       }
     }
-    void initializeSyncIdentity()
+    void initializeSyncIdentity(true)
       .catch(err => { if (active) setError(err instanceof Error ? err.message : "No se pudo comprobar la cuenta."); })
       .then(() => { initialized = true; return prepare(); });
     return () => { active = false; stop(); unsubscribe(); stopIdentity(); stopWatching(); };
