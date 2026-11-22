@@ -342,12 +342,12 @@ test("Playground conserva la pregunta al regresar tras verificar la misma cuenta
   await page.route("**/api/sync?**", route => route.fulfill({ json: emptySync }));
   await page.goto("/app/playground");
   await page.getByRole("button", { name: "Comenzar práctica" }).click();
-  const sheet = page.getByLabel("Modo práctica de Playground");
+  const sheet = page.getByRole("main", { name: "Pregunta de aprendizaje" });
   await expect(sheet).toBeVisible();
-  const answer = page.getByRole("group", { name: "Alternativas de respuesta" }).getByRole("button").first();
+  const answer = page.getByRole("radio").first();
   await expect(answer).toBeVisible();
-  await answer.click();
-  await expect(answer).toHaveAttribute("aria-pressed", "true");
+  await answer.check();
+  await expect(answer).toBeChecked();
   expect(sessionGets).toBe(1);
 
   // Simulate the browser hiding the document, then allow the verification to
@@ -364,7 +364,7 @@ test("Playground conserva la pregunta al regresar tras verificar la misma cuenta
     const visible = element => !!element && element.getClientRects().length > 0 &&
       getComputedStyle(element).visibility === "visible";
     window.playgroundReturnObserver = new MutationObserver(() => {
-      if (!visible(document.querySelector('[aria-label="Modo práctica de Playground"]')) ||
+      if (!visible(document.querySelector('main[aria-label="Pregunta de aprendizaje"]')) ||
           [...document.querySelectorAll("[data-loading-placeholder]")].some(visible)) {
         window.playgroundReturnFlashed = true;
       }
@@ -384,14 +384,14 @@ test("Playground conserva la pregunta al regresar tras verificar la misma cuenta
   expect(flashed).toBe(false);
   expect(sessionGets).toBe(2);
   await expect(sheet).toBeVisible();
-  await expect(answer).toHaveAttribute("aria-pressed", "true");
+  await expect(answer).toBeChecked();
 });
 
 test("cambiar de cuenta con Playground en segundo plano sigue invalidando la hoja anterior", async ({ page, baseURL }) => {
   const session = await openAccounts(page, baseURL);
   await page.goto("/app/playground");
   await page.getByRole("button", { name: "Comenzar práctica" }).click();
-  const sheet = page.getByLabel("Modo práctica de Playground");
+  const sheet = page.getByRole("main", { name: "Pregunta de aprendizaje" });
   await expect(sheet).toBeVisible();
   const next = hold();
   try {
