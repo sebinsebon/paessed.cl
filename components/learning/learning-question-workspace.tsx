@@ -169,7 +169,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
       {panel === "menu" && <>
         {extraTools && <div onClick={event => { if ((event.target as HTMLElement).closest("button")) setPanel(null); }}>{extraTools}</div>}
         <button type="button" className={styles.menuButton} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={20} />{saved ? "Quitar de guardadas" : "Guardar pregunta"}</button>
-        {compactContext ? <>
+        {mobileInk ? <>
           <button type="button" className={styles.menuButton} aria-pressed={drawing.drawingEnabled && tool === "pen"} disabled={!sheetReady} onClick={() => {
             setTool("pen"); drawing.setDrawingEnabled(true); setPanel(null);
           }}><Pencil size={20} />Dibujar sobre la pregunta</button>
@@ -206,7 +206,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   </>;
   return <div onClickCapture={event => { const target = event.target as HTMLElement; const button = target.closest<HTMLElement>("button"); if (button && !button.closest("dialog")) panelTrigger.current = button; }}><QuestionWorkspace modeLabel={context === "diagnostic" ? "Diagnóstico" : context === "exam" ? "Ensayos" : context === "playground" ? "Playground" : "Aprender"} number={number} total={total} axis={axis} topic={topic} subtitle={subtitle} progress={progress} progressMax={progressMax} onClose={onClose} closeDisabled={busy} tools={tools} panels={panels} footer={null} paperStyle={paperStyle(theme)} contentKey={meta.id} mobile={{
     steps,
-    compact: compactContext,
+    compact: mobileInk,
     showAction: !!selected || !!checkedAnswer || revealSolution || (context === "playground" && question?.options.length === 0),
     actionKey: !!checkedAnswer || revealSolution || (locked && !busy && !!selected) ? "next" : "review",
     compactAction: footer(false, null),
