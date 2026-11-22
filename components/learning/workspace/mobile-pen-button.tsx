@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronLeft, Eraser, Pencil, Settings } from "lucide-react";
+import { Eraser, Pencil, Settings } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import styles from "./mobile-question.module.css";
 
-/** A single compact toolbox that unfolds to the left of the main pencil. */
+/** Keep the original pencil position and size; float the extra tools outside layout. */
 export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactivate, onErase, onSettings }: {
   enabled: boolean;
   disabled: boolean;
@@ -15,21 +15,20 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
   onSettings: () => void;
 }) {
   const reducedMotion = useReducedMotion();
-  const spring = reducedMotion
-    ? { duration: 0 }
-    : { type: "spring" as const, stiffness: 850, damping: 37, mass: 0.62 };
-  const actionMotion = {
-    initial: reducedMotion ? false : { opacity: 0, width: 0, x: 12, scale: 0.75 },
-    animate: { opacity: 1, width: 44, x: 0, scale: 1 },
-    exit: { opacity: 0, width: 0, x: 12, scale: 0.75 },
-  };
 
-  return <div className={styles.penControls} data-testid="pen-toolbox" data-expanded={enabled} role="group" aria-label="Herramientas del lápiz">
+  return <div className={styles.penAnchor} data-testid="pen-toolbox" data-expanded={enabled} role="group" aria-label="Herramientas del lápiz">
     <AnimatePresence initial={false}>
-      {enabled && <motion.div key="settings" className={styles.penActionSlot} {...actionMotion} transition={{ ...spring, delay: reducedMotion ? 0 : 0.025 }}>
+      {enabled && <motion.div
+        key="pen-flyout"
+        className={styles.penFlyout}
+        initial={reducedMotion ? false : { opacity: 0, x: 12, scaleX: 0.78, scaleY: 0.9 }}
+        animate={{ opacity: 1, x: 0, scaleX: 1, scaleY: 1 }}
+        exit={reducedMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, x: 10, scaleX: 0.82, scaleY: 0.9 }}
+        transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 850, damping: 37, mass: 0.62 }}
+      >
         <button
           type="button"
-          className={styles.drawingToggle}
+          className={styles.penFlyoutButton}
           aria-label="Ajustes del lápiz"
           aria-haspopup="dialog"
           disabled={disabled}
@@ -40,11 +39,9 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
             <Settings size={13} className={styles.penSettingsGear} />
           </span>
         </button>
-      </motion.div>}
-      {enabled && <motion.div key="eraser" className={styles.penActionSlot} {...actionMotion} transition={spring}>
         <button
           type="button"
-          className={styles.drawingToggle}
+          className={styles.penFlyoutButton}
           aria-label="Goma de borrar"
           aria-pressed={mode === "eraser"}
           disabled={disabled}
@@ -63,7 +60,6 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
       disabled={disabled}
       onClick={enabled ? onDeactivate : onActivate}
     >
-      <ChevronLeft size={12} className={styles.penExpandIndicator} data-open={enabled} aria-hidden="true" />
       <Pencil size={20} aria-hidden="true" />
     </button>
   </div>;
