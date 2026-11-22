@@ -20,7 +20,7 @@ const plusJakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Paessed.cl 🎯",
+  title: "Paessed",
   description: "Paessed - Inicio",
 };
 

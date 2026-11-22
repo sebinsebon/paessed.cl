@@ -4,12 +4,13 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("PAESSED has a fixed browser title and route-specific descriptions", async () => {
+test("PAESSED sets route-specific tab titles alongside metadata descriptions", async () => {
   const root = await read("app/layout.tsx");
-  assert.match(root, /title: "Paessed\.cl 🎯"/);
+  assert.match(root, /title: "Paessed"/);
   assert.match(root, /description: "Paessed - Inicio"/);
 
   for (const [path, description] of [
+    ["app/page.tsx", "Paessed - Inicio"],
     ["app/app/layout.tsx", "Paessed - Dashboard"],
     ["app/app/inicio/page.tsx", "Paessed - Dashboard - Inicio"],
     ["app/app/ensayos/layout.tsx", "Paessed - Dashboard - Ensayos"],
@@ -27,7 +28,7 @@ test("PAESSED has a fixed browser title and route-specific descriptions", async 
   ]) {
     const source = await read(path);
     assert.ok(source.includes(`description: "${description}"`), `Missing metadata in ${path}`);
-    assert.doesNotMatch(source, /title:\s*"/, `Title must inherit from root in ${path}`);
+    assert.ok(source.includes(`title: "${description}"`), `Missing browser tab title in ${path}`);
   }
 });
 
