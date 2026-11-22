@@ -33,12 +33,12 @@
 .drawingToggle { min-width:44px; min-height:44px; border:1px solid var(--pg-border); background:var(--pg-soft); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--pg-fg); }
 .drawingToggle[aria-pressed=true] { color:var(--primary); border-color:var(--primary); background:var(--pg-selected); }
 .sessionActions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
-.penButton { position:relative; width:48px; padding:0!important; isolation:isolate; transition:background-color 180ms,border-color 180ms; }
-.penButton:disabled { cursor:default; }
-.penGear { position:absolute; opacity:0; transform:scale(.65) rotate(-40deg); transition:opacity 180ms,transform 180ms; }
-.penIcon { position:relative; transition:transform 180ms; }
-.penButton[data-settings-ready=true] .penGear { opacity:.35; transform:scale(1) rotate(0deg); }
-.penButton[data-settings-ready=true] .penIcon { transform:translate(6px,5px) scale(.7); }
+.penControls { display:inline-flex; flex-shrink:0; align-items:center; gap:6px; }
+.penControls > .drawingToggle { width:44px; height:44px; min-width:44px; min-height:44px; padding:0!important; }
+.penControls > .penButton { width:48px; }
+.penControls > .drawingToggle:disabled { cursor:default; }
+.penSettingsIcon { position:relative; display:grid; width:26px; height:26px; place-items:center; }
+.penSettingsGear { position:absolute; right:-2px; bottom:-3px; border-radius:3px; background:var(--pg-soft); }
 .answerEffects { position:fixed; inset:0; z-index:65; overflow:hidden; pointer-events:none; --result-color:#10b981; }
 .answerEffects[data-result=incorrect] { --result-color:#f97366; }
 .answerWash { position:absolute; inset:0; box-shadow:inset 0 0 80px color-mix(in srgb,var(--result-color) 24%,transparent); animation:answer-wash 650ms ease-out both; }
