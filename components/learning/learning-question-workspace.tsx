@@ -156,7 +156,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     <button type="button" aria-label="Ajustes de apariencia de la hoja" onClick={() => setPanel("appearance")} className={buttonTone(panel === "appearance")}><Settings size={18} /></button>
   </>;
   const panels = <>
-    {panel && <QuestionDialog returnFocusRef={panelTrigger} title={{ menu: "Herramientas de la pregunta", appearance: "Apariencia de la hoja", map: "Mapa de preguntas del nodo", info: "Información de la pregunta", drawing: "Herramientas de dibujo" }[panel]} onClose={() => setPanel(null)} paperStyle={paperStyle(theme)}>
+    {panel && <QuestionDialog returnFocusRef={panelTrigger} animatedEntrance={panel === "drawing"} title={{ menu: "Herramientas de la pregunta", appearance: "Apariencia de la hoja", map: "Mapa de preguntas del nodo", info: "Información de la pregunta", drawing: "Herramientas de dibujo" }[panel]} onClose={() => setPanel(null)} paperStyle={paperStyle(theme)}>
       {panel === "menu" && <>
         {extraTools && <div onClick={event => { if ((event.target as HTMLElement).closest("button")) setPanel(null); }}>{extraTools}</div>}
         <button type="button" className={styles.menuButton} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={20} />{saved ? "Quitar de guardadas" : "Guardar pregunta"}</button>
