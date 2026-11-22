@@ -39,7 +39,7 @@ export function PackageAuditViewer({ id }: { id: string }) {
   const issues = isRecord(current) && Array.isArray(current.issues) ? current.issues.filter((issue): issue is string => typeof issue === "string") : [];
 
   return <AppShell title="Auditoría local del paquete" eyebrow="Desarrollo local">
-    <div className="space-y-5">
+    <div className="space-y-[var(--ui-space-section,20px)]">
     <h1 className="text-2xl font-bold">Auditoría local del paquete</h1>
     <p>Solo lectura · Respuestas, explicaciones y observaciones del archivo.</p>
     {loading ? <p role="status">Cargando paquete…</p> : error ? <p role="alert">{error}</p> : !record ? <p>Paquete local no encontrado.</p> : <>
@@ -60,7 +60,7 @@ export function PackageAuditViewer({ id }: { id: string }) {
             {option.blocks ? <PaessedBlocks blocks={option.blocks} assetUrls={resourceUrls.byId} loadingAssets={resourcesLoading} /> : option.text}
           </li>)}
         </ul>
-        <section aria-label="Revisión del contenido del paquete" className="space-y-3 rounded-lg border p-4">
+        <section aria-label="Revisión del contenido del paquete" className="space-y-3 rounded-[var(--ui-card-radius,8px)] border p-[var(--ui-padding-card,16px)]">
           <h3 className="font-bold">Revisión del contenido del paquete</h3>
           {(answer?.status !== "verified" || explanation?.status !== "verified") && <p role="alert">Contenido pendiente de verificación. La respuesta y explicación pueden depender de supuestos o contener errores; revisa las observaciones.</p>}
           <p>Respuesta del archivo: {String(answer?.label ?? "Sin respuesta")} · Estado: {statusLabel(answer?.status)}</p>

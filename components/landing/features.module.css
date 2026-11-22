@@ -4,6 +4,11 @@
 .heading p { margin:12px 0 0; color:var(--muted); font-size:15px; line-height:1.8; }
 .modes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
 .mode { padding:30px; border:1px solid var(--border); border-bottom-width:3px; border-radius:24px; background:var(--surface); transition:transform .45s cubic-bezier(.22,1.5,.36,1),border-color .25s; }
+:global(html[data-paessed-polish]) .modes { gap: var(--ui-space-cards); }
+:global(html[data-paessed-polish]) .mode { padding: var(--ui-padding-panel); border-radius: var(--ui-card-radius); }
+:global(html[data-paessed-polish]) .importFeature { border-radius: var(--ui-panel-radius); }
+:global(html[data-paessed-polish]) .advantages { gap: var(--ui-space-section); }
+:global(html[data-paessed-polish]) .advantage { gap: var(--ui-space-cards); }
 .mode img { width:64px; height:64px; margin-bottom:24px; object-fit:contain; transition:transform .5s cubic-bezier(.22,1.5,.36,1); }
 .mode h3 { margin:0 0 8px; color:var(--text); font-size:22px; font-weight:800; letter-spacing:-.035em; }
 .detail { color:var(--primary); font-size:13px; font-weight:800; }

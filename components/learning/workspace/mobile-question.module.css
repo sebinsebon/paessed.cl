@@ -33,6 +33,17 @@
 .drawingToggle { min-width:44px; min-height:44px; border:1px solid var(--pg-border); background:var(--pg-soft); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--pg-fg); }
 .drawingToggle[aria-pressed=true] { color:var(--primary); border-color:var(--primary); background:var(--pg-selected); }
 .sessionActions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; }
+
+:global(html[data-paessed-polish]) .dialog { border-radius: var(--ui-panel-radius); }
+:global(html[data-paessed-polish]) .menuButton { border-radius: var(--ui-control-radius); }
+/* Locked sheets retain the metrics stored with the student's ink. */
+:global(html[data-paessed-polish]) :global([data-ink-locked=false]) .options { gap: var(--ui-space-inline)!important; }
+:global(html[data-paessed-polish]) :global([data-ink-locked=false]) .option {
+  min-height: var(--ui-size-action)!important;
+  padding: var(--ui-space-inline) var(--ui-space-related)!important;
+  gap: var(--ui-space-inline)!important;
+  border-radius: var(--ui-control-radius)!important;
+}
 .penButton { position:relative; width:48px; padding:0!important; isolation:isolate; transition:background-color 180ms,border-color 180ms; }
 .penButton:disabled { cursor:default; }
 .penGear { position:absolute; opacity:0; transform:scale(.65) rotate(-40deg); transition:opacity 180ms,transform 180ms; }

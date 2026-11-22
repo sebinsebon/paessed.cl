@@ -363,7 +363,7 @@ export function ImportExamPanel({ embedded = false, onBack, onImported }: { embe
             onDragOver={(event) => event.preventDefault()}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={"rounded-[24px] border-2 border-dashed p-6 text-center transition sm:p-10 " + (dragging ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20" : "border-[var(--border-strong)] bg-[var(--surface)]")}
+            className={"rounded-[var(--ui-panel-radius,24px)] border-2 border-dashed p-6 text-center transition sm:p-10 " + (dragging ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20" : "border-[var(--border-strong)] bg-[var(--surface)]")}
           >
             <input ref={inputRef} type="file" accept=".paessed,.zip,.json,application/zip,application/json" className="hidden" onChange={onInput} />
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]"><Upload size={24} /></div>

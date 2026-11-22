@@ -55,3 +55,15 @@
 @media(max-width:760px) { .footer { flex-wrap:wrap; gap:12px; } .footer>span,.footer a { white-space:nowrap; } .domainCard { width:min(320px,calc(100vw - 64px)); } }
 @media(max-width:760px) { .domains { padding-bottom:50px; } .main>.hero { min-height:calc(100dvh - 163px); } }
 @media(max-width:360px) { .domainCard { width:calc(100vw - 64px); } }
+
+:global(html[data-paessed-polish]) .header nav { gap: var(--ui-space-related); }
+:global(html[data-paessed-polish]) .primaryButton { gap: var(--ui-space-related); margin-top: var(--ui-space-section); padding-inline: var(--ui-padding-panel); }
+:global(html[data-paessed-polish]) .domainCard { border-radius: var(--ui-card-radius); padding: var(--ui-padding-card); }
+:global(html[data-paessed-polish]) .domainCardTop { gap: var(--ui-space-related); }
+:global(html[data-paessed-polish]) .domainCardTop > strong { border-radius: var(--ui-inset-radius); padding: 4px 8px; }
+:global(html[data-paessed-polish]) .domainCardBottom { margin-top: var(--ui-space-related); gap: var(--ui-space-inline); }
+@media(max-width:760px) {
+  :global(html[data-paessed-polish]) .header nav { gap: var(--ui-space-inline); }
+  :global(html[data-paessed-polish]) .hero { gap: 32px; }
+  :global(html[data-paessed-polish]) .domainCard { padding: var(--ui-space-cards); }
+}

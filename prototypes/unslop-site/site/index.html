@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="assets/paessed-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="gallery.css">
+  <script src="gallery.mjs" type="module"></script>
+  <title>Paessed · Comparación de interfaces</title>
+</head>
+<body>
+  <header class="bar">
+    <div class="wrap bar-content">
+      <img src="assets/paessed-logo.svg" alt="Paessed" width="132" height="25">
+      <a class="button" href="https://paessed-unslop-m1.vercel.app/">Abrir demo del ensayo M1 <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+  <main class="wrap">
+    <h1>Paessed, pantalla por pantalla</h1>
+    <p class="intro">Compara las capturas de la interfaz actual y el pulido de bordes, espacios y tamaños.</p>
+    <details class="criteria">
+      <summary>Criterios de pulido</summary>
+      <dl>
+        <div><dt>Radios de 8, 12, 16 y 20 px</dt><dd>Los módulos internos son más compactos. Los controles, tarjetas y diálogos tienen un radio acorde a su tamaño.</dd></div>
+        <div><dt>Separaciones de 8, 16 y 24 px</dt><dd>El espacio es menor entre elementos relacionados y mayor entre grupos de contenido.</dd></div>
+        <div><dt>Acciones principales de al menos 48 px</dt><dd>La altura facilita pulsar los botones y las alternativas en móvil.</dd></div>
+      </dl>
+    </details>
+    <div class="workspace">
+      <aside class="index">
+        <label class="field" for="screen">Pantalla</label>
+        <select id="screen"></select>
+        <nav aria-label="Pantallas del sitio" id="navigation"></nav>
+      </aside>
+      <section class="preview" aria-labelledby="screen-title">
+        <header class="preview-header">
+          <div>
+            <p class="category" id="category"></p>
+            <h2 id="screen-title"></h2>
+          </div>
+          <div class="controls">
+            <div class="segment" role="group" aria-label="Diseño">
+              <button type="button" data-choice="view" value="actual" aria-pressed="false">Actual</button>
+              <button type="button" data-choice="view" value="propuesta" aria-pressed="true">Propuesta</button>
+            </div>
+            <div class="segment" role="group" aria-label="Dispositivo">
+              <button type="button" data-choice="format" value="desktop" aria-pressed="true">Escritorio</button>
+              <button type="button" data-choice="format" value="movil" aria-pressed="false">Móvil</button>
+            </div>
+            <div class="segment" role="group" aria-label="Tema">
+              <button type="button" data-choice="theme" value="claro" aria-pressed="true">Claro</button>
+              <button type="button" data-choice="theme" value="oscuro" aria-pressed="false">Oscuro</button>
+            </div>
+          </div>
+        </header>
+        <p id="details" class="details"></p>
+        <figure id="frame" data-format="desktop">
+          <img id="capture" alt="" decoding="async">
+          <figcaption>
+            <span id="caption" aria-live="polite"></span>
+            <a id="open" target="_blank" rel="noopener">Ampliar captura <span aria-hidden="true">↗</span></a>
+          </figcaption>
+        </figure>
+        <p id="capture-error" role="alert" hidden>No se pudo cargar la captura.</p>
+      </section>
+    </div>
+    <noscript><p>Activa JavaScript para seleccionar y comparar las pantallas.</p></noscript>
+  </main>
+</body>
+</html>

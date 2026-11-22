@@ -263,6 +263,10 @@
 /* ==========================================================================
    PREFERS REDUCED MOTION
    ========================================================================== */
+:global(html[data-paessed-polish]) :is(.routeLayout, .routeAside) { gap: var(--ui-space-section); }
+:global(html[data-paessed-polish]) :is(.routeColumn, .nextCard, .goalCard) { border-radius: var(--ui-card-radius); }
+:global(html[data-paessed-polish]) :is(.mapButton, .milestoneMarker, .btnPrimary) { border-radius: var(--ui-control-radius); gap: var(--ui-space-inline); }
+:global(html[data-paessed-polish]) :is(.notice, .historyItem) { border-radius: var(--ui-inset-radius); }
 @media (prefers-reduced-motion: reduce) {
   .activeNode,
   .activeBubble,

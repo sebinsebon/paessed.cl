@@ -231,7 +231,7 @@ export function ExamResult() {
           <p className="mt-3 text-sm text-[var(--muted)]">Resultado estimado del prototipo. En producción se usará la conversión y evidencia oficial configurada por PAESSED.</p>
         </div>
 
-        <div className="mt-9 grid gap-4 sm:grid-cols-4">
+        <div className="paessed-exam-result-stats mt-9 grid gap-4 sm:grid-cols-4">
           {[
             ["Correctas", data.correct, "text-emerald-500"],
             ["Incorrectas", data.wrong, "text-rose-500"],

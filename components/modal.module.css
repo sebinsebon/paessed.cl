@@ -1,4 +1,5 @@
 .dialog { width:min(460px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; margin:auto; padding:32px; border:1px solid var(--border); border-radius:24px; background:var(--surface); color:var(--text); box-shadow:var(--shadow-2); animation:arrive .25s cubic-bezier(.2,.8,.2,1.1) both; }
+:global(html[data-paessed-polish]) .dialog { padding: var(--ui-padding-panel); border-radius: var(--ui-panel-radius); }
 .dialog::backdrop { background:rgb(3 7 18 / .48); }
 .dialog :is(h1,h2)[tabindex="-1"]:focus { outline:none; }
 .dialog :is(a,button,input,summary):focus-visible { outline:2px solid var(--primary); outline-offset:2px; }

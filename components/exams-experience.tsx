@@ -288,7 +288,7 @@ function ExamCard({ exam, expanded, onToggle, onSettings, onDelete, progress }: 
   const isCompleted = exam.status === "completed";
   const actionLabel = "Practicar";
   return (
-    <article className="group overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-1)]">
+    <article className="group overflow-hidden rounded-[var(--ui-card-radius,20px)] border border-[var(--border)] bg-[var(--surface)] transition-[border-color,box-shadow] duration-200 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-1)]">
       <div className="grid items-center gap-5 p-4 sm:p-5 md:grid-cols-[minmax(235px,.9fr)_minmax(280px,1fr)] xl:grid-cols-[minmax(250px,.82fr)_minmax(320px,1fr)_148px] xl:gap-7">
         <div className="min-w-0">
           <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2">
@@ -627,7 +627,7 @@ export function ExamsExperience() {
         </header>
 
         <section aria-label="Seleccionar origen de ensayos" className="mb-5 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div role="group" aria-label="Origen de ensayos" className="inline-flex w-full items-center gap-1 rounded-[14px] border border-[var(--border)] bg-[var(--surface-2)] p-1 sm:w-auto">
+          <div role="group" aria-label="Origen de ensayos" className="inline-flex w-full items-center gap-1 rounded-[var(--ui-card-radius,14px)] border border-[var(--border)] bg-[var(--surface-2)] p-1 sm:w-auto">
             {([
               { id: "default", label: "Default", count: defaultRows.length },
               { id: "local", label: "Local", count: localRows.length },
@@ -739,7 +739,7 @@ export function ExamsExperience() {
               onDragOver={emptyLocalDropZone ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragging(true); } : undefined}
               onDragLeave={emptyLocalDropZone ? (event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); } : undefined}
               onDrop={emptyLocalDropZone ? (event) => { void onDrop(event); } : undefined}
-              className={"flex flex-col items-center rounded-[20px] text-center transition-colors duration-200 " +
+              className={"flex flex-col items-center rounded-[var(--ui-card-radius,20px)] text-center transition-colors duration-200 " +
                 (emptyLocalDropZone
                   ? "min-h-[300px] justify-center border-2 border-dashed px-7 py-12 " +
                     (dragging ? "border-[var(--primary)] bg-[var(--primary-soft)] dark:bg-[var(--surface-3)]" : "border-[var(--border-strong)] bg-[var(--surface-2)]/40")
@@ -882,7 +882,7 @@ export function ExamsExperience() {
               initial={reduceMotion ? false : { y: 15, scale: 0.965 }}
               animate={{ y: 0, scale: 1 }} exit={reduceMotion ? {} : { y: 9, scale: 0.98 }}
               transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-[430px] rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6">
+              className="relative w-full max-w-[430px] rounded-[var(--ui-panel-radius,22px)] border border-[var(--border)] bg-[var(--surface)] p-5 text-[var(--text)] shadow-2xl sm:p-6">
               <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                 <Trash2 size={21} />
               </div>

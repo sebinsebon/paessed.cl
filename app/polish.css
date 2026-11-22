@@ -1,0 +1,62 @@
+/* Layout scale for the visual comparison. Color, type and semantic states
+   continue to come from Paessed's existing light and dark themes. */
+html[data-paessed-polish] {
+  --ui-inset-radius: 8px;
+  --ui-control-radius: 12px;
+  --ui-card-radius: 16px;
+  --ui-panel-radius: 20px;
+  --ui-space-inline: 8px;
+  --ui-space-related: 12px;
+  --ui-space-cards: 16px;
+  --ui-space-section: 24px;
+  --ui-padding-card: 20px;
+  --ui-padding-panel: 24px;
+  --ui-size-action: 48px;
+}
+
+/* The radius follows the role. Pills, circular nodes, avatars, and unrounded
+   paper workspaces keep their existing silhouettes. */
+html[data-paessed-polish] :is(.surface, .surface-raised, .mastery-card)[class*="rounded"]:not(.rounded-full) {
+  border-radius: var(--ui-card-radius);
+}
+
+html[data-paessed-polish] :is(.tactile-primary, .soft-button)[class*="rounded"]:not(.rounded-full) {
+  border-radius: var(--ui-control-radius);
+}
+
+html[data-paessed-polish] .tactile-primary:not(.rounded-full) {
+  min-block-size: var(--ui-size-action);
+}
+
+html[data-paessed-polish] :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), select, textarea)[class*="rounded"]:not(.rounded-full) {
+  border-radius: var(--ui-control-radius);
+}
+
+html[data-paessed-polish] :is(.paessed-sidebar-nav-link, .paessed-mobile-nav-link, .paessed-sidebar-active-indicator, .paessed-mobile-active-indicator) {
+  border-radius: var(--ui-control-radius);
+}
+
+html[data-paessed-polish] :is(.paessed-sidebar-nav-link, .paessed-mobile-nav-link) {
+  gap: var(--ui-space-inline);
+}
+
+html[data-paessed-polish] .paessed-mobile-nav {
+  gap: var(--ui-space-inline);
+  border-radius: var(--ui-card-radius);
+}
+
+html[data-paessed-polish] .paessed-home .mastery-card {
+  padding: var(--ui-space-cards);
+}
+
+@media (max-width: 639px) {
+  html[data-paessed-polish] .paessed-exam-result-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Keyboard focus has the same offset across the modes. Scope it to actual
+   controls so programmatic focus on reader content keeps its existing style. */
+html[data-paessed-polish] :is(.tactile-primary, .soft-button, input, select, textarea):focus-visible {
+  outline-offset: 3px;
+}

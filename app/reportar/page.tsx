@@ -42,7 +42,7 @@ export default function ReportPage() {
     <Link href="/" className="underline">Volver a PAESSED</Link>
     <h1 className="mt-6 text-3xl font-extrabold">Reportar un problema</h1>
     {sent ? <p className="mt-5" role="status">Recibimos tu reporte. Gracias por ayudarnos a mejorar.</p> :
-      <form onSubmit={send} className="mt-6 grid gap-5">
+      <form onSubmit={send} className="mt-6 grid gap-[var(--ui-space-cards,20px)]">
         {questions.map(([name, label, limit]) => <label key={name}>{label}
           {limit === 2000 ? <textarea name={name} required maxLength={limit} rows={3} className={fieldClass} /> :
             <input name={name} required maxLength={limit} className={fieldClass} />}
