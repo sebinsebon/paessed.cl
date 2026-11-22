@@ -88,7 +88,7 @@ test('mobile ink pans with two touches and draws directly over lower alternative
   const storageKey = `paessed-learning-ink:${NODE_ID}:${meta.id}`;
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(0);
 
-  const option = page.getByRole('radio').last();
+  const option = page.getByRole('radio').first();
   await option.scrollIntoViewIfNeeded();
   const optionBox = await option.boundingBox();
   const canvasBox = await canvas.boundingBox();
@@ -98,17 +98,27 @@ test('mobile ink pans with two touches and draws directly over lower alternative
   expect(canvasBox.top).toBeLessThanOrEqual(optionBox.top);
   expect(canvasBox.bottom).toBeGreaterThanOrEqual(optionBox.bottom);
   const targetY = optionBox.y + optionBox.height / 2;
-  const targetX = optionBox.x + 18;
+  const targetX = optionBox.x + 30;
   await send('touchStart', [{ id: 3, x: targetX, y: targetY }]);
-  await send('touchMove', [{ id: 3, x: targetX + 48, y: targetY + 3 }]);
   await send('touchEnd', []);
-  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(1);
-  await expect(option).toHaveAttribute('aria-checked', 'false');
-
-  // Answers remain usable once the pencil is deactivated.
-  await page.getByRole('button', { name: 'Desactivar lápiz', exact: true }).click();
-  await option.click();
   await expect(option).toHaveAttribute('aria-checked', 'true');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(0);
+  await expect(page.getByTestId('mobile-review-dock')).toBeVisible();
+
+  // A stroke that starts OUTSIDE a button may continue over it.
+  await page.mouse.move(optionBox.x + 30, optionBox.y - 12);
+  await page.mouse.down();
+  await page.mouse.move(optionBox.x + 80, optionBox.y + 22, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey)).toBe(1);
+  await expect(option).toHaveAttribute('aria-checked', 'true');
+  const dock = await page.getByTestId('mobile-review-dock').boundingBox();
+  const canvasAfter = await canvas.boundingBox();
+  expect(dock.y + dock.height).toBeLessThanOrEqual(560);
+  expect(canvasAfter.height).toBeGreaterThan(0);
+  // The action is on a higher layer, and remains clickable with the pencil enabled.
+  await page.getByRole('button', { name: 'Comprobar', exact: true }).click();
+  await expect(page.getByTestId('mobile-review-dock')).toBeVisible();
 });
 
 test('fast eraser movement removes every crossed stroke, without bringing earlier strokes back', async ({ page }) => {
@@ -125,7 +135,8 @@ test('fast eraser movement removes every crossed stroke, without bringing earlie
   const storageKey = `paessed-learning-ink:${NODE_ID}:${catalog[0].id}`;
   const count = () => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey);
   await expect.poll(count).toBe(3);
-  await page.getByRole('button', { name: 'Goma de borrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menú de la pregunta', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Goma de borrar', exact: true }).click();
   await page.mouse.move(box.x + 74, box.y + 30);
   await page.mouse.down();
   await page.mouse.move(box.x + 74, box.y + 120, { steps: 9 });
@@ -223,7 +234,8 @@ test('pencil settings respect reduced motion preferences', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page);
   await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
-  await page.getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menú de la pregunta', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Herramientas de dibujo' })).toHaveCSS('animation-name', 'none');
 });
 
