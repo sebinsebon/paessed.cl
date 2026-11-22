@@ -34,8 +34,7 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
       <Pencil size={20} aria-hidden="true" />
     </button>
     <AnimatePresence initial={false}>
-      {enabled && <>
-        <motion.div key="eraser" className={styles.penActionSlot} {...actionMotion}>
+      {enabled && <motion.div key="eraser" className={styles.penActionSlot} {...actionMotion}>
           <button
             type="button"
             className={styles.drawingToggle}
@@ -46,8 +45,8 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
           >
             <Eraser size={20} aria-hidden="true" />
           </button>
-        </motion.div>
-        <motion.div key="settings" className={styles.penActionSlot} {...actionMotion} transition={{ ...actionMotion.transition, delay: reducedMotion ? 0 : 0.045 }}>
+        </motion.div>}
+      {enabled && <motion.div key="settings" className={styles.penActionSlot} {...actionMotion} transition={{ ...actionMotion.transition, delay: reducedMotion ? 0 : 0.045 }}>
           <button
             type="button"
             className={styles.drawingToggle}
@@ -61,8 +60,7 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
               <Settings size={13} className={styles.penSettingsGear} />
             </span>
           </button>
-        </motion.div>
-      </>}
+        </motion.div>}
     </AnimatePresence>
   </div>;
 }
