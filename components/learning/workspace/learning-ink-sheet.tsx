@@ -11,11 +11,12 @@ const validStrokes = (value: unknown): value is PlaygroundInkStroke[] => Array.i
     Number.isFinite(point?.x) && Number.isFinite(point?.y) && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1));
 
 /** Only the exercise belongs in this sheet; feedback and toolbars stay outside its coordinates. */
-export function LearningInkSheet({ storageKey, enabled, mode, color, children, onReady, onError, onLockChange, controlsRef, initialStrokes, onStrokesChange }: {
+export function LearningInkSheet({ storageKey, enabled, mode, color, children, onReady, onError, onLockChange, controlsRef, initialStrokes, onStrokesChange, optionTapToSelect = false }: {
   storageKey: string; enabled: boolean; mode: "pen" | "eraser"; color: string; children: ReactNode;
   onReady?: (ready: boolean) => void; onError?: (message: string) => void;
   onLockChange?: (locked: boolean) => void; controlsRef?: Ref<LearningInkControls>;
   initialStrokes?: PlaygroundInkStroke[]; onStrokesChange?: (strokes: PlaygroundInkStroke[]) => void;
+  optionTapToSelect?: boolean;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -124,7 +125,7 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
         <div ref={sheetRef} data-testid="learning-ink-sheet" data-ink-ready={ready} data-ink-locked={!!sheet} data-ink-layout={sheet?.layout} data-ink-option-layout={sheet?.optionLayout}
           style={{ position: "relative", display: "flow-root", minHeight: paperSpace.height, ...(sheet ? { width: sheet.width, minHeight: sheet.height, transform: `scale(${zoom})`, transformOrigin: "top left" } : {}) }}>
           {children}
-          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase onInteractionStart={() => {
+          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase optionTapToSelect={optionTapToSelect} onInteractionStart={() => {
             if (!sheet) { const value = dimensions(); if (value) { setSheet(value); callbacks.current.onLockChange?.(true); } }
           }} />
         </div>
