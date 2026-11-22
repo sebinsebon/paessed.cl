@@ -344,10 +344,10 @@ test("Playground conserva la pregunta al regresar tras verificar la misma cuenta
   await page.getByRole("button", { name: "Comenzar práctica" }).click();
   const sheet = page.getByLabel("Modo práctica de Playground");
   await expect(sheet).toBeVisible();
-  const answer = page.getByRole("radio").first();
+  const answer = page.getByRole("group", { name: "Alternativas de respuesta" }).getByRole("button").first();
   await expect(answer).toBeVisible();
-  await answer.check();
-  await expect(answer).toBeChecked();
+  await answer.click();
+  await expect(answer).toHaveAttribute("aria-pressed", "true");
   expect(sessionGets).toBe(1);
 
   // Simulate the browser hiding the document, then allow the verification to
@@ -384,7 +384,7 @@ test("Playground conserva la pregunta al regresar tras verificar la misma cuenta
   expect(flashed).toBe(false);
   expect(sessionGets).toBe(2);
   await expect(sheet).toBeVisible();
-  await expect(answer).toBeChecked();
+  await expect(answer).toHaveAttribute("aria-pressed", "true");
 });
 
 test("cambiar de cuenta con Playground en segundo plano sigue invalidando la hoja anterior", async ({ page, baseURL }) => {
