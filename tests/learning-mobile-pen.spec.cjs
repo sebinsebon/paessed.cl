@@ -1,59 +1,21 @@
 const { test, expect } = require('@playwright/test');
 const { catalog, NODE_ID, seed } = require('./learning-mobile-helpers.cjs');
 
-test('pen reveals eraser and separate settings; the eraser removes only touched strokes', async ({ page }, testInfo) => {
+test('phone uses a fixed pencil, menu tools, and localized eraser strokes', async ({ page }, testInfo) => {
   const meta = catalog[0];
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page, meta);
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
+  await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
   const pen = page.getByRole('button', { name: 'Activar lápiz', exact: true });
-  const mobileGeometryBefore = await page.evaluate(() => {
-    const footer = document.querySelector('[data-testid="learning-session-actions"]');
-    const button = footer.querySelector('[aria-label="Activar lápiz"]');
-    const rect = element => { const { left, top, width, height } = element.getBoundingClientRect(); return { left, top, width, height }; };
-    return { footer: rect(footer), button: rect(button), pageWidth: document.documentElement.scrollWidth };
-  });
-  await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Ajustes del lápiz', exact: true })).toHaveCount(0);
-
+  await expect(pen).toBeVisible();
+  const penBox = await pen.boundingBox();
+  expect(penBox.x).toBeGreaterThan(290);
+  expect(penBox.y + penBox.height).toBeLessThanOrEqual(844);
   await pen.click();
-  const eraser = page.getByRole('button', { name: 'Goma de borrar', exact: true });
-  const settings = page.getByRole('button', { name: 'Ajustes del lápiz', exact: true });
-  await expect(eraser).toBeVisible();
-  await expect(eraser).toHaveAttribute('aria-pressed', 'false');
-  await expect(settings).toBeVisible();
-  await expect(settings).toHaveAttribute('aria-haspopup', 'dialog');
-  const toolbox = page.getByTestId('learning-session-actions').getByTestId('pen-toolbox');
-  await expect(toolbox).toHaveAttribute('data-expanded', 'true');
-  await expect(toolbox).toHaveCSS('width', '48px');
-  const positions = await page.evaluate(() => {
-    const footer = document.querySelector('[data-testid="learning-session-actions"]');
-    const group = footer.querySelector('[data-testid="pen-toolbox"]');
-    const rect = element => { const { left, top, right, width, height } = element.getBoundingClientRect(); return { left, top, right, width, height }; };
-    return {
-      footer: rect(footer),
-      pen: rect(group.querySelector('[aria-label="Desactivar lápiz"]')),
-      eraser: rect(group.querySelector('[aria-label="Goma de borrar"]')),
-      settings: rect(group.querySelector('[aria-label="Ajustes del lápiz"]')),
-      screen: innerWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-    };
-  });
-  expect(positions.pen.left).toBeCloseTo(mobileGeometryBefore.button.left, 0);
-  expect(positions.pen.top).toBeCloseTo(mobileGeometryBefore.button.top, 0);
-  expect(positions.pen.width).toBeCloseTo(mobileGeometryBefore.button.width, 0);
-  expect(positions.footer.height).toBeCloseTo(mobileGeometryBefore.footer.height, 0);
-  expect(positions.footer.width).toBeCloseTo(mobileGeometryBefore.footer.width, 0);
-  // The original pencil stays at the left edge; its left-opening actions float above
-  // it on narrow screens, instead of pushing the navigation or clipping offscreen.
-  expect(positions.settings.left).toBeLessThan(positions.eraser.left);
-  expect(positions.settings.top).toBeLessThan(positions.pen.top);
-  expect(positions.settings.left).toBeGreaterThanOrEqual(0);
-  expect(positions.eraser.right).toBeLessThanOrEqual(positions.screen);
-  expect(positions.scrollWidth).toBeLessThanOrEqual(positions.screen + 1);
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.screenshot({ path: testInfo.outputPath('pen-active.png') });
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
 
   const canvas = sheet.locator('canvas');
   const box = await canvas.boundingBox();
@@ -69,32 +31,30 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   await expect.poll(async () => (await read()).length).toBe(2);
   const keep = (await read())[1];
 
+  const menu = page.getByRole('button', { name: 'Abrir menú de la pregunta', exact: true });
+  await menu.click();
+  const eraser = page.getByRole('dialog').getByRole('button', { name: 'Goma de borrar', exact: true });
+  await expect(eraser).toBeVisible();
   await eraser.click();
-  await expect(eraser).toHaveAttribute('aria-pressed', 'true');
-  await expect(toolbox).toHaveAttribute('data-active-tool', 'eraser');
-  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
-  await expect(canvas).toHaveCSS('cursor', /eraser\.svg/);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(pen).toHaveAttribute('aria-pressed', 'false');
+  await expect(canvas).toHaveCSS('cursor', /eraser\\.svg/);
   await page.mouse.click(box.x + 60, box.y + 30);
   await expect.poll(read).toEqual([keep]);
 
-  // Tapping the eraser again switches back to drawing instead of clearing the page.
-  await eraser.click();
-  await expect(eraser).toHaveAttribute('aria-pressed', 'false');
+  // The fixed pencil switches back to drawing without moving or opening a tray.
+  await pen.click();
   await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(canvas).toHaveCSS('cursor', 'crosshair');
-  await settings.click();
+  await menu.click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
   const panel = page.getByRole('dialog', { name: 'Herramientas de dibujo', exact: true });
   await expect(panel).toBeVisible();
   await expect(panel).toHaveCSS('animation-name', /pen-dialog-in/);
-  await page.screenshot({ path: testInfo.outputPath('pen-settings.png') });
-  await panel.getByRole('button', { name: 'Color de tinta #e11d48', exact: true }).click();
+  await page.screenshot({ path: testInfo.outputPath('mobile-pen-settings.png') });
   await panel.getByRole('button', { name: 'Listo, dibujar', exact: true }).click();
-
   await page.getByRole('button', { name: 'Desactivar lápiz', exact: true }).click();
-  await expect(eraser).toHaveCount(0);
-  await expect(settings).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Activar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByRole('radio').first()).toBeEnabled();
 });
 
 test('mobile ink pans with two touches and draws directly over lower alternatives', async ({ page, browserName }) => {
