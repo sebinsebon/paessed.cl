@@ -4,7 +4,7 @@ import { useEffect, useRef, type CSSProperties, type ReactNode, type RefObject }
 import { X } from "lucide-react";
 import styles from "./mobile-question.module.css";
 
-export function QuestionDialog({ title, onClose, children, wide = false, paperStyle, returnFocusRef }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; paperStyle?: CSSProperties; returnFocusRef?: RefObject<HTMLElement | null> }) {
+export function QuestionDialog({ title, onClose, children, wide = false, paperStyle, returnFocusRef, animatedEntrance = false }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; animatedEntrance?: boolean; paperStyle?: CSSProperties; returnFocusRef?: RefObject<HTMLElement | null> }) {
   const ref = useRef<HTMLDialogElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -29,7 +29,7 @@ export function QuestionDialog({ title, onClose, children, wide = false, paperSt
     window.addEventListener("keydown", escape);
     return () => { window.visualViewport?.removeEventListener("resize", fit); window.visualViewport?.removeEventListener("scroll", fit); window.removeEventListener("keydown", escape); dialog?.close(); origin?.focus({ preventScroll: true }); };
   }, [wide]);
-  return <dialog ref={ref} style={paperStyle} aria-label={title} className={`${styles.dialog} ${wide ? styles.figureDialog : ""}`} onCancel={event => { event.preventDefault(); close.current(); }} onClick={event => { if (event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) close.current(); } }}>
+  return <dialog ref={ref} style={paperStyle} aria-label={title} className={`${styles.dialog} ${wide ? styles.figureDialog : ""} ${animatedEntrance ? styles.dialogEntrance : ""}`} onCancel={event => { event.preventDefault(); close.current(); }} onClick={event => { if (event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) close.current(); } }}>
     <div className={styles.dialogHeader}><h2>{title}</h2><button type="button" className={styles.iconButton} aria-label={`Cerrar ${title.toLowerCase()}`} onClick={onClose} autoFocus><X size={20} /></button></div>
     {children}
   </dialog>;

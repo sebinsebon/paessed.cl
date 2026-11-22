@@ -3,6 +3,7 @@ const { catalog, NODE_ID, seed } = require('./learning-mobile-helpers.cjs');
 
 test('pen reveals eraser and separate settings; the eraser removes only touched strokes', async ({ page }, testInfo) => {
   const meta = catalog[0];
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page, meta);
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
@@ -36,15 +37,20 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
 
   await eraser.click();
   await expect(eraser).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(canvas).toHaveCSS('cursor', /eraser\.svg/);
   await page.mouse.click(box.x + 60, box.y + 30);
   await expect.poll(read).toEqual([keep]);
 
   // Tapping the eraser again switches back to drawing instead of clearing the page.
   await eraser.click();
   await expect(eraser).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(canvas).toHaveCSS('cursor', 'crosshair');
   await settings.click();
   const panel = page.getByRole('dialog', { name: 'Herramientas de dibujo', exact: true });
   await expect(panel).toBeVisible();
+  await expect(panel).toHaveCSS('animation-name', /pen-dialog-in/);
   await page.screenshot({ path: testInfo.outputPath('pen-settings.png') });
   await panel.getByRole('button', { name: 'Color de tinta #e11d48', exact: true }).click();
   await panel.getByRole('button', { name: 'Listo, dibujar', exact: true }).click();
@@ -67,6 +73,14 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   await expect(page.getByRole('button', { name: 'Ajustes del lápiz', exact: true })).toHaveCount(0);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('radio').first()).toBeEnabled();
+});
+
+test('pencil settings respect reduced motion preferences', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page);
+  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await page.getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Herramientas de dibujo' })).toHaveCSS('animation-name', 'none');
 });
 
 for (const correct of [true, false]) test(`selection toggles before confirmation, ${correct ? 'correct' : 'incorrect'} particles are decorative and temporary`, async ({ page }) => {
