@@ -3,6 +3,7 @@ import { ACCOUNT_STORES, LOCAL_CHANGED, LOCAL_OWNER_CHANGED, databaseName, devSa
 import type { SyncResponse } from "./contracts";
 import type { OnboardingStatus, OnboardingSubmission } from "./contracts";
 import { fetchSession, type AccountInfo } from "../auth/session-fetch.ts";
+import { readSessionRevision, SESSION_REVISION_COOKIE } from "../auth/session-revision.ts";
 
 export type SyncStatusValue = { state: "guest" | "idle" | "syncing" | "paused" | "error"; pending: number; message: string; conflicts: number };
 let status: SyncStatusValue = { state: "guest", pending: 0, message: "Progreso guardado en este dispositivo", conflicts: 0 };
@@ -17,12 +18,14 @@ type SyncIdentity = { status: "checking" | "unavailable"; epoch: number } |
 const initialIdentity: SyncIdentity = { status: "checking", epoch: 0 };
 let identity: SyncIdentity = initialIdentity;
 let verifiedAccount: AccountInfo | null = null;
+let verifiedRevision: string | null = null;
 const SESSION_FRESHNESS_MS = 5 * 60_000;
 let verifiedUntil = 0;
 let identityExpiry: ReturnType<typeof setTimeout> | undefined;
 let identityWatchers = 0;
 let syncIdentityWatchers = 0;
-let identityRequest: { controller: AbortController; promise: Promise<VerifiedIdentity | undefined> } | undefined;
+let identityRequest: { controller: AbortController; revision: string | null; promise: Promise<VerifiedIdentity | undefined> } | undefined;
+let bootstrap: { epoch: number; promise: Promise<void> } | undefined;
 const identityListeners = new Set<() => void>();
 let importController: AbortController | undefined;
 let activeRequest: AbortController | undefined;
@@ -35,8 +38,14 @@ const identityStorageKey = () => `${devSandboxActive() ? "paessed-dev:" : ""}pae
 export function getSyncIdentity() { return identity; }
 export function getInitialSyncIdentity() { return initialIdentity; }
 export function invalidateSyncIdentity() { invalidateIdentity("checking"); }
+function browserSessionRevision() {
+  return typeof document !== "undefined" && !devSandboxActive() ? readSessionRevision(document.cookie) : null;
+}
+export function matchesBrowserSession() {
+  return verifiedRevision === browserSessionRevision();
+}
 export function getVerifiedAccount() {
-  return identity.status === "verified" && identity.owner === getSyncOwner() ? verifiedAccount : null;
+  return identity.status === "verified" && identity.owner === getSyncOwner() && matchesBrowserSession() ? verifiedAccount : null;
 }
 export function subscribeSyncIdentity(listener: () => void) {
   identityListeners.add(listener);
@@ -66,9 +75,10 @@ function invalidateIdentity(status: "checking" | "unavailable") {
   cancelIdentityRequest();
   activeRequest?.abort();
   authenticated = false;
+  bootstrap = undefined;
   publishIdentity({ status, epoch: identity.epoch + 1 });
 }
-function confirmIdentity(account: AccountInfo, remote: boolean): VerifiedIdentity {
+function confirmIdentity(account: AccountInfo, remote: boolean, revision: string | null): VerifiedIdentity {
   const owner = account.user?.id ?? null;
   const changed = owner !== getSyncOwner();
   if (changed) {
@@ -80,6 +90,7 @@ function confirmIdentity(account: AccountInfo, remote: boolean): VerifiedIdentit
   setSyncOwner(owner);
   authenticated = remote && !!owner;
   verifiedAccount = account;
+  verifiedRevision = revision;
   verifiedUntil = Date.now() + SESSION_FRESHNESS_MS;
   const verified: VerifiedIdentity = { status: "verified", owner, epoch: identity.epoch + Number(changed) };
   publishIdentity(verified);
@@ -90,15 +101,16 @@ function confirmIdentity(account: AccountInfo, remote: boolean): VerifiedIdentit
 }
 
 function currentOwner(owner: string, epoch: number) {
-  return identity.epoch === epoch && owner === getSyncOwner();
+  return identity.epoch === epoch && owner === getSyncOwner() && matchesBrowserSession();
 }
 
-async function readIdentity(signal: AbortSignal): Promise<VerifiedIdentity | undefined> {
+async function readIdentity(signal: AbortSignal, revision: string | null): Promise<VerifiedIdentity | undefined> {
   try {
     const remote = !devSandboxActive();
     const account = remote ? await fetchSession(signal) : (await import("../auth/dev-accounts.ts")).devAccountInfo();
     if (signal.aborted) return;
-    const verified = confirmIdentity(account, remote);
+    if (revision !== browserSessionRevision()) return verifyIdentity(true);
+    const verified = confirmIdentity(account, remote, revision);
     if (!remote) {
       updateStatus({ state: "guest", pending: 0, conflicts: 0, message: account.user ? `Cuenta de prueba · ${account.profile?.displayName}` : "Progreso del entorno de desarrollo" });
     } else {
@@ -110,21 +122,24 @@ async function readIdentity(signal: AbortSignal): Promise<VerifiedIdentity | und
     return verified;
   } catch (error) {
     if (!signal.aborted) {
+      if (revision !== browserSessionRevision()) return verifyIdentity(true);
       sessionUnavailable(error instanceof Error && error.message.startsWith("Tu sesión venció") ? error.message : undefined);
     }
   }
 }
 
 function verifyIdentity(revalidate = false): Promise<VerifiedIdentity | undefined> {
-  if (identityRequest) return identityRequest.promise;
+  const revision = browserSessionRevision();
+  if (identityRequest && identityRequest.revision === revision) return identityRequest.promise;
+  if (identityRequest || identity.status === "verified" && verifiedRevision !== revision) invalidateIdentity("checking");
   if (!revalidate && identity.status === "verified" && getVerifiedAccount() &&
       (Date.now() < verifiedUntil || !navigator.onLine)) return Promise.resolve(identity);
   if (identity.status !== "checking") publishIdentity({ status: "checking", epoch: identity.epoch });
   const controller = new AbortController();
-  const promise = readIdentity(controller.signal).finally(() => {
+  const promise = readIdentity(controller.signal, revision).finally(() => {
     if (identityRequest?.controller === controller) identityRequest = undefined;
   });
-  identityRequest = { controller, promise };
+  identityRequest = { controller, revision, promise };
   return promise;
 }
 
@@ -134,12 +149,23 @@ export function loadAccountPresentation() {
 }
 
 export async function initializeSyncIdentity(revalidate = false): Promise<{ owner: string | null }> {
+  const previousBootstrap = bootstrap;
   const verified = await verifyIdentity(revalidate);
   if (!verified || identity !== verified) return { owner: null };
-  if (authenticated) await synchronize();
+  if (authenticated && previousBootstrap?.epoch === verified.epoch && bootstrap === previousBootstrap) await synchronize();
+  else await ensureSyncBootstrap(verified);
   const current = getSyncIdentity();
   return { owner: current.status === "verified" && current.epoch === verified.epoch &&
-    current.owner === verified.owner && current.owner === getSyncOwner() ? current.owner : null };
+    current.owner === verified.owner && current.owner === getSyncOwner() && matchesBrowserSession() ? current.owner : null };
+}
+
+/** Each verified epoch joins its own initial pull before preparing the workspace. */
+export function ensureSyncBootstrap(verified: VerifiedIdentity) {
+  if (identity !== verified || !authenticated || !matchesBrowserSession()) return;
+  if (bootstrap?.epoch === verified.epoch) return bootstrap.promise;
+  const promise = synchronize();
+  bootstrap = { epoch: verified.epoch, promise };
+  return promise;
 }
 
 function scheduleIdentityExpiry() {
@@ -149,12 +175,27 @@ function scheduleIdentityExpiry() {
   }
 }
 function resumeIdentity() {
-  if (document.visibilityState !== "visible" || !navigator.onLine || identityRequest) return;
+  if (recheckBrowserSession() || document.visibilityState !== "visible" || !navigator.onLine || identityRequest) return;
   refreshIdentity();
 }
 function refreshIdentity() {
-  if (syncIdentityWatchers) void initializeSyncIdentity(true);
-  else void verifyIdentity(true);
+  const previousEpoch = identity.epoch;
+  void verifyIdentity(true).then(verified => {
+    if (!verified || identity !== verified || !syncIdentityWatchers || !authenticated || !matchesBrowserSession()) return;
+    if (verified.epoch === previousEpoch && bootstrap?.epoch === verified.epoch) return synchronize();
+    return ensureSyncBootstrap(verified);
+  });
+}
+export function recheckBrowserSession(): boolean {
+  const revision = browserSessionRevision();
+  const changed = identityRequest ? identityRequest.revision !== revision : identity.status === "verified" && verifiedRevision !== revision;
+  if (!changed) return false;
+  invalidateIdentity("checking");
+  if (navigator.onLine) refreshIdentity();
+  return true;
+}
+function browserCookieChanged(event: CookieChangeEvent) {
+  if ([...event.changed, ...event.deleted].some(cookie => cookie.name === SESSION_REVISION_COOKIE)) recheckBrowserSession();
 }
 function pageHidden(event: PageTransitionEvent) {
   if (event.persisted) invalidateIdentity("checking");
@@ -164,7 +205,7 @@ function pageRestored(event: PageTransitionEvent) {
 }
 function signedOut() {
   invalidateIdentity("checking");
-  confirmIdentity({ configured: true, user: null }, false);
+  confirmIdentity({ configured: true, user: null }, false, browserSessionRevision());
 }
 function accountChanged() {
   const previous = getSyncOwner();
@@ -175,7 +216,7 @@ function accountChanged() {
     cancelIdentityRequest();
   }
   void verifyIdentity(true).then(verified => {
-    if (verified && identity === verified && verified.owner !== previous && syncIdentityWatchers) void synchronize();
+    if (verified && verified.owner !== previous && syncIdentityWatchers) void ensureSyncBootstrap(verified);
   });
 }
 function accountStorage(event: StorageEvent) {
@@ -202,6 +243,7 @@ export function watchSyncIdentity(synchronizeOnRefresh = true) {
     window.addEventListener("paessed-auth-signed-out", signedOut);
     window.addEventListener("paessed-account-change", accountChanged);
     window.addEventListener("storage", accountStorage);
+    window.cookieStore?.addEventListener("change", browserCookieChanged);
     scheduleIdentityExpiry();
   }
   return () => {
@@ -216,6 +258,7 @@ export function watchSyncIdentity(synchronizeOnRefresh = true) {
     window.removeEventListener("paessed-auth-signed-out", signedOut);
     window.removeEventListener("paessed-account-change", accountChanged);
     window.removeEventListener("storage", accountStorage);
+    window.cookieStore?.removeEventListener("change", browserCookieChanged);
   };
 }
 

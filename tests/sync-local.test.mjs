@@ -149,32 +149,37 @@ test("returning A → B → A cannot revive a pending guest import", async () =>
   assert.equal(retry.guestGoal, 3);
 }));
 
-test("invalidation rolls back a guest import while its IDB writes are pending", async () => harness(async (page, context) => {
-  await guestImportFixture(page, context);
-  const result = await page.evaluate(async () => {
-    const put = IDBObjectStore.prototype.put;
-    let confirmationWritten = false, outboxWritten = false;
-    IDBObjectStore.prototype.put = function (value, key) {
-      const request = put.call(this, value, key);
-      if (key === "guest-import-confirmed" && value === true) {
-        request.addEventListener("success", () => { confirmationWritten = true; });
-      }
-      if (this.name === "outbox" && value.importOnly) {
-        request.addEventListener("success", () => {
-          outboxWritten = true;
-          window.client.sessionUnavailable();
-        }, { once: true });
-      }
-      return request;
-    };
-    const imported = await window.client.importGuestProgress().then(() => true, () => false);
-    return { imported, confirmationWritten, outboxWritten };
-  });
-  assert.equal(result.confirmationWritten, true, "invalidate after IndexedDB has staged the confirmation");
-  assert.equal(result.outboxWritten, true, "invalidate after IndexedDB has staged a queue entry");
-  assert.equal(result.imported, false);
-  assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
-}));
+for (const invalidation of ["session error", "OAuth revision change"]) {
+  test(`a ${invalidation} rolls back a guest import while its IDB writes are pending`, async () => harness(async (page, context) => {
+    await guestImportFixture(page, context);
+    const result = await page.evaluate(async invalidation => {
+      const put = IDBObjectStore.prototype.put;
+      let confirmationWritten = false, outboxWritten = false;
+      IDBObjectStore.prototype.put = function (value, key) {
+        const request = put.call(this, value, key);
+        if (key === "guest-import-confirmed" && value === true) {
+          request.addEventListener("success", () => { confirmationWritten = true; });
+        }
+        if (this.name === "outbox" && value.importOnly) {
+          request.addEventListener("success", () => {
+            outboxWritten = true;
+            if (invalidation === "OAuth revision change") {
+              document.cookie = `paessed-auth-revision=${window.B}; Path=/; SameSite=Lax`;
+              window.client.recheckBrowserSession();
+            } else window.client.sessionUnavailable();
+          }, { once: true });
+        }
+        return request;
+      };
+      const imported = await window.client.importGuestProgress().then(() => true, () => false);
+      return { imported, confirmationWritten, outboxWritten };
+    }, invalidation);
+    assert.equal(result.confirmationWritten, true, "invalidate after IndexedDB has staged the confirmation");
+    assert.equal(result.outboxWritten, true, "invalidate after IndexedDB has staged a queue entry");
+    assert.equal(result.imported, false);
+    assert.deepEqual(await importState(page), { accounts: [emptyImport, emptyImport], guestGoal: 3 });
+  }));
+}
 
 test("a direct storage owner change cancels pending writes even if the owner is immediately restored", async () => harness(async (page, context) => {
   await guestImportFixture(page, context);

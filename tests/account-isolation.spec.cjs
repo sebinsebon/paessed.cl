@@ -210,6 +210,64 @@ test("confirmar el acceso en otra pestaña invalida el perfil anterior antes de 
   }
 });
 
+for (const observable of [false, true]) {
+  test(`el retorno OAuth en otra pestaña invalida el perfil antes de cargar Bienvenida (${observable ? "aviso de cookie" : "al navegar"})`, async ({ page, baseURL }) => {
+    if (!observable) await page.addInitScript(() => Object.defineProperty(window, "cookieStore", { value: undefined }));
+    await page.context().addCookies([{ name: "paessed-auth-revision", value: accountA, url: baseURL }]);
+    const session = await openAccounts(page, baseURL);
+    await page.goto("/app/ensayos");
+    await expect(page.getByRole("heading", { name: "Tus ensayos" })).toBeVisible();
+    const next = hold();
+    await session.other.route("**/auth/callback?fixture=google", route => route.fulfill({
+      contentType: "text/html",
+      headers: {
+        "set-cookie": "paessed-auth-revision=22222222-2222-4222-8222-222222222222; Path=/; SameSite=Lax",
+      },
+      body: "<title>Bienvenida pendiente</title>",
+    }));
+    try {
+      session.set(accountB, next);
+      await session.other.goto(baseURL + "/auth/callback?fixture=google");
+      await expect(session.other).toHaveTitle("Bienvenida pendiente");
+      expect(await session.other.evaluate(() => document.cookie)).toContain(`paessed-auth-revision=${accountB}`);
+      if (observable) await expect.poll(() => next.requests, { timeout: 3000 }).toBeGreaterThan(0);
+      await page.locator('a[href="/app/inicio"]:visible').first().evaluate(link => link.click());
+      await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible({ timeout: 3000 });
+      await expect(page.getByRole("heading", { name: /Cuenta A/ })).toHaveCount(0);
+      await expect.poll(() => next.requests, { timeout: 3000 }).toBeGreaterThan(0);
+    } finally {
+      next.release();
+    }
+  });
+}
+
+test("si cambia la cuenta al entrar Inicio espera la sincronización del nuevo propietario", async ({ page, baseURL }) => {
+  const session = await openAccounts(page, baseURL);
+  const a = hold(), b = hold();
+  await page.route("**/api/sync?**", async route => {
+    const gate = route.request().headers()["x-paessed-account"] === accountA ? a : b;
+    gate.requests++;
+    await gate.pending;
+    await route.fulfill({ json: emptySync }).catch(() => {});
+  });
+  try {
+    await page.goto("/app/inicio");
+    await expect.poll(() => a.requests).toBeGreaterThan(0);
+    session.set(accountB);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect.poll(() => b.requests, { timeout: 3000 }).toBeGreaterThan(0);
+    // Keep B's first pull pending across multiple frames to detect premature presentation.
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 250)));
+    await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Cuenta [AB]/ })).toHaveCount(0);
+    b.release();
+    await expect(greeting(page)).toContainText("Cuenta B");
+  } finally {
+    a.release();
+    b.release();
+  }
+});
+
 test("un cambio rápido A → B → A ignora B aunque su respuesta llegue al final", async ({ page, baseURL }) => {
   const session = await openAccounts(page, baseURL);
   await page.goto("/app/inicio");
@@ -284,6 +342,18 @@ test("una sesión en memoria se vuelve a verificar al vencer su vigencia", async
   await expect(page.getByRole("alert").filter({ hasText: "Tu sesión venció" })).toBeVisible();
   await expect(greeting(page)).toHaveText("¡Hola!");
   await expect(history(page)).not.toContainText(exam.title);
+});
+
+test("un 401 de sincronización descarta el perfil vigente sin esperar a su caducidad", async ({ page, baseURL }) => {
+  await page.clock.install();
+  await openAccounts(page, baseURL);
+  await page.goto("/app/inicio");
+  await expect(greeting(page)).toContainText("Cuenta A");
+  await page.route("**/api/sync?**", route => route.fulfill({ status: 401, json: { error: "Sesión revocada" } }));
+  await page.clock.fastForward(60_000);
+  await expect(page.getByRole("alert").filter({ hasText: "Tu sesión venció" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "¡Hola!", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Cuenta A/ })).toHaveCount(0);
 });
 
 test("reconectar vuelve a comprobar el propietario y conserva el trabajo local", async ({ page, baseURL }) => {
