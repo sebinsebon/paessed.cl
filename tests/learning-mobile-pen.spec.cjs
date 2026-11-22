@@ -69,7 +69,12 @@ test('review and next animate in only after choosing an alternative; the button 
   const initialPencil = await pencil.boundingBox();
   const scroll = page.getByTestId('learning-question-scroll');
   const initialHeight = await scroll.evaluate(el => el.clientHeight);
-  await page.getByRole('radio').first().click();
+  const firstOption = page.getByRole('radio').first();
+  await firstOption.click();
+  await expect(review).toBeVisible();
+  await firstOption.click();
+  await expect(review).toHaveCount(0);
+  await firstOption.click();
   await expect(review).toBeVisible();
   const action = review.getByRole('button', { name: 'Comprobar', exact: true });
   await expect(action).toBeEnabled();
