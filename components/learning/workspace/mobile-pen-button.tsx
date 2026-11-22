@@ -16,7 +16,7 @@ export function MobilePenButton({ enabled, disabled, mode, onActivate, onDeactiv
 }) {
   const reducedMotion = useReducedMotion();
 
-  return <div className={styles.penAnchor} data-testid="pen-toolbox" data-expanded={enabled} role="group" aria-label="Herramientas del lápiz">
+  return <div className={styles.penAnchor} data-testid="pen-toolbox" data-expanded={enabled} data-active-tool={enabled ? mode : "off"} role="group" aria-label="Herramientas del lápiz">
     <AnimatePresence initial={false}>
       {enabled && <motion.div
         key="pen-flyout"
