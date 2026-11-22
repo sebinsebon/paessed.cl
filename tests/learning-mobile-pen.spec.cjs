@@ -18,7 +18,7 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   await expect(eraser).toHaveAttribute('aria-pressed', 'false');
   await expect(settings).toBeVisible();
   await expect(settings).toHaveAttribute('aria-haspopup', 'dialog');
-  const toolbox = page.getByTestId('pen-toolbox').filter({ visible: true });
+  const toolbox = page.getByTestId('learning-session-actions').getByTestId('pen-toolbox');
   await expect(toolbox).toHaveAttribute('data-expanded', 'true');
   const positions = await page.evaluate(() => {
     const group = [...document.querySelectorAll('[data-testid="pen-toolbox"]')].find(element => element.getBoundingClientRect().width && getComputedStyle(element).visibility !== 'hidden' && element.closest('footer'));
