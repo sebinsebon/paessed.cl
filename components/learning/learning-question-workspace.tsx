@@ -67,6 +67,15 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const [saved, setSaved] = useState(false);
   const [storageError, setStorageError] = useState("");
   const reducedMotion = useReducedMotion();
+  const compactContext = context === "learn" || context === "playground";
+  const [mobileViewport, setMobileViewport] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 767px)");
+    const sync = () => setMobileViewport(query.matches);
+    sync(); query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  const mobileInk = compactContext && mobileViewport;
   const [sheetReady, setSheetReady] = useState(false);
   const [inkLocked, setInkLocked] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -160,7 +169,15 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
       {panel === "menu" && <>
         {extraTools && <div onClick={event => { if ((event.target as HTMLElement).closest("button")) setPanel(null); }}>{extraTools}</div>}
         <button type="button" className={styles.menuButton} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={20} />{saved ? "Quitar de guardadas" : "Guardar pregunta"}</button>
-        <button type="button" className={styles.menuButton} disabled={!sheetReady} onClick={() => { drawing.setDrawingEnabled(true); setPanel("drawing"); }}><Pencil size={20} />Lápiz sobre la pregunta</button>
+        {compactContext ? <>
+          <button type="button" className={styles.menuButton} aria-pressed={drawing.drawingEnabled && tool === "pen"} disabled={!sheetReady} onClick={() => {
+            setTool("pen"); drawing.setDrawingEnabled(true); setPanel(null);
+          }}><Pencil size={20} />Dibujar sobre la pregunta</button>
+          <button type="button" className={styles.menuButton} aria-pressed={drawing.drawingEnabled && tool === "eraser"} disabled={!sheetReady} onClick={() => {
+            setTool("eraser"); drawing.setDrawingEnabled(true); setPanel(null);
+          }}><Eraser size={20} />Goma de borrar</button>
+          <button type="button" className={styles.menuButton} disabled={!sheetReady} onClick={() => setPanel("drawing")}><Settings size={20} />Ajustes del lápiz</button>
+        </> : <button type="button" className={styles.menuButton} disabled={!sheetReady} onClick={() => { drawing.setDrawingEnabled(true); setPanel("drawing"); }}><Pencil size={20} />Lápiz sobre la pregunta</button>}
         <button type="button" className={styles.menuButton} onClick={() => setPanel("appearance")}><Settings size={20} />Apariencia</button>
         <button type="button" className={styles.menuButton} onClick={() => setPanel("info")}><Info size={20} />Información</button>
         <button type="button" className={styles.menuButton} onClick={() => setPanel("map")}><Grid3X3 size={20} />Mapa de preguntas</button>
@@ -189,6 +206,20 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   </>;
   return <div onClickCapture={event => { const target = event.target as HTMLElement; const button = target.closest<HTMLElement>("button"); if (button && !button.closest("dialog")) panelTrigger.current = button; }}><QuestionWorkspace modeLabel={context === "diagnostic" ? "Diagnóstico" : context === "exam" ? "Ensayos" : context === "playground" ? "Playground" : "Aprender"} number={number} total={total} axis={axis} topic={topic} subtitle={subtitle} progress={progress} progressMax={progressMax} onClose={onClose} closeDisabled={busy} tools={tools} panels={panels} footer={null} paperStyle={paperStyle(theme)} contentKey={meta.id} mobile={{
     steps,
+    compact: compactContext,
+    showAction: !!selected || !!checkedAnswer || revealSolution || (context === "playground" && question?.options.length === 0),
+    actionKey: !!checkedAnswer || revealSolution || (locked && !busy && !!selected) ? "next" : "review",
+    compactAction: footer(false, null),
+    floatingPen: <button type="button"
+      className={styles.floatingPencil}
+      aria-label={drawing.drawingEnabled && tool === "pen" ? "Desactivar lápiz" : "Activar lápiz"}
+      aria-pressed={drawing.drawingEnabled && tool === "pen"}
+      disabled={!sheetReady || busy}
+      onClick={() => {
+        if (drawing.drawingEnabled && tool === "pen") { drawing.setDrawingEnabled(false); setPanel(null); }
+        else { setTool("pen"); drawing.setDrawingEnabled(true); }
+      }}
+    ><Pencil size={22} aria-hidden="true" /></button>,
     menu: <button type="button" className={styles.iconButton} aria-label="Abrir menú de la pregunta" aria-expanded={panel !== null} onClick={() => setPanel("menu")}><Menu size={22} /></button>,
     footer: <div className={styles.footerRow}><div className={styles.mobileOnly}><MobilePenButton enabled={drawing.drawingEnabled} disabled={!sheetReady || busy} mode={tool} onActivate={() => { setTool("pen"); drawing.setDrawingEnabled(true); }} onDeactivate={() => { drawing.setDrawingEnabled(false); setPanel(null); }} onErase={() => setTool(current => current === "eraser" ? "pen" : "eraser")} onSettings={() => setPanel("drawing")} /></div><div ref={footerRef} className={styles.footerMain}><div className={drawing.drawingEnabled ? styles.desktopOnly : undefined}>{footer(drawing.drawingEnabled, narrow ? null : help)}</div>{drawing.drawingEnabled && <button type="button" className={styles.penExit} onClick={() => drawing.setDrawingEnabled(false)}><Move size={18} />Desplazar</button>}</div></div>,
   }}>
@@ -198,7 +229,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     {timer.enabled && <span className={`${styles.timer} ${styles.bodyTimer}`} data-testid="learning-question-timer" aria-label={`Tiempo activo: ${timer.label}`}>{timer.label}</span>}
     {error || !question || !ready ? <QuestionLoading error={error} retry={retry} /> : <>
       <motion.div initial={reducedMotion ? false : { opacity: 0.9 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.16 }} className="min-w-0" onPointerDownCapture={() => { if (panel === "drawing") setPanel(null); }}>
-      <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={scopedStorageKey(`paessed-learning-ink:${scratchpadKey}`)} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
+      <LearningInkSheet initialStrokes={initialStrokes} onStrokesChange={onStrokesChange} storageKey={scopedStorageKey(`paessed-learning-ink:${scratchpadKey}`)} enabled={drawing.drawingEnabled && (!panel || panel === "drawing") && figure === null} mode={tool} color={color} optionTapToSelect={mobileInk} onReady={setSheetReady} onError={setStorageError} onLockChange={setInkLocked} controlsRef={inkControls}>
         <div ref={sheetRef} className={styles.sheet}>
           <div ref={stemRef} tabIndex={-1} data-testid="learning-paper-stem" data-question-id={meta.id} style={QUESTION_PAPER_FONT} className={`${styles.stem} max-w-[1060px] text-[18px] leading-[1.55] text-[var(--pg-fg)] focus:outline-none sm:text-[21px]`}>{question.stemBlocks?.length ? <PaessedBlocks blocks={question.stemBlocks} assetUrls={resourceUrls.byId} /> : <p className="whitespace-pre-line">{question.stem}</p>}</div>
           <AdaptiveAlternatives frozen={!!checkedAnswer || inkLocked} contentKey={meta.id}>
@@ -207,7 +238,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
               const correct = !!checkedAnswer && letter === meta.correct;
               const incorrect = !!checkedAnswer && letter === checkedAnswer && !correct;
               const tone = correct ? "border-emerald-500 bg-[var(--pg-good)] ring-1 ring-emerald-500" : incorrect ? "border-rose-500 bg-[var(--pg-bad)] ring-1 ring-rose-500" : selected === letter ? "border-[var(--primary)] bg-[var(--pg-selected)] ring-1 ring-[var(--primary)]" : "border-[var(--pg-border)] bg-[var(--pg-option)] hover:border-[var(--primary)] hover:bg-[var(--pg-option-hover)]";
-              return <button key={letter} type="button" role="radio" aria-checked={selected === letter} data-answer-status={correct ? "correct" : incorrect ? "incorrect" : "neutral"} disabled={locked || drawing.drawingEnabled}
+              return <button key={letter} type="button" role="radio" aria-checked={selected === letter} data-answer-status={correct ? "correct" : incorrect ? "incorrect" : "neutral"} disabled={locked || (drawing.drawingEnabled && !mobileInk)}
                 onPointerDown={event => { pointer.current = { x: event.clientX, y: event.clientY, moved: false }; }}
                 onPointerMove={event => { if (pointer.current && Math.hypot(event.clientX - pointer.current.x, event.clientY - pointer.current.y) > 7) pointer.current.moved = true; }}
                 onPointerCancel={() => { if (pointer.current) pointer.current.moved = true; }}
