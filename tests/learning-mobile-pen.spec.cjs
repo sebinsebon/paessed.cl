@@ -8,6 +8,12 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
   const pen = page.getByRole('button', { name: 'Activar lápiz', exact: true });
+  const mobileGeometryBefore = await page.evaluate(() => {
+    const footer = document.querySelector('[data-testid="learning-session-actions"]');
+    const button = footer.querySelector('[aria-label="Activar lápiz"]');
+    const rect = element => { const { left, top, width, height } = element.getBoundingClientRect(); return { left, top, width, height }; };
+    return { footer: rect(footer), button: rect(button), pageWidth: document.documentElement.scrollWidth };
+  });
   await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ajustes del lápiz', exact: true })).toHaveCount(0);
 
@@ -20,18 +26,32 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
   await expect(settings).toHaveAttribute('aria-haspopup', 'dialog');
   const toolbox = page.getByTestId('learning-session-actions').getByTestId('pen-toolbox');
   await expect(toolbox).toHaveAttribute('data-expanded', 'true');
-  await expect.poll(() => toolbox.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
+  await expect(toolbox).toHaveCSS('width', '48px');
   const positions = await page.evaluate(() => {
-    const group = [...document.querySelectorAll('[data-testid="pen-toolbox"]')].find(element => element.getBoundingClientRect().width && getComputedStyle(element).visibility !== 'hidden' && element.closest('footer'));
-    const buttons = [...group.querySelectorAll('button')];
-    const rect = element => { const { x, left, right } = element.getBoundingClientRect(); return { x, left, right }; };
-    const byLabel = label => rect(buttons.find(button => button.getAttribute('aria-label') === label));
-    return { group: rect(group), settings: byLabel('Ajustes del lápiz'), eraser: byLabel('Goma de borrar'), pen: byLabel('Desactivar lápiz'), screen: innerWidth };
+    const footer = document.querySelector('[data-testid="learning-session-actions"]');
+    const group = footer.querySelector('[data-testid="pen-toolbox"]');
+    const rect = element => { const { left, top, right, width, height } = element.getBoundingClientRect(); return { left, top, right, width, height }; };
+    return {
+      footer: rect(footer),
+      pen: rect(group.querySelector('[aria-label="Desactivar lápiz"]')),
+      eraser: rect(group.querySelector('[aria-label="Goma de borrar"]')),
+      settings: rect(group.querySelector('[aria-label="Ajustes del lápiz"]')),
+      screen: innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
   });
-  expect(positions.settings.x).toBeLessThan(positions.eraser.x);
-  expect(positions.eraser.x).toBeLessThan(positions.pen.x);
+  expect(positions.pen.left).toBeCloseTo(mobileGeometryBefore.button.left, 0);
+  expect(positions.pen.top).toBeCloseTo(mobileGeometryBefore.button.top, 0);
+  expect(positions.pen.width).toBeCloseTo(mobileGeometryBefore.button.width, 0);
+  expect(positions.footer.height).toBeCloseTo(mobileGeometryBefore.footer.height, 0);
+  expect(positions.footer.width).toBeCloseTo(mobileGeometryBefore.footer.width, 0);
+  // The original pencil stays at the left edge; its left-opening actions float above
+  // it on narrow screens, instead of pushing the navigation or clipping offscreen.
+  expect(positions.settings.left).toBeLessThan(positions.eraser.left);
+  expect(positions.settings.top).toBeLessThan(positions.pen.top);
   expect(positions.settings.left).toBeGreaterThanOrEqual(0);
-  expect(positions.group.right).toBeLessThanOrEqual(positions.screen);
+  expect(positions.eraser.right).toBeLessThanOrEqual(positions.screen);
+  expect(positions.scrollWidth).toBeLessThanOrEqual(positions.screen + 1);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('pen-active.png') });
 
@@ -79,16 +99,32 @@ test('pen reveals eraser and separate settings; the eraser removes only touched 
 test('pen quick actions remain visible until pencil is toggled off, including on desktop', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await seed(page);
+  const desktopBefore = await page.evaluate(() => {
+    const button = document.querySelector('header [aria-label="Activar lápiz"]');
+    const header = button.closest('header');
+    const rect = element => { const { left, top, width, height } = element.getBoundingClientRect(); return { left, top, width, height }; };
+    return { button: rect(button), header: rect(header) };
+  });
   await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
   const desktopEraser = page.getByRole('button', { name: 'Goma de borrar', exact: true });
   const desktopSettings = page.getByRole('button', { name: 'Ajustes del lápiz', exact: true });
   const desktopPencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(desktopEraser).toBeVisible();
   await expect(desktopSettings).toBeVisible();
-  await expect.poll(() => page.getByTestId('pen-toolbox').first().evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(140);
+  await expect(page.getByTestId('pen-toolbox').first()).toHaveCSS('width', '48px');
   const desktopPositions = await Promise.all([desktopSettings, desktopEraser, desktopPencil].map(button => button.boundingBox()));
   expect(desktopPositions[0].x).toBeLessThan(desktopPositions[1].x);
-  expect(desktopPositions[1].x).toBeLessThan(desktopPositions[2].x);
+  expect(desktopPositions[1].right).toBeLessThanOrEqual(desktopPositions[2].x + 2);
+  expect(desktopPositions[2].x).toBeCloseTo(desktopBefore.button.left, 0);
+  expect(desktopPositions[2].y).toBeCloseTo(desktopBefore.button.top, 0);
+  expect(desktopPositions[2].width).toBeCloseTo(desktopBefore.button.width, 0);
+  const desktopHeaderAfter = await page.evaluate(() => {
+    const header = document.querySelector('header [aria-label="Desactivar lápiz"]').closest('header');
+    const { height, width } = header.getBoundingClientRect();
+    return { height, width };
+  });
+  expect(desktopHeaderAfter.height).toBeCloseTo(desktopBefore.header.height, 0);
+  expect(desktopHeaderAfter.width).toBeCloseTo(desktopBefore.header.width, 0);
   await desktopPencil.click();
   await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ajustes del lápiz', exact: true })).toHaveCount(0);
