@@ -20,8 +20,8 @@ const plusJakarta = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "PAESSED — Prepárate para la PAES M1",
-  description: "Diagnóstico, práctica adaptativa, ensayos y progreso para Matemática M1.",
+  title: "Paessed.cl 🎯",
+  description: "Paessed - Inicio",
 };
 
 const themeBootstrap = `(() => {

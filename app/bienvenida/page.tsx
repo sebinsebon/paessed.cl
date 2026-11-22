@@ -1,3 +1,9 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  description: "Paessed - Bienvenida",
+};
+
 import { redirect } from "next/navigation";
 import { OnboardingHandoff } from "@/components/onboarding-handoff";
 import { devBypassActive, optionalAccount } from "@/lib/server/entry";
