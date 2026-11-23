@@ -123,7 +123,7 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
     {!ready && <div role="status" className="mb-2 text-sm">Preparando fuentes y figuras… <button type="button" className="min-h-11 underline" onClick={retryImages}>Reintentar figuras</button></div>}
     <div data-testid="learning-ink-scroll" style={{ maxWidth: "100%", overflowX: "auto", overscrollBehaviorX: "contain", touchAction: enabled ? "none" : "pan-x pan-y pinch-zoom" }}>
       <div style={sheet ? { width: sheet.width * zoom, minHeight: sheet.height * zoom } : undefined}>
-        <div ref={sheetRef} data-testid="learning-ink-sheet" data-ink-ready={ready} data-ink-locked={!!sheet} data-ink-layout={sheet?.layout} data-ink-option-layout={sheet?.optionLayout}
+        <div ref={sheetRef} data-testid="learning-ink-sheet" data-ink-ready={ready} data-ink-locked={!!sheet} data-ink-layout={sheet?.layout} data-ink-option-layout={sheet?.optionLayout} data-ink-drawing={optionTapToSelect && enabled}
           onPointerDown={optionTapToSelect ? event => inputHandlers.current?.down(event) : undefined}
           onPointerMove={optionTapToSelect ? event => inputHandlers.current?.move(event) : undefined}
           onPointerUp={optionTapToSelect ? event => inputHandlers.current?.up(event) : undefined}

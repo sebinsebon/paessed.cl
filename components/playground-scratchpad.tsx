@@ -35,7 +35,7 @@ export function PlaygroundScratchpad({
   /** Aprender can opt into cancellation-safe, single-pointer drawing. */
   singlePointer?: boolean;
   doubleTapErase?: boolean;
-  /** Mobile: a stroke beginning inside an alternative selects it; strokes begun outside can cross it. */
+  /** Pointer gestures distinguish a button tap from a drawing drag, even when started on an alternative. */
   optionTapToSelect?: boolean;
   inputHandlersRef?: MutableRefObject<InkPointerHandlers | null>;
 }) {
@@ -201,8 +201,9 @@ export function PlaygroundScratchpad({
           event.clientY >= rect.top && event.clientY <= rect.bottom;
       });
       if (button) {
-        // Keep the normal native click for clean alternatives. Only taps ON ink
-        // wait briefly: a second tap should erase the mark, not toggle the answer.
+        // A stationary tap activates the native answer button. A drag begins
+        // drawing at the original touch position, including inside an option.
+        // Only taps ON existing ink wait for a possible double-tap erase.
         const inkStroke = doubleTapErase ? (hitsAt(pointOf(event)).at(-1) ?? null) : null;
         const previous = pendingInkSelection.current;
         const doubleInkTap = inkStroke !== null && !!previous &&
@@ -219,6 +220,10 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         return;
       }
+    }
+    if (optionTapToSelect && mode === "eraser") {
+      const button = (event.target as Element).closest<HTMLButtonElement>('[role="radio"]');
+      if (button) blockedInkClick.current = button;
     }
     event.preventDefault();
     pointerStarted.current = performance.now();
@@ -250,9 +255,37 @@ export function PlaygroundScratchpad({
     if (singlePointer && (touchGesture.current || activePointer.current !== event.pointerId)) return;
     const option = optionTap.current;
     if (option && option.id === event.pointerId) {
-      if (Math.hypot(event.clientX - option.x, event.clientY - option.y) > 10) {
+      const distance = Math.hypot(event.clientX - option.x, event.clientY - option.y);
+      if (!option.moved && distance > 9) {
         option.moved = true;
         option.button.removeAttribute("data-press-preview");
+        // Do not allow the browser's click to select the option after drawing.
+        blockedInkClick.current = option.button;
+        if (pendingInkSelection.current) {
+          clearTimeout(pendingInkSelection.current.timeout);
+          pendingInkSelection.current = null;
+        }
+        // Capture from this point forward so the stroke remains continuous
+        // when the pointer moves outside the alternative's own bounds.
+        event.preventDefault();
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pointerStarted.current = performance.now();
+        lastTap.current = null;
+        onInteractionStart?.();
+        liveStrokeRef.current = {
+          color,
+          points: [pointOfCoords(option.x, option.y, canvasRef.current!)],
+        };
+      }
+      if (option.moved && liveStrokeRef.current) {
+        event.preventDefault();
+        for (const point of pointerPoints(event)) {
+          const previous = liveStrokeRef.current.points.at(-1);
+          if (!previous || Math.hypot(point.x - previous.x, point.y - previous.y) > .0001) {
+            liveStrokeRef.current.points.push(point);
+          }
+        }
+        schedulePaint();
       }
       return;
     }
@@ -287,8 +320,22 @@ export function PlaygroundScratchpad({
     const option = optionTap.current;
     if (option && option.id === event.pointerId) {
       const tapped = !option.moved &&
-        Math.hypot(event.clientX - option.x, event.clientY - option.y) <= 10;
+        Math.hypot(event.clientX - option.x, event.clientY - option.y) <= 9;
       clearOptionTap();
+      if (option.moved) {
+        // Finish the stroke that began inside the answer button; the
+        // previously selected alternative remains unchanged.
+        const stroke = liveStrokeRef.current;
+        liveStrokeRef.current = null;
+        blockedInkClick.current = option.button;
+        if (stroke && stroke.points.length > 1) {
+          const updated = [...strokesRef.current, stroke];
+          strokesRef.current = updated;
+          onChange(updated);
+          schedulePaint();
+        }
+        return;
+      }
       if (tapped && option.inkStroke !== null) {
         if (option.doubleInkTap) {
           // Erase just the touched stroke; do not change the selected answer.
@@ -356,6 +403,10 @@ export function PlaygroundScratchpad({
     }
   };
   const cancelStroke = (event: ReactPointerEvent<HTMLElement>) => {
+    // Touch screens implicitly capture the pointer on the option button.
+    // Transferring capture from that button to the sheet also fires a bubbling
+    // lostpointercapture event: it must not cancel the new drawing stroke.
+    if (event.type === "lostpointercapture" && event.target !== event.currentTarget) return;
     if (!singlePointer) { finishStroke(event); return; }
     if (event.type === "lostpointercapture" && activePointer.current !== event.pointerId) return;
     contacts.current.delete(event.pointerId);

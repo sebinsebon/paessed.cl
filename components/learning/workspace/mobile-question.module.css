@@ -26,6 +26,9 @@
 /* Native alternatives retain accessible radio semantics but respond like tactile buttons. */
 .option { transform:translateY(0) scale(1); transform-origin:center; transition:transform 150ms cubic-bezier(.22,.8,.35,1),filter 110ms ease,background-color 150ms,border-color 150ms,box-shadow 145ms ease-out; }
 .option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { transform:translateY(1.5px) scale(.99); filter:brightness(.99); transition-duration:60ms; }
+/* With ink enabled, a touch starting inside an answer can become a real stroke.
+   Two-finger navigation is handled by the sheet; without ink, native scrolling returns. */
+:global([data-ink-drawing="true"]) .option { touch-action:none; }
 .drawingTools { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
 .drawingTools button { min-width:44px; min-height:44px; display:grid; place-items:center; border-radius:8px; }
 .drawingTools button[aria-pressed=true] { outline:2px solid var(--primary); outline-offset:-2px; }

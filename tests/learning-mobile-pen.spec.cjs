@@ -79,15 +79,49 @@ test('answer button depresses while held, before selecting on release, even with
   await page.keyboard.press('Space');
   await expect(option).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
-  // A drag beginning inside an option is not a selection or a drawing stroke.
+  // A drag starting INSIDE an option creates ink instead of selecting it.
   await page.mouse.move(x, y);
   await page.mouse.down();
   await expect(option).toHaveAttribute('data-press-preview', 'true');
-  await page.mouse.move(x + 45, y + 2, { steps: 5 });
+  await page.mouse.move(x + 45, y + 2, { steps: 8 });
   await expect(option).not.toHaveAttribute('data-press-preview', 'true');
   await page.mouse.up();
   await expect(option).toHaveAttribute('aria-checked', 'false');
-  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(0);
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(1);
+  await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
+});
+
+test('touch drag can begin inside an alternative, draw across its edge, and still allow tap selection', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Touch emulation uses Chromium CDP');
+  const meta = catalog[0];
+  await page.setViewportSize({ width: 390, height: 650 });
+  await seed(page, meta);
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz' })).toHaveAttribute('aria-pressed', 'true');
+  const option = page.getByRole('radio').first();
+  await option.scrollIntoViewIfNeeded();
+  await expect(option).toHaveCSS('touch-action', 'none');
+  const box = await option.boundingBox();
+  const start = { id: 1, x: box.x + 35, y: box.y + box.height / 2 };
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
+  const send = (type, points) => cdp.send('Input.dispatchTouchEvent', {
+    type, touchPoints: points,
+  });
+  await send('touchStart', [start]);
+  for (let step = 1; step <= 9; step++) {
+    await send('touchMove', [{ ...start, x: start.x + step * 11, y: start.y + step * 2 }]);
+  }
+  await send('touchEnd', []);
+  const key = `paessed-learning-ink:${NODE_ID}:${meta.id}`;
+  await expect.poll(() => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(1);
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
+
+  // A stationary tap, on a clean section of the same alternative, still selects it.
+  const clean = { id: 2, x: box.x + box.width - 28, y: box.y + box.height / 2 };
+  await send('touchStart', [clean]);
+  await send('touchEnd', []);
+  await expect(option).toHaveAttribute('aria-checked', 'true');
 });
 
 test('double tap on a stroke crossing an option erases it instead of selecting the answer', async ({ page }) => {

@@ -93,3 +93,96 @@
   .secondLabel { opacity:1; }
   .replay { transition:none; }
 }
+
+
+/* Desktop: show drawing and erasing simultaneously, instead of waiting for a
+   single long sequence. The two scenes are illustrative and never touch ink. */
+.desktopGrid { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; width:100%; }
+.desktopPane { position:relative; isolation:isolate; min-width:0; aspect-ratio:250 / 185; min-height:170px; overflow:hidden; border:1px solid var(--pg-border); border-radius:16px; background:var(--pg-soft); }
+.desktopScene { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.desktopTag { position:absolute; top:11px; left:11px; z-index:2; padding:6px 10px; border:1px solid var(--pg-border); border-radius:9px; background:var(--pg-bg); color:var(--pg-fg); font-size:12px; font-weight:900; box-shadow:0 2px 8px #0000000b; }
+.desktopDrawInk,.desktopDrawShadow,.desktopEraseInk,.desktopEraseShadow { fill:none; stroke-linecap:round; stroke-linejoin:round; }
+.desktopDrawInk,.desktopEraseInk { stroke:#2563eb; stroke-width:6; }
+.desktopDrawShadow,.desktopEraseShadow { stroke:color-mix(in srgb,#2563eb 30%,transparent); stroke-width:13; }
+.desktopDrawInk,.desktopDrawShadow { stroke-dasharray:1; stroke-dashoffset:1; animation:desktop-draw-ink 7.2s ease-in-out infinite; }
+.desktopEraseInk,.desktopEraseShadow { stroke-dasharray:1; stroke-dashoffset:0; animation:desktop-erase-ink 7.2s ease-in-out infinite; }
+.desktopDrawCursor,.desktopEraseCursor { transform-origin:0 0; transform-box:view-box; filter:drop-shadow(0 2px 2px #0002); }
+.desktopDrawCursor { transform:translate(26px,117px); animation:desktop-draw-cursor 7.2s linear infinite; }
+.desktopEraseCursor { transform:translate(215px,149px); animation:desktop-erase-cursor 7.2s ease-in-out infinite; }
+.desktopRingOne,.desktopRingTwo { fill:none; stroke:var(--primary); stroke-width:4; opacity:0; transform-box:fill-box; transform-origin:center; }
+.desktopRingOne { animation:desktop-ring-one 7.2s ease-out infinite; }
+.desktopRingTwo { animation:desktop-ring-two 7.2s ease-out infinite; }
+.desktopClickOne,.desktopClickTwo { font:900 25px/1 sans-serif; fill:var(--primary); paint-order:stroke; stroke:var(--pg-bg); stroke-width:5px; opacity:0; transform-box:fill-box; transform-origin:center; }
+.desktopClickOne { animation:desktop-number-one 7.2s ease-out infinite; }
+.desktopClickTwo { animation:desktop-number-two 7.2s ease-out infinite; }
+.desktopErased { position:absolute; z-index:2; bottom:10px; right:10px; padding:6px 10px; border-radius:9px; color:var(--success); background:var(--pg-bg); font-size:12px; font-weight:900; opacity:0; animation:desktop-erased-note 7.2s ease-out infinite; }
+.desktopMotionNote { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); padding:6px 10px; border-radius:9px; background:var(--pg-bg); color:var(--pg-fg); font-size:11px; font-weight:800; white-space:nowrap; }
+
+@keyframes desktop-draw-ink {
+  0%,8% { stroke-dashoffset:1; }
+  48%,95% { stroke-dashoffset:0; }
+  100% { stroke-dashoffset:1; }
+}
+@keyframes desktop-draw-cursor {
+  0%,7% { transform:translate(26px,117px) scale(1); opacity:0; }
+  8% { transform:translate(26px,117px) scale(1); opacity:1; }
+  17% { transform:translate(54px,94px) scale(1); }
+  26% { transform:translate(86px,118px) scale(1); }
+  34% { transform:translate(136px,82px) scale(1); }
+  42% { transform:translate(179px,79px) scale(1); }
+  48% { transform:translate(223px,104px) scale(1); opacity:1; }
+  55%,100% { transform:translate(223px,104px) scale(1); opacity:0; }
+}
+@keyframes desktop-erase-ink {
+  0%,40% { stroke-dashoffset:0; opacity:1; }
+  49% { stroke-dashoffset:0; opacity:0; }
+  50%,94% { stroke-dashoffset:1; opacity:0; }
+  100% { stroke-dashoffset:0; opacity:1; }
+}
+@keyframes desktop-erase-cursor {
+  0%,7% { transform:translate(215px,149px) scale(1); opacity:0; }
+  9% { opacity:1; }
+  18% { transform:translate(113px,95px) scale(1); }
+  23% { transform:translate(113px,95px) scale(.84); }
+  24% { transform:translate(113px,95px) scale(1); }
+  27% { transform:translate(113px,95px) scale(.84); }
+  28%,56% { transform:translate(113px,95px) scale(1); opacity:1; }
+  63%,100% { transform:translate(113px,95px) scale(1); opacity:0; }
+}
+@keyframes desktop-ring-one {
+  0%,21% { transform:scale(.3); opacity:0; }
+  23% { transform:scale(.8); opacity:1; }
+  29%,100% { transform:scale(2.8); opacity:0; }
+}
+@keyframes desktop-ring-two {
+  0%,25% { transform:scale(.3); opacity:0; }
+  27% { transform:scale(.8); opacity:1; }
+  33%,100% { transform:scale(2.8); opacity:0; }
+}
+@keyframes desktop-number-one {
+  0%,21% { opacity:0; transform:translateY(6px) scale(.75); }
+  23%,25% { opacity:1; transform:translateY(0) scale(1.1); }
+  28%,100% { opacity:0; transform:translateY(-8px) scale(1); }
+}
+@keyframes desktop-number-two {
+  0%,25% { opacity:0; transform:translateY(6px) scale(.75); }
+  27%,29% { opacity:1; transform:translateY(0) scale(1.1); }
+  32%,100% { opacity:0; transform:translateY(-8px) scale(1); }
+}
+@keyframes desktop-erased-note {
+  0%,42% { opacity:0; transform:translateY(7px) scale(.96); }
+  49%,79% { opacity:1; transform:translateY(0) scale(1); }
+  86%,100% { opacity:0; transform:translateY(-5px) scale(.96); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .desktopDrawInk,.desktopDrawShadow,.desktopEraseInk,.desktopEraseShadow,
+  .desktopDrawCursor,.desktopEraseCursor,.desktopRingOne,.desktopRingTwo,
+  .desktopClickOne,.desktopClickTwo,.desktopErased { animation:none!important; }
+  .desktopDrawInk,.desktopDrawShadow { stroke-dashoffset:0; }
+  .desktopEraseInk,.desktopEraseShadow { stroke-dashoffset:0; }
+  .desktopDrawCursor { transform:translate(223px,104px); opacity:1; }
+  .desktopEraseCursor { transform:translate(113px,95px); opacity:1; }
+  .desktopRingOne { transform:scale(1.8); opacity:1; }
+  .desktopRingTwo { transform:scale(2.6); opacity:.45; }
+  .desktopClickOne,.desktopClickTwo { opacity:1; }
+}
