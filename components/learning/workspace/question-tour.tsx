@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { CircleHelp, Sparkles } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { scopedStorageKey } from "@/lib/sync/local";
 import { QuestionTourInkDemo } from "./question-tour-ink-demo";
 
@@ -189,12 +189,24 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
     </div>
     <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-label="Recorrido del visor de preguntas"
       data-testid="question-tour-panel" data-step={step.id} onKeyDown={onKeys}
+      layout
       initial={reducedMotion ? false : { opacity: 0, y: 12, scale: .98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: reducedMotion ? 0 : .23, ease: [.22, 1, .36, 1] }}
+      transition={{
+        layout: reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 490, damping: 38, mass: .72 },
+        opacity: { duration: reducedMotion ? 0 : .18 },
+        y: { duration: reducedMotion ? 0 : .25, ease: [.22, 1, .36, 1] },
+        scale: { duration: reducedMotion ? 0 : .25, ease: [.22, 1, .36, 1] },
+      }}
       style={panelPlacement}
-      className={`fixed inset-x-3 z-[130] mx-auto max-h-[calc(100dvh-96px)] w-[calc(100%-24px)] ${step.id === "ink" ? "max-w-xl" : "max-w-md"} overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] sm:p-5`}
+      className={`fixed inset-x-3 z-[130] mx-auto max-h-[calc(100dvh-96px)] w-[calc(100%-24px)] ${step.id === "ink" ? mobile ? "max-w-xl" : "max-w-3xl" : "max-w-md"} overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] transition-[max-width] duration-300 ease-[cubic-bezier(.22,1,.36,1)] sm:p-5`}
     >
+      <AnimatePresence initial={false} mode="wait">
+        <motion.div key={step.id} data-testid="question-tour-step-content"
+          initial={reducedMotion ? false : { opacity: 0, y: 10, scale: .99 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={reducedMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -8, scale: .99 }}
+          transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 530, damping: 37, mass: .7 }}>
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--pg-selected)] text-[var(--primary)]"><Sparkles size={19} /></div>
         <div className="min-w-0 flex-1">
@@ -204,18 +216,22 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
         </div>
       </div>
       {step.id === "ink" && <QuestionTourInkDemo mobile={mobile} />}
+        </motion.div>
+      </AnimatePresence>
       <div className="mt-4 flex gap-1.5" aria-hidden="true">
-        {steps.map((item, i) => <span key={item.id} className="h-1 flex-1 rounded-full" style={{ background: i <= index ? "var(--primary)" : "var(--pg-border)" }} />)}
+        {steps.map((item, i) => <span key={item.id} className="h-1 flex-1 rounded-full transition-colors duration-300" style={{ background: i <= index ? "var(--primary)" : "var(--pg-border)" }} />)}
       </div>
       <div className="mt-4 flex items-center justify-between gap-2">
         <button type="button" onClick={close} className="min-h-10 rounded-lg px-2 text-xs font-bold text-[var(--pg-muted)]">Omitir</button>
         <div className="flex items-center gap-2">
           {index > 0 && <button type="button" onClick={() => setIndex(i => i - 1)}
             className="min-h-10 rounded-lg border border-[var(--pg-border)] px-3 text-xs font-extrabold">Atrás</button>}
-          <button type="button" onClick={() => index === steps.length - 1 ? close() : setIndex(i => i + 1)}
+          <motion.button type="button" onClick={() => index === steps.length - 1 ? close() : setIndex(i => i + 1)}
+            whileTap={reducedMotion ? undefined : { scale: .96, y: 1 }}
+            transition={{ type: "spring", stiffness: 600, damping: 35, mass: .55 }}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[var(--primary)] px-4 text-xs font-extrabold text-white">
             {index === steps.length - 1 ? "Entendido" : "Siguiente"} <CircleHelp size={15} aria-hidden="true" />
-          </button>
+          </motion.button>
         </div>
       </div>
     </motion.div>
