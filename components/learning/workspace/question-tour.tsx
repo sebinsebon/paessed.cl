@@ -15,7 +15,9 @@ function getSteps(mobile: boolean, context: Context): Step[] {
     ? "Al elegir una alternativa aparece «Confirmar y continuar». En el diagnóstico no se revela la respuesta correcta al instante."
     : context === "exam"
       ? "Al elegir una alternativa aparece «Siguiente». También puedes recorrer el ensayo sin responder desde el menú."
-      : "Al seleccionar una alternativa aparece el botón verde para comprobar; después podrás continuar.";
+      : mobile
+        ? "Al seleccionar una alternativa aparece el botón verde para comprobar; después podrás continuar."
+        : "Al seleccionar una alternativa se habilita la acción para comprobar y continuar con tu práctica.";
   return [
     {
       id: "pencil",
@@ -101,7 +103,8 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
   useEffect(() => {
     if (!open) return;
     const target = Array.from(document.querySelectorAll<HTMLElement>(step.selector))
-      .find(element => !!element.getClientRects().length);
+      .find(element => !!element.getClientRects().length)
+      ?? document.querySelector<HTMLElement>('[data-testid="learning-question-scroll"]');
     let frame = 0;
     let observer: ResizeObserver | undefined;
     let active = true;
@@ -189,7 +192,7 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: reducedMotion ? 0 : .23, ease: [.22, 1, .36, 1] }}
       style={panelPlacement}
-      className="fixed inset-x-3 z-[130] mx-auto w-[calc(100%-24px)] max-w-md overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] sm:p-5"
+      className="fixed inset-x-3 z-[130] mx-auto max-h-[calc(100dvh-96px)] w-[calc(100%-24px)] max-w-md overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] sm:p-5"
     >
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--pg-selected)] text-[var(--primary)]"><Sparkles size={19} /></div>
