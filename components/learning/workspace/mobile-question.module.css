@@ -124,7 +124,7 @@
  .options { display:grid!important; grid-template-columns:minmax(0,1fr); width:100%; align-items:stretch!important; gap:8px!important; padding-top:20px!important; }
  .options[data-layout=grid] { grid-template-columns:repeat(2,minmax(0,1fr)); }
  .options[data-layout=grid] > :last-child:nth-child(odd) { grid-column:1/-1; }
- .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; }
+ .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; user-select:none; -webkit-tap-highlight-color:transparent; }
  .option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { box-shadow:0 1px 0 var(--pg-border); }
  .optionLabel,.optionContent { font-size:16px!important; line-height:24px!important; }
  .optionContent { flex:1; overflow-wrap:anywhere; }
@@ -158,7 +158,7 @@
 :global([data-ink-locked=true][data-ink-layout=mobile]) .options { display:grid!important; grid-template-columns:minmax(0,1fr); width:100%; align-items:stretch!important; gap:8px!important; padding-top:20px!important; }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .options[data-layout=grid] { grid-template-columns:repeat(2,minmax(0,1fr)); }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .options[data-layout=grid] > :last-child:nth-child(odd) { grid-column:1/-1; }
-:global([data-ink-locked=true][data-ink-layout=mobile]) .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; }
+:global([data-ink-locked=true][data-ink-layout=mobile]) .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; user-select:none; -webkit-tap-highlight-color:transparent; }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .option:active:not(:disabled),
 :global([data-ink-locked=true][data-ink-layout=mobile]) .option[data-press-preview=true]:not(:disabled) { box-shadow:0 1px 0 var(--pg-border); }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .optionLabel,
