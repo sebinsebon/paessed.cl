@@ -79,6 +79,15 @@ test('answer button depresses while held, before selecting on release, even with
   await page.keyboard.press('Space');
   await expect(option).toHaveAttribute('aria-checked', 'false');
   await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
+  // A drag beginning inside an option is not a selection or a drawing stroke.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(option).toHaveAttribute('data-press-preview', 'true');
+  await page.mouse.move(x + 45, y + 2, { steps: 5 });
+  await expect(option).not.toHaveAttribute('data-press-preview', 'true');
+  await page.mouse.up();
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(0);
 });
 
 test('review and next animate in only after choosing an alternative; the button sits above ink', async ({ page }) => {
