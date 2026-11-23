@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Bookmark, Check, Clock, Eraser, Grid3X3, Info, Menu, Move, Pencil, RotateCcw, Settings, Trash2, X, ZoomIn } from "lucide-react";
 import { PaessedBlocks } from "@/components/paessed-blocks";
 import { useDrawingTools } from "@/components/use-drawing-tools";
@@ -69,7 +69,8 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const reducedMotion = useReducedMotion();
   const [mobileViewport, setMobileViewport] = useState(false);
   const previousMobile = useRef(false);
-  useEffect(() => {
+  // Initialize before the first visible phone paint to avoid a flash of "pen off".
+  useLayoutEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
     const sync = () => {
       const mobile = query.matches;
