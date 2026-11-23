@@ -67,7 +67,6 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const [saved, setSaved] = useState(false);
   const [storageError, setStorageError] = useState("");
   const reducedMotion = useReducedMotion();
-  const compactContext = context === "learn" || context === "playground";
   const [mobileViewport, setMobileViewport] = useState(false);
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
@@ -75,7 +74,8 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     sync(); query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
   }, []);
-  const mobileInk = compactContext && mobileViewport;
+  // Every question viewer uses the same touch-first ink interaction on phones.
+  const mobileInk = mobileViewport;
   const [sheetReady, setSheetReady] = useState(false);
   const [inkLocked, setInkLocked] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -168,6 +168,10 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
     {panel && <QuestionDialog returnFocusRef={panelTrigger} animatedEntrance={panel === "drawing"} title={{ menu: "Herramientas de la pregunta", appearance: "Apariencia de la hoja", map: "Mapa de preguntas del nodo", info: "Información de la pregunta", drawing: "Herramientas de dibujo" }[panel]} onClose={() => setPanel(null)} paperStyle={paperStyle(theme)}>
       {panel === "menu" && <>
         {extraTools && <div onClick={event => { if ((event.target as HTMLElement).closest("button")) setPanel(null); }}>{extraTools}</div>}
+        {mobileInk && context === "exam" && <div className={styles.menuNavigation}>
+          <p className="mb-2 text-xs font-bold text-[var(--pg-muted)]">Navegación del ensayo</p>
+          {footer(false, null)}
+        </div>}
         <button type="button" className={styles.menuButton} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={20} />{saved ? "Quitar de guardadas" : "Guardar pregunta"}</button>
         {mobileInk ? <>
           <button type="button" className={styles.menuButton} aria-pressed={drawing.drawingEnabled && tool === "pen"} disabled={!sheetReady} onClick={() => {
@@ -206,7 +210,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   </>;
   return <div onClickCapture={event => { const target = event.target as HTMLElement; const button = target.closest<HTMLElement>("button"); if (button && !button.closest("dialog")) panelTrigger.current = button; }}><QuestionWorkspace modeLabel={context === "diagnostic" ? "Diagnóstico" : context === "exam" ? "Ensayos" : context === "playground" ? "Playground" : "Aprender"} number={number} total={total} axis={axis} topic={topic} subtitle={subtitle} progress={progress} progressMax={progressMax} onClose={onClose} closeDisabled={busy} tools={tools} panels={panels} footer={null} paperStyle={paperStyle(theme)} contentKey={meta.id} mobile={{
     steps,
-    compact: compactContext,
+    compact: true,
     showAction: !!selected || !!checkedAnswer || revealSolution || (context === "playground" && question?.options.length === 0),
     actionKey: !!checkedAnswer || revealSolution || (locked && !busy && !!selected) ? "next" : "review",
     compactAction: footer(false, null),
