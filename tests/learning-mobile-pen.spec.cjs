@@ -54,6 +54,33 @@ test('phone pencil starts enabled, menu tools remain separate and eraser removes
   await expect(page.getByRole('button', { name: 'Activar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('answer button depresses while held, before selecting on release, even with the pencil already active', async ({ page }) => {
+  const meta = catalog[0];
+  await seed(page, meta);
+  const pencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
+  await expect(pencil).toHaveAttribute('aria-pressed', 'true');
+  const option = page.getByRole('radio').first();
+  await option.scrollIntoViewIfNeeded();
+  const box = await option.boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await expect(option).toHaveAttribute('data-press-preview', 'true');
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(() => option.evaluate(el => new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeLessThan(.99);
+  await page.mouse.up();
+  await expect(option).toHaveAttribute('aria-checked', 'true');
+  await expect(option).not.toHaveAttribute('data-press-preview', 'true');
+  const key = `paessed-learning-ink:${NODE_ID}:${meta.id}`;
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(0);
+  await expect(page.getByTestId('mobile-review-dock')).toBeVisible();
+  // Releasing the finger triggers selection; keyboard still toggles the same choice.
+  await option.focus();
+  await page.keyboard.press('Space');
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
+});
+
 test('review and next animate in only after choosing an alternative; the button sits above ink', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page);
