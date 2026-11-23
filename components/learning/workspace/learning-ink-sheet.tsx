@@ -129,7 +129,9 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
           onPointerUp={optionTapToSelect ? event => inputHandlers.current?.up(event) : undefined}
           onPointerCancel={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
           onLostPointerCapture={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
-          style={{ position: "relative", display: "flow-root", minHeight: paperSpace.height, ...(sheet ? { width: sheet.width, minHeight: sheet.height, transform: `scale(${zoom})`, transformOrigin: "top left" } : {}) }}>
+          style={{ position: "relative", display: "flow-root", minHeight: paperSpace.height,
+            ...(optionTapToSelect && enabled ? { cursor: mode === "eraser" ? 'url("/cursors/eraser.svg") 7 26, crosshair' : "crosshair" } : {}),
+            ...(sheet ? { width: sheet.width, minHeight: sheet.height, transform: `scale(${zoom})`, transformOrigin: "top left" } : {}) }}>
           {children}
           <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase optionTapToSelect={optionTapToSelect} inputHandlersRef={inputHandlers} onInteractionStart={() => {
             if (!sheet) { const value = dimensions(); if (value) { setSheet(value); callbacks.current.onLockChange?.(true); } }
