@@ -269,7 +269,7 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
         <p className="font-extrabold">Alternativa correcta: {meta.correct}</p>
         {question.explanationBlocks?.length || question.explanation ? <><p className="mt-2 text-xs font-bold text-[var(--pg-muted)]">{question.explanationStatus === "verified" ? "Explicación verificada" : "Explicación provisional · pendiente de revisión docente"}</p><div className="mt-1" style={QUESTION_PAPER_FONT}>{question.explanationBlocks?.length ? <PaessedBlocks blocks={question.explanationBlocks} assetUrls={resourceUrls.byId} /> : question.explanation}</div></> : <p className="mt-2">El banco contiene la clave verificada, pero todavía no una explicación. Revisa tu procedimiento antes de continuar.</p>}
       </section>}
-      {narrow && (showAiHelp || customAiHelp || renderAiHelp) && <div ref={bodyAiRef} className={styles.aiInBody}>{help}</div>}
+      {(mobileInk || narrow) && (showAiHelp || customAiHelp || renderAiHelp) && <div ref={bodyAiRef} className={styles.aiInBody}>{help}</div>}
     </>}
   </QuestionWorkspace></div>;
 }
