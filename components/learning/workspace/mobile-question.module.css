@@ -65,6 +65,8 @@
 @media (prefers-reduced-motion:reduce) { .dialogEntrance[open],.dialogEntrance[open]::backdrop { animation:none; } .penButton,.penFlyoutButton { transition:none; } .penButton:active:not(:disabled),.penFlyoutButton:active:not(:disabled) { transform:none; } }
 /* Compact instant-feedback phone mode: a floating pencil and no permanent bottom navigation. */
 .compactMobileOnly { display:none; }
+.menuNavigation { margin:12px 0; padding:12px 0; border-top:1px solid var(--pg-border); border-bottom:1px solid var(--pg-border); }
+.menuNavigation button { min-height:44px; }
 @media (max-width:767px) {
   .compactFrameFooter { position:absolute; inset-inline:0; bottom:0; z-index:42; height:calc(76px + env(safe-area-inset-bottom)); min-height:0!important; padding:0!important; border:0!important; background:transparent!important; pointer-events:none; }
   /* Extra scrollable paper below the last alternative, without shrinking the viewport. */
@@ -124,6 +126,8 @@
  .optionContent { flex:1; overflow-wrap:anywhere; }
  .optionStatus { width:16px; flex-basis:16px; }
  .footer { min-height:calc(72px + env(safe-area-inset-bottom)); padding:12px max(16px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))!important; }
+ /* This rule overrides generic mobile footer padding: no bottom band or lost scroll height. */
+ .footer.compactFrameFooter { position:absolute; inset-inline:0; bottom:0; z-index:42; height:calc(76px + env(safe-area-inset-bottom)); min-height:0; padding:0!important; border:0!important; background:transparent!important; pointer-events:none; }
  .footerRow { display:flex; align-items:center; gap:10px; }
  .footerMain { flex:1; min-width:0; }
  .penExit { display:flex; width:100%; min-height:48px; align-items:center; justify-content:center; gap:8px; border:1px solid var(--pg-border); border-radius:12px; background:var(--pg-soft); font-size:15px; font-weight:700; }
