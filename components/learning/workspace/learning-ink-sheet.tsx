@@ -128,6 +128,7 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
           onPointerMove={optionTapToSelect ? event => inputHandlers.current?.move(event) : undefined}
           onPointerUp={optionTapToSelect ? event => inputHandlers.current?.up(event) : undefined}
           onPointerCancel={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
+          onClickCapture={optionTapToSelect ? event => inputHandlers.current?.click(event) : undefined}
           onLostPointerCapture={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
           style={{ position: "relative", display: "flow-root", minHeight: paperSpace.height,
             ...(optionTapToSelect && enabled ? { cursor: mode === "eraser" ? 'url("/cursors/eraser.svg") 7 26, crosshair' : "crosshair" } : {}),

@@ -90,6 +90,39 @@ test('answer button depresses while held, before selecting on release, even with
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, key)).toBe(0);
 });
 
+test('double tap on a stroke crossing an option erases it instead of selecting the answer', async ({ page }) => {
+  const meta = catalog[0];
+  await seed(page, meta);
+  const option = page.getByRole('radio').first();
+  await option.scrollIntoViewIfNeeded();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const bounds = await option.boundingBox();
+  const x = bounds.x + Math.min(55, bounds.width / 3);
+  const y = bounds.y + bounds.height / 2;
+  const storageKey = `paessed-learning-ink:${NODE_ID}:${meta.id}`;
+  const count = () => page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null')?.strokes?.length ?? 0, storageKey);
+  const drawAcross = async () => {
+    await page.mouse.move(x, bounds.y - 12);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 8, { steps: 12 });
+    await page.mouse.up();
+    await expect.poll(count).toBe(1);
+  };
+
+  await drawAcross();
+  await page.mouse.click(x, y, { clickCount: 2, delay: 55 });
+  await expect.poll(count).toBe(0);
+  await expect(option).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
+
+  // A SINGLE tap on ink is still a valid selection, after the brief double-tap window.
+  await drawAcross();
+  await page.mouse.click(x, y);
+  await expect.poll(() => option.getAttribute('aria-checked')).toBe('true');
+  await expect.poll(count).toBe(1);
+  await expect(page.getByTestId('mobile-review-dock')).toBeVisible();
+});
+
 test('review and next animate in only after choosing an alternative; the button sits above ink', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page);
