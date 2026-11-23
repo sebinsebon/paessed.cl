@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { CircleHelp, Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { scopedStorageKey } from "@/lib/sync/local";
+import { QuestionTourInkDemo } from "./question-tour-ink-demo";
 
 type Context = "learn" | "diagnostic" | "exam" | "playground";
 type Step = { id: string; selector: string; title: string; description: string };
@@ -32,8 +33,8 @@ function getSteps(mobile: boolean, context: Context): Step[] {
       selector: '[data-testid="learning-paper-stem"]',
       title: "Dibuja y borra tus trazos",
       description: mobile
-        ? "Empieza un trazo en la hoja. Para borrar uno, toca dos veces sobre él, incluso si cruza una alternativa. Usa dos dedos para desplazarte sin salir del dibujo."
-        : "Dibuja sobre el enunciado o las figuras. Haz doble clic sobre un trazo para borrarlo individualmente, sin limpiar toda la hoja.",
+        ? "Para borrar un trazo, haz doble toque directamente sobre él. Mira cómo desaparece en el ejemplo. También funciona sobre una alternativa; para desplazarte, usa dos dedos."
+        : "Haz doble clic directamente sobre un trazo para borrarlo. Mira el ejemplo animado: dibuja, pulsa dos veces y desaparece. No necesitas activar la goma.",
     },
     {
       id: "answers",
@@ -192,7 +193,7 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: reducedMotion ? 0 : .23, ease: [.22, 1, .36, 1] }}
       style={panelPlacement}
-      className="fixed inset-x-3 z-[130] mx-auto max-h-[calc(100dvh-96px)] w-[calc(100%-24px)] max-w-md overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] sm:p-5"
+      className={`fixed inset-x-3 z-[130] mx-auto max-h-[calc(100dvh-96px)] w-[calc(100%-24px)] ${step.id === "ink" ? "max-w-xl" : "max-w-md"} overflow-y-auto rounded-2xl border border-[var(--pg-border)] bg-[var(--pg-bg)] p-4 text-[var(--pg-fg)] shadow-[0_16px_48px_#0005] sm:p-5`}
     >
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--pg-selected)] text-[var(--primary)]"><Sparkles size={19} /></div>
@@ -202,6 +203,7 @@ export function QuestionTour({ ready, mobile, context, replay, onVisibilityChang
           <p className="mt-2 text-[13px] leading-5 text-[var(--pg-muted)]">{step.description}</p>
         </div>
       </div>
+      {step.id === "ink" && <QuestionTourInkDemo mobile={mobile} />}
       <div className="mt-4 flex gap-1.5" aria-hidden="true">
         {steps.map((item, i) => <span key={item.id} className="h-1 flex-1 rounded-full" style={{ background: i <= index ? "var(--primary)" : "var(--pg-border)" }} />)}
       </div>
