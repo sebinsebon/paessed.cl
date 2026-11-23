@@ -109,7 +109,7 @@ test('ink stays aligned through feedback, rotation, reload and pointer cancellat
   await seed(page, meta);
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const canvas = sheet.locator('canvas');
   const box = await canvas.boundingBox();
   const draw = async () => {
@@ -129,7 +129,7 @@ test('ink stays aligned through feedback, rotation, reload and pointer cancellat
   await page.mouse.move(box.x + 35, box.y + 35);
   await page.mouse.down();
   await page.mouse.move(box.x + 70, box.y + 40);
-  await canvas.dispatchEvent('pointercancel', { pointerId: 1 });
+  await sheet.dispatchEvent('pointercancel', { pointerId: 1 });
   await page.mouse.up();
   expect((await readInk()).strokes).toEqual(saved.strokes);
   await page.mouse.move(box.x + 35, box.y + 35);
@@ -166,7 +166,7 @@ test('ink storage failure warns and preserves in-memory marks when the session r
     };
   });
   await expect(page.getByTestId('learning-ink-sheet')).toHaveAttribute('data-ink-ready', 'true');
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const box = await page.locator('canvas').boundingBox();
   await page.mouse.move(box.x + 25, box.y + 25);
   await page.mouse.down();
