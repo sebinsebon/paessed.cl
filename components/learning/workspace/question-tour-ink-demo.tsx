@@ -15,7 +15,6 @@ const stroke = "M 26 117 C 56 53 86 155 113 95 S 178 44 223 104";
 export function QuestionTourInkDemo({ mobile }: { mobile: boolean }) {
   const [replay, setReplay] = useState(0);
   const reducedMotion = useReducedMotion();
-  const gesture = mobile ? "Doble toque" : "Doble clic";
   return (
     <div className={styles.demo} data-testid="question-tour-ink-demo" data-device={mobile ? "touch" : "mouse"}>
       <div className={styles.heading}>
