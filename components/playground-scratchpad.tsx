@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 
 type PlaygroundInkPoint = { x: number; y: number };
 export type PlaygroundInkStroke = { color: string; points: PlaygroundInkPoint[] };
@@ -10,6 +10,7 @@ export type InkPointerHandlers = {
   move: (event: ReactPointerEvent<HTMLElement>) => void;
   up: (event: ReactPointerEvent<HTMLElement>) => void;
   cancel: (event: ReactPointerEvent<HTMLElement>) => void;
+  click: (event: ReactMouseEvent<HTMLElement>) => void;
 };
 
 /** Pointer-based scratchpad: strokes use normalized coordinates so resize keeps annotations aligned. */
@@ -50,7 +51,12 @@ export function PlaygroundScratchpad({
   const touchPanY = useRef<number | null>(null);
   const touchGesture = useRef(false);
   const paintFrame = useRef(0);
-  const optionTap = useRef<{ id: number; x: number; y: number; moved: boolean; button: HTMLButtonElement } | null>(null);
+  const optionTap = useRef<{ id: number; x: number; y: number; moved: boolean; button: HTMLButtonElement; inkStroke: number | null; doubleInkTap: boolean } | null>(null);
+  const blockedInkClick = useRef<HTMLButtonElement | null>(null);
+  const pendingInkSelection = useRef<{ button: HTMLButtonElement; target: number; x: number; y: number; time: number; timeout: ReturnType<typeof setTimeout> } | null>(null);
+  useEffect(() => () => {
+    if (pendingInkSelection.current) clearTimeout(pendingInkSelection.current.timeout);
+  }, []);
   const clearOptionTap = () => {
     optionTap.current?.button.removeAttribute("data-press-preview");
     optionTap.current = null;
@@ -157,6 +163,7 @@ export function PlaygroundScratchpad({
 
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (!enabled) return;
+    blockedInkClick.current = null;
     if (singlePointer) {
       contacts.current.add(event.pointerId);
       if (event.pointerType === "touch") {
@@ -194,10 +201,21 @@ export function PlaygroundScratchpad({
           event.clientY >= rect.top && event.clientY <= rect.bottom;
       });
       if (button) {
-        // Leave the native pointer event on the button: click, focus and :active
-        // work normally. Only strokes started elsewhere capture the pointer.
+        // Keep the normal native click for clean alternatives. Only taps ON ink
+        // wait briefly: a second tap should erase the mark, not toggle the answer.
+        const inkStroke = doubleTapErase ? (hitsAt(pointOf(event)).at(-1) ?? null) : null;
+        const previous = pendingInkSelection.current;
+        const doubleInkTap = inkStroke !== null && !!previous &&
+          previous.button === button && previous.target === inkStroke &&
+          performance.now() - previous.time < 340 &&
+          Math.hypot(previous.x - event.clientX, previous.y - event.clientY) < 24;
+        if (doubleInkTap && previous) {
+          clearTimeout(previous.timeout);
+          pendingInkSelection.current = null;
+        }
+        blockedInkClick.current = inkStroke !== null ? button : null;
         button.setAttribute("data-press-preview", "true");
-        optionTap.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, button };
+        optionTap.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, button, inkStroke, doubleInkTap };
         liveStrokeRef.current = null;
         return;
       }
@@ -268,8 +286,35 @@ export function PlaygroundScratchpad({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const option = optionTap.current;
     if (option && option.id === event.pointerId) {
-      // The browser dispatches the native click when released on the option.
+      const tapped = !option.moved &&
+        Math.hypot(event.clientX - option.x, event.clientY - option.y) <= 10;
       clearOptionTap();
+      if (tapped && option.inkStroke !== null) {
+        if (option.doubleInkTap) {
+          // Erase just the touched stroke; do not change the selected answer.
+          const current = strokesRef.current;
+          if (option.inkStroke < current.length) {
+            const updated = current.filter((_, index) => index !== option.inkStroke);
+            strokesRef.current = updated;
+            onChange(updated);
+            schedulePaint();
+          }
+        } else {
+          // A single tap still selects the option, with a short delay only when
+          // it lands directly on a drawn mark. Clean options stay instantaneous.
+          const pending = {
+            button: option.button, target: option.inkStroke,
+            x: option.x, y: option.y, time: performance.now(),
+            timeout: undefined as unknown as ReturnType<typeof setTimeout>,
+          };
+          pending.timeout = setTimeout(() => {
+            if (pendingInkSelection.current !== pending) return;
+            pendingInkSelection.current = null;
+            if (pending.button.isConnected && !pending.button.disabled) pending.button.click();
+          }, 340);
+          pendingInkSelection.current = pending;
+        }
+      }
       return;
     }
     const stroke = liveStrokeRef.current;
@@ -299,6 +344,16 @@ export function PlaygroundScratchpad({
       schedulePaint();
     }
   };
+  const onClickCapture = (event: ReactMouseEvent<HTMLElement>) => {
+    // A native option click is intercepted only when it happened ON a stroke.
+    // It must not select a choice before we know whether this is a double tap.
+    const button = (event.target as Element).closest<HTMLButtonElement>('[role="radio"]');
+    if (event.detail !== 0 && button && button === blockedInkClick.current) {
+      blockedInkClick.current = null;
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
   const cancelStroke = (event: ReactPointerEvent<HTMLElement>) => {
     if (!singlePointer) { finishStroke(event); return; }
     if (event.type === "lostpointercapture" && activePointer.current !== event.pointerId) return;
@@ -307,6 +362,7 @@ export function PlaygroundScratchpad({
     if (!touchPositions.current.size) { touchGesture.current = false; touchPanY.current = null; }
     lastTap.current = null;
     clearOptionTap();
+    blockedInkClick.current = null;
     activePointer.current = null;
     liveStrokeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -358,7 +414,7 @@ export function PlaygroundScratchpad({
   // The drawing layer is visually on top, but on phones the sheet receives
   // pointers so answer buttons remain native, tactile and keyboard accessible.
   if (inputHandlersRef) inputHandlersRef.current = {
-    down: onPointerDown, move: onPointerMove, up: finishStroke, cancel: cancelStroke,
+    down: onPointerDown, move: onPointerMove, up: finishStroke, cancel: cancelStroke, click: onClickCapture,
   };
 
   return (
