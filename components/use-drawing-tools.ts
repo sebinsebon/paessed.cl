@@ -3,8 +3,8 @@
 import { useCallback, useState } from "react";
 
 /** Hiding tools never disables the canvas or interrupts the current stroke. */
-export function useDrawingTools() {
-  const [state, setState] = useState({ enabled: false, menuOpen: false });
+export function useDrawingTools(initialEnabled = false) {
+  const [state, setState] = useState(() => ({ enabled: initialEnabled, menuOpen: false }));
   const toggleDrawing = () => setState((previous) => previous.enabled && previous.menuOpen
     ? { enabled: false, menuOpen: false }
     : { enabled: true, menuOpen: true });
