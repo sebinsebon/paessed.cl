@@ -68,12 +68,23 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const [storageError, setStorageError] = useState("");
   const reducedMotion = useReducedMotion();
   const [mobileViewport, setMobileViewport] = useState(false);
+  const previousMobile = useRef(false);
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
-    const sync = () => setMobileViewport(query.matches);
+    const sync = () => {
+      const mobile = query.matches;
+      // Each newly opened mobile question begins in drawing mode. A manual
+      // toggle stays respected until the viewport next enters mobile.
+      if (mobile && !previousMobile.current) {
+        setTool("pen");
+        drawing.setDrawingEnabled(true);
+      }
+      previousMobile.current = mobile;
+      setMobileViewport(mobile);
+    };
     sync(); query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
-  }, []);
+  }, [drawing.setDrawingEnabled]);
   // Every question viewer uses the same touch-first ink interaction on phones.
   const mobileInk = mobileViewport;
   const [sheetReady, setSheetReady] = useState(false);
