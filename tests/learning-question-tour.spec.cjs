@@ -48,6 +48,7 @@ test('first mobile question offers a five-step spotlight only once and can repla
 });
 
 test('desktop tour highlights the top toolbox, drawing starts on, and answer actions remain usable', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.setViewportSize({ width: 1280, height: 800 });
   await seed(page, undefined, { tutorial: true });
   const guide = page.getByTestId('question-tour-panel');
@@ -59,7 +60,21 @@ test('desktop tour highlights the top toolbox, drawing starts on, and answer act
   await expect(guide).toHaveAttribute('data-step', 'ink');
   await expect(demo).toHaveAttribute('data-device', 'mouse');
   await expect(demo).toContainText('Doble clic');
-  await expect(demo.getByRole('button', { name: 'Repetir demostración' })).toBeVisible();
+  await expect(demo.getByTestId('ink-demo-draw-pane')).toBeVisible();
+  await expect(demo.getByTestId('ink-demo-erase-pane')).toBeVisible();
+  await expect(demo.getByTestId('ink-demo-stroke')).toHaveCSS('animation-name', /desktop-draw-ink/);
+  await expect(demo.getByTestId('ink-demo-pointer')).toHaveCSS('animation-name', /desktop-draw-cursor/);
+  const stage = demo.getByTestId('ink-demo-stage');
+  await expect(stage).toHaveAttribute('data-replay', '0');
+  await demo.getByRole('button', { name: 'Repetir demostración' }).click();
+  await expect(stage).toHaveAttribute('data-replay', '1');
+  // Steps crossfade without remounting navigation; the panel remains interactive.
+  await guide.getByRole('button', { name: 'Siguiente' }).click();
+  await expect(guide).toHaveAttribute('data-step', 'answers');
+  await expect(guide.getByTestId('question-tour-step-content')).toContainText('Así funcionan las alternativas');
+  await guide.getByRole('button', { name: 'Atrás' }).click();
+  await expect(guide).toHaveAttribute('data-step', 'ink');
+  await expect(demo).toBeVisible();
   await guide.getByRole('button', { name: 'Omitir' }).click();
   expect(await page.evaluate(() => localStorage.getItem('paessed-question-tour-v1-desktop'))).toBe('1');
 
