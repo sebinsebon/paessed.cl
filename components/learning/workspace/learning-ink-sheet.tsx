@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from "react";
-import { PlaygroundScratchpad, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
+import { PlaygroundScratchpad, type InkPointerHandlers, type PlaygroundInkStroke } from "@/components/playground-scratchpad";
 
 export type LearningInkControls = { undo: () => void; clear: () => void };
 type Sheet = { version: 2; width: number; height: number; layout: "mobile" | "desktop"; optionLayout?: string; strokes: PlaygroundInkStroke[] };
@@ -19,6 +19,7 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
   optionTapToSelect?: boolean;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const inputHandlers = useRef<InkPointerHandlers | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [strokes, setStrokes] = useState<PlaygroundInkStroke[]>([]);
   const [ready, setReady] = useState(false);
@@ -123,9 +124,14 @@ export function LearningInkSheet({ storageKey, enabled, mode, color, children, o
     <div data-testid="learning-ink-scroll" style={{ maxWidth: "100%", overflowX: "auto", overscrollBehaviorX: "contain", touchAction: enabled ? "none" : "pan-x pan-y pinch-zoom" }}>
       <div style={sheet ? { width: sheet.width * zoom, minHeight: sheet.height * zoom } : undefined}>
         <div ref={sheetRef} data-testid="learning-ink-sheet" data-ink-ready={ready} data-ink-locked={!!sheet} data-ink-layout={sheet?.layout} data-ink-option-layout={sheet?.optionLayout}
+          onPointerDown={optionTapToSelect ? event => inputHandlers.current?.down(event) : undefined}
+          onPointerMove={optionTapToSelect ? event => inputHandlers.current?.move(event) : undefined}
+          onPointerUp={optionTapToSelect ? event => inputHandlers.current?.up(event) : undefined}
+          onPointerCancel={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
+          onLostPointerCapture={optionTapToSelect ? event => inputHandlers.current?.cancel(event) : undefined}
           style={{ position: "relative", display: "flow-root", minHeight: paperSpace.height, ...(sheet ? { width: sheet.width, minHeight: sheet.height, transform: `scale(${zoom})`, transformOrigin: "top left" } : {}) }}>
           {children}
-          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase optionTapToSelect={optionTapToSelect} onInteractionStart={() => {
+          <PlaygroundScratchpad enabled={enabled && ready} mode={mode} color={color} strokes={strokes} onChange={save} singlePointer doubleTapErase optionTapToSelect={optionTapToSelect} inputHandlersRef={inputHandlers} onInteractionStart={() => {
             if (!sheet) { const value = dimensions(); if (value) { setSheet(value); callbacks.current.onLockChange?.(true); } }
           }} />
         </div>
