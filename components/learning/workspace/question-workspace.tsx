@@ -20,6 +20,7 @@ export interface QuestionWorkspaceProps {
   tools: ReactNode;
   panels?: ReactNode;
   footer: ReactNode;
+  guide?: ReactNode;
   children: ReactNode;
   paperStyle: CSSProperties;
   contentKey: string;
@@ -49,6 +50,7 @@ export function QuestionWorkspace({
   tools,
   panels,
   footer,
+  guide,
   children,
   paperStyle,
   contentKey,
@@ -205,6 +207,7 @@ export function QuestionWorkspace({
           </footer>
         </article>
       </main>
+      {guide}
     </div>
   );
 }

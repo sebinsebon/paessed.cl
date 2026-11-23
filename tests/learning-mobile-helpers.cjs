@@ -72,10 +72,16 @@ async function openNode(page, correction = false) {
   if (correction) await page.getByRole('button', { name: 'Corregir mis errores', exact: true }).click();
 }
 
-async function seed(page, meta = catalog[0], { correction = false, theme = 'light' } = {}) {
+async function seed(page, meta = catalog[0], { correction = false, theme = 'light', tutorial = false } = {}) {
   await page.goto('/app/aprender');
   await expect(page.getByRole('heading', { name: /Prepara tu ruta de M1|Aprender/, exact: true })).toBeVisible();
-  await page.evaluate(theme => localStorage.setItem('paessed-question-paper-theme', theme), theme);
+  await page.evaluate(({ theme, tutorial }) => {
+    localStorage.setItem('paessed-question-paper-theme', theme);
+    if (!tutorial) {
+      localStorage.setItem('paessed-question-tour-v1-mobile', '1');
+      localStorage.setItem('paessed-question-tour-v1-desktop', '1');
+    }
+  }, { theme, tutorial });
   await writeState(page, fixtureState(meta, correction));
   await page.reload();
   await openNode(page, correction);
