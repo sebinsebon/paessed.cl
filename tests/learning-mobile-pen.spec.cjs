@@ -252,12 +252,12 @@ test('pen quick actions remain visible until pencil is toggled off, including on
   await page.setViewportSize({ width: 1280, height: 800 });
   await seed(page);
   const desktopBefore = await page.evaluate(() => {
-    const button = document.querySelector('header [aria-label="Activar lápiz"]');
+    const button = document.querySelector('header [aria-label="Desactivar lápiz"]');
     const header = button.closest('header');
     const rect = element => { const { left, top, width, height } = element.getBoundingClientRect(); return { left, top, width, height }; };
     return { button: rect(button), header: rect(header) };
   });
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
   const desktopEraser = page.getByRole('button', { name: 'Goma de borrar', exact: true });
   const desktopSettings = page.getByRole('button', { name: 'Ajustes del lápiz', exact: true });
   const desktopPencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
