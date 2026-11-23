@@ -72,14 +72,14 @@ export function QuestionTourInkDemo({ mobile }: { mobile: boolean }) {
             <svg className={styles.desktopScene} viewBox="0 0 250 185" aria-hidden="true">
               <path className={styles.desktopEraseShadow} pathLength={1} d={stroke} />
               <path className={styles.desktopEraseInk} pathLength={1} d={stroke} />
-              <circle className={styles.desktopRingOne} cx="125" cy="106" r="12" />
-              <circle className={styles.desktopRingTwo} cx="125" cy="106" r="12" />
+              <circle className={styles.desktopRingOne} cx="113" cy="95" r="12" />
+              <circle className={styles.desktopRingTwo} cx="113" cy="95" r="12" />
               <g className={styles.desktopEraseCursor}>
                 <path d="M 0 0 L 0 30 L 8 23 L 15 38 L 23 34 L 16 19 L 29 17 Z"
                   fill="var(--pg-bg)" stroke="var(--pg-fg)" strokeWidth="2.7" strokeLinejoin="round" />
               </g>
-              <text x="149" y="76" className={styles.desktopClickOne}>1</text>
-              <text x="149" y="76" className={styles.desktopClickTwo}>2</text>
+              <text x="145" y="70" className={styles.desktopClickOne}>1</text>
+              <text x="145" y="70" className={styles.desktopClickTwo}>2</text>
             </svg>
           </div>
           {reducedMotion && <span className={styles.desktopMotionNote}>Dibujar → doble clic → se borra</span>}
