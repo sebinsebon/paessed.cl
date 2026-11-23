@@ -11,6 +11,7 @@ test('diagnostic on a phone has only a fixed pencil before selecting, then confi
   const dock = page.getByTestId('mobile-review-dock');
   const pencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(pencil).toBeVisible();
+  await expect(pencil).toHaveAttribute('aria-pressed', 'true');
   await expect(dock).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Confirmar y continuar' })).toHaveCount(0);
   const before = await page.getByTestId('learning-question-scroll').evaluate(el => el.clientHeight);
@@ -35,6 +36,7 @@ test('Default exams retain navigation without selecting an answer, but only one 
   await expect(page.getByRole('radio').first()).toBeVisible();
   const dock = page.getByTestId('mobile-review-dock');
   await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(dock).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Abrir menú de la pregunta' }).click();
@@ -62,6 +64,7 @@ test('Playground uses the same fixed pencil and presents Comprobar only after se
   const dock = page.getByTestId('mobile-review-dock');
   await expect(dock).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('radio').first().click();
   await expect(dock).toBeVisible();
   await expect(dock.getByRole('button', { name: 'Comprobar respuesta' })).toBeEnabled();
