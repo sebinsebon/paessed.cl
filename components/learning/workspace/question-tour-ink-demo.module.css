@@ -142,12 +142,12 @@
 @keyframes desktop-erase-cursor {
   0%,7% { transform:translate(215px,149px) scale(1); opacity:0; }
   9% { opacity:1; }
-  18% { transform:translate(125px,106px) scale(1); }
-  23% { transform:translate(125px,106px) scale(.84); }
-  24% { transform:translate(125px,106px) scale(1); }
-  27% { transform:translate(125px,106px) scale(.84); }
-  28%,56% { transform:translate(125px,106px) scale(1); opacity:1; }
-  63%,100% { transform:translate(125px,106px) scale(1); opacity:0; }
+  18% { transform:translate(113px,95px) scale(1); }
+  23% { transform:translate(113px,95px) scale(.84); }
+  24% { transform:translate(113px,95px) scale(1); }
+  27% { transform:translate(113px,95px) scale(.84); }
+  28%,56% { transform:translate(113px,95px) scale(1); opacity:1; }
+  63%,100% { transform:translate(113px,95px) scale(1); opacity:0; }
 }
 @keyframes desktop-ring-one {
   0%,21% { transform:scale(.3); opacity:0; }
@@ -181,7 +181,7 @@
   .desktopDrawInk,.desktopDrawShadow { stroke-dashoffset:0; }
   .desktopEraseInk,.desktopEraseShadow { stroke-dashoffset:0; }
   .desktopDrawCursor { transform:translate(223px,104px); opacity:1; }
-  .desktopEraseCursor { transform:translate(125px,106px); opacity:1; }
+  .desktopEraseCursor { transform:translate(113px,95px); opacity:1; }
   .desktopRingOne { transform:scale(1.8); opacity:1; }
   .desktopRingTwo { transform:scale(2.6); opacity:.45; }
   .desktopClickOne,.desktopClickTwo { opacity:1; }
