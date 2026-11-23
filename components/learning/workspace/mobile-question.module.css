@@ -24,8 +24,8 @@
 .option :global(.katex) { pointer-events:none; }
 .options { max-width:1060px; }
 /* Native alternatives retain accessible radio semantics but respond like tactile buttons. */
-.option { transform:translateY(0) scale(1); transform-origin:center; transition:transform 220ms cubic-bezier(.2,1.35,.3,1),filter 160ms ease,background-color 150ms,border-color 150ms,box-shadow 170ms; }
-.option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { transform:translateY(2px) scale(.975); filter:brightness(.98); transition-duration:70ms; }
+.option { transform:translateY(0) scale(1); transform-origin:center; transition:transform 150ms cubic-bezier(.22,.8,.35,1),filter 110ms ease,background-color 150ms,border-color 150ms,box-shadow 145ms ease-out; }
+.option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { transform:translateY(1.5px) scale(.99); filter:brightness(.99); transition-duration:60ms; }
 .drawingTools { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
 .drawingTools button { min-width:44px; min-height:44px; display:grid; place-items:center; border-radius:8px; }
 .drawingTools button[aria-pressed=true] { outline:2px solid var(--primary); outline-offset:-2px; }
@@ -125,7 +125,7 @@
  .options[data-layout=grid] { grid-template-columns:repeat(2,minmax(0,1fr)); }
  .options[data-layout=grid] > :last-child:nth-child(odd) { grid-column:1/-1; }
  .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; user-select:none; -webkit-tap-highlight-color:transparent; }
- .option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { box-shadow:0 1px 0 var(--pg-border); }
+ .option:active:not(:disabled),.option[data-press-preview=true]:not(:disabled) { box-shadow:0 2px 0 var(--pg-border); }
  .optionLabel,.optionContent { font-size:16px!important; line-height:24px!important; }
  .optionContent { flex:1; overflow-wrap:anywhere; }
  .optionStatus { width:16px; flex-basis:16px; }
@@ -160,7 +160,7 @@
 :global([data-ink-locked=true][data-ink-layout=mobile]) .options[data-layout=grid] > :last-child:nth-child(odd) { grid-column:1/-1; }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .option { width:100%!important; min-width:0!important; min-height:48px!important; padding:10px!important; gap:7px!important; border-radius:14px!important; box-shadow:0 4px 0 var(--pg-border),0 5px 12px #00000008; user-select:none; -webkit-tap-highlight-color:transparent; }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .option:active:not(:disabled),
-:global([data-ink-locked=true][data-ink-layout=mobile]) .option[data-press-preview=true]:not(:disabled) { box-shadow:0 1px 0 var(--pg-border); }
+:global([data-ink-locked=true][data-ink-layout=mobile]) .option[data-press-preview=true]:not(:disabled) { box-shadow:0 2px 0 var(--pg-border); }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .optionLabel,
 :global([data-ink-locked=true][data-ink-layout=mobile]) .optionContent { font-size:16px!important; line-height:24px!important; }
 :global([data-ink-locked=true][data-ink-layout=mobile]) .optionContent { flex:1; overflow-wrap:anywhere; }
