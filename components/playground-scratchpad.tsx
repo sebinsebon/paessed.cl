@@ -310,6 +310,7 @@ export function PlaygroundScratchpad({
           pending.timeout = setTimeout(() => {
             if (pendingInkSelection.current !== pending) return;
             pendingInkSelection.current = null;
+            blockedInkClick.current = null; // The delayed programmatic click is intentional.
             if (pending.button.isConnected && !pending.button.disabled) pending.button.click();
           }, 340);
           pendingInkSelection.current = pending;
@@ -348,7 +349,7 @@ export function PlaygroundScratchpad({
     // A native option click is intercepted only when it happened ON a stroke.
     // It must not select a choice before we know whether this is a double tap.
     const button = (event.target as Element).closest<HTMLButtonElement>('[role="radio"]');
-    if (event.detail !== 0 && button && button === blockedInkClick.current) {
+    if (button && button === blockedInkClick.current) {
       blockedInkClick.current = null;
       event.preventDefault();
       event.stopPropagation();
