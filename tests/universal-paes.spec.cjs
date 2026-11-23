@@ -80,11 +80,13 @@ for (const context of ['learning', 'diagnostic-inicio', 'diagnostic-aprender', '
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await openContext(page, context);
     await paperGeometry(page, width < 768);
-    const pencil = page.getByRole('button', { name: 'Activar lápiz', exact: true });
-    await pencil.click();
+    // Drawing now starts enabled in every question viewer, on phones and desktop.
+    const pencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
+    await expect(pencil).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Herramientas de dibujo', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Desactivar lápiz', exact: true }).click();
+    await pencil.click();
+    await expect(page.getByRole('button', { name: 'Activar lápiz', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
     await expect(pencil).toBeVisible();
     await expect(page.getByRole('group', { name: 'Zoom de la hoja anotada', exact: true })).toHaveCount(0);
     const option = options(page).first();
@@ -127,7 +129,7 @@ test('blank space below a short question accepts ink and exiting preserves natur
   const lastOption = await options(page).last().boundingBox();
   const y = layout.main.bottom - 45;
   expect(y).toBeGreaterThan(lastOption.y + lastOption.height + 12);
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
   await page.mouse.move(40, y);
   await page.mouse.down();
   await page.mouse.move(130, y - 20, { steps: 8 });
@@ -168,7 +170,7 @@ test('nested fraction alternatives keep separate clickable areas on desktop', as
 test('growing the writing viewport preserves old ink and accepts ink in the new blank space', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 550 });
   await seed(page, shortMeta);
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
   const canvas = page.getByTestId('learning-ink-sheet').locator('canvas');
   const draw = async y => {
     await page.mouse.move(45, y); await page.mouse.down();
@@ -321,7 +323,7 @@ test('a new demo exam never restores the previous session ink', async ({ page, b
   const oldSession = await page.evaluate(key => localStorage.getItem(key), sessionKey);
   const canvas = page.getByTestId('learning-ink-sheet').locator('canvas');
   const box = await canvas.boundingBox();
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toBeVisible();
   await page.mouse.move(box.x + 30, box.y + 30); await page.mouse.down();
   await page.mouse.move(box.x + 100, box.y + 50, { steps: 8 }); await page.mouse.up();
   await page.getByRole('button', { name: 'Abrir menú de la pregunta', exact: true }).click();
