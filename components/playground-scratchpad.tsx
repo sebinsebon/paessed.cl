@@ -270,6 +270,7 @@ export function PlaygroundScratchpad({
         event.preventDefault();
         event.currentTarget.setPointerCapture(event.pointerId);
         pointerStarted.current = performance.now();
+        lastTap.current = null;
         onInteractionStart?.();
         liveStrokeRef.current = {
           color,
@@ -402,6 +403,10 @@ export function PlaygroundScratchpad({
     }
   };
   const cancelStroke = (event: ReactPointerEvent<HTMLElement>) => {
+    // Touch screens implicitly capture the pointer on the option button.
+    // Transferring capture from that button to the sheet also fires a bubbling
+    // lostpointercapture event: it must not cancel the new drawing stroke.
+    if (event.type === "lostpointercapture" && event.target !== event.currentTarget) return;
     if (!singlePointer) { finishStroke(event); return; }
     if (event.type === "lostpointercapture" && activePointer.current !== event.pointerId) return;
     contacts.current.delete(event.pointerId);
