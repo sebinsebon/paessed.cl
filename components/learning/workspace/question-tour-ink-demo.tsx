@@ -23,7 +23,7 @@ export function QuestionTourInkDemo({ mobile }: { mobile: boolean }) {
         </button>
       </div>
       <div className={styles.stage} key={replay} data-testid="ink-demo-stage" data-replay={replay}
-        aria-label={`Demostración: se dibuja un trazo, se hace ${gesture.toLowerCase()} sobre él y desaparece.`}>
+        role="img" aria-label={`Demostración: se dibuja un trazo, se hace ${gesture.toLowerCase()} sobre él y desaparece.`}>
         <div className={styles.paperGrid} aria-hidden="true" />
         <span className={styles.firstLabel} aria-hidden="true">1. Dibujar</span>
         <span className={styles.secondLabel} aria-hidden="true">2. {gesture}</span>
@@ -39,9 +39,9 @@ export function QuestionTourInkDemo({ mobile }: { mobile: boolean }) {
           <g className={styles.cursor} data-testid="ink-demo-pointer">
             {mobile
               ? <>
-                  <path d="M -5 -25 C -5 -31 4 -31 4 -25 V -3 C 7 -7 13 -5 14 0 C 19 -3 24 2 23 7 C 30 5 33 12 29 19 L 18 37 C 14 45 -5 45 -10 36 L -24 13 C -29 5 -20 -2 -15 5 L -5 15 Z"
+                  <path d="M -5 3 C -5 -5 4 -5 4 3 V 27 C 8 23 14 28 14 32 C 19 29 24 34 23 39 C 30 36 34 44 29 50 L 19 63 C 14 71 -5 71 -10 62 L -24 42 C -29 34 -20 27 -15 35 L -5 46 Z"
                     fill="var(--pg-bg)" stroke="var(--primary)" strokeWidth="3" strokeLinejoin="round" />
-                  <path d="M -5 15 V -21" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M -5 46 V 3" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" />
                 </>
               : <path d="M 0 0 L 0 34 L 9 26 L 16 43 L 25 39 L 17 22 L 32 20 Z"
                   fill="var(--pg-bg)" stroke="var(--pg-fg)" strokeWidth="3" strokeLinejoin="round" />}
