@@ -1,20 +1,19 @@
 const { test, expect } = require('@playwright/test');
 const { catalog, NODE_ID, seed } = require('./learning-mobile-helpers.cjs');
 
-test('phone uses a fixed pencil, menu tools, and localized eraser strokes', async ({ page }, testInfo) => {
+test('phone pencil starts enabled, menu tools remain separate and eraser removes only touched strokes', async ({ page }, testInfo) => {
   const meta = catalog[0];
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page, meta);
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
   await expect(page.getByTestId('mobile-review-dock')).toHaveCount(0);
-  const pen = page.getByRole('button', { name: 'Activar lápiz', exact: true });
+  const pen = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(pen).toBeVisible();
+  await expect(pen).toHaveAttribute('aria-pressed', 'true');
   const penBox = await pen.boundingBox();
   expect(penBox.x).toBeGreaterThan(290);
   expect(penBox.y + penBox.height).toBeLessThanOrEqual(844);
-  await pen.click();
-  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Goma de borrar', exact: true })).toHaveCount(0);
 
   const canvas = sheet.locator('canvas');
@@ -37,15 +36,13 @@ test('phone uses a fixed pencil, menu tools, and localized eraser strokes', asyn
   await expect(eraser).toBeVisible();
   await eraser.click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(pen).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Activar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(canvas).toHaveCSS('cursor', /eraser\\.svg/);
   await page.mouse.click(box.x + 60, box.y + 30);
   await expect.poll(read).toEqual([keep]);
 
-  // The fixed pencil switches back to drawing without moving or opening a tray.
-  await pen.click();
+  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(canvas).toHaveCSS('cursor', 'crosshair');
   await menu.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
   const panel = page.getByRole('dialog', { name: 'Herramientas de dibujo', exact: true });
@@ -61,7 +58,7 @@ test('review and next animate in only after choosing an alternative; the button 
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await seed(page);
   const review = page.getByTestId('mobile-review-dock');
-  const pencil = page.getByRole('button', { name: 'Activar lápiz', exact: true });
+  const pencil = page.getByRole('button', { name: 'Desactivar lápiz', exact: true });
   await expect(pencil).toBeVisible();
   await expect(review).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Comprobar', exact: true })).toHaveCount(0);
@@ -102,7 +99,7 @@ test('mobile ink pans with two touches and draws directly over lower alternative
   await seed(page, meta);
   const sheet = page.getByTestId('learning-ink-sheet');
   await expect(sheet).toHaveAttribute('data-ink-ready', 'true');
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
   // Force enough paper to require scrolling even with a short sample question.
   await sheet.evaluate(element => { element.style.paddingBottom = '800px'; });
@@ -161,7 +158,7 @@ test('mobile ink pans with two touches and draws directly over lower alternative
 
 test('fast eraser movement removes every crossed stroke, without bringing earlier strokes back', async ({ page }) => {
   await seed(page, catalog[0]);
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   const canvas = page.getByTestId('learning-ink-sheet').locator('canvas');
   const box = await canvas.boundingBox();
   for (const offset of [30, 75, 120]) {
@@ -271,7 +268,7 @@ test('pen quick actions remain visible until pencil is toggled off, including on
 test('pencil settings respect reduced motion preferences', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page);
-  await page.getByRole('button', { name: 'Activar lápiz', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Desactivar lápiz', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Abrir menú de la pregunta', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Ajustes del lápiz', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Herramientas de dibujo' })).toHaveCSS('animation-name', 'none');
@@ -285,7 +282,7 @@ for (const correct of [true, false]) test(`selection toggles before confirmation
   const check = page.getByRole('button', { name: 'Comprobar', exact: true });
   await option.click(); await expect(check).toBeEnabled();
   await option.click(); await expect(option).toHaveAttribute('aria-checked', 'false');
-  await expect(check).toBeDisabled();
+  await expect(check).toHaveCount(0);
   await option.focus(); await page.keyboard.press('Space');
   await expect(option).toHaveAttribute('aria-checked', 'true');
   await check.click();
