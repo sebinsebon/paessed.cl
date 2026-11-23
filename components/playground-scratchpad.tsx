@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 
 type PlaygroundInkPoint = { x: number; y: number };
 export type PlaygroundInkStroke = { color: string; points: PlaygroundInkPoint[] };
+/** Pointer events can be handled by the sheet itself so native answer buttons remain clickable. */
+export type InkPointerHandlers = {
+  down: (event: ReactPointerEvent<HTMLElement>) => void;
+  move: (event: ReactPointerEvent<HTMLElement>) => void;
+  up: (event: ReactPointerEvent<HTMLElement>) => void;
+  cancel: (event: ReactPointerEvent<HTMLElement>) => void;
+};
 
 /** Pointer-based scratchpad: strokes use normalized coordinates so resize keeps annotations aligned. */
 export function PlaygroundScratchpad({
@@ -16,6 +23,7 @@ export function PlaygroundScratchpad({
   singlePointer = false,
   doubleTapErase = false,
   optionTapToSelect = false,
+  inputHandlersRef,
 }: {
   enabled: boolean;
   mode: "pen" | "eraser";
@@ -28,6 +36,7 @@ export function PlaygroundScratchpad({
   doubleTapErase?: boolean;
   /** Mobile: a stroke beginning inside an alternative selects it; strokes begun outside can cross it. */
   optionTapToSelect?: boolean;
+  inputHandlersRef?: MutableRefObject<InkPointerHandlers | null>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const liveStrokeRef = useRef<PlaygroundInkStroke | null>(null);
@@ -42,6 +51,10 @@ export function PlaygroundScratchpad({
   const touchGesture = useRef(false);
   const paintFrame = useRef(0);
   const optionTap = useRef<{ id: number; x: number; y: number; moved: boolean; button: HTMLButtonElement } | null>(null);
+  const clearOptionTap = () => {
+    optionTap.current?.button.removeAttribute("data-press-preview");
+    optionTap.current = null;
+  };
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -103,11 +116,14 @@ export function PlaygroundScratchpad({
       y: Math.max(0, Math.min(1, (y - rect.top) / Math.max(1, rect.height))),
     };
   };
-  const pointOf = (event: ReactPointerEvent<HTMLCanvasElement>) =>
-    pointOfCoords(event.clientX, event.clientY, event.currentTarget);
-  const pointerPoints = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const pointOf = (event: ReactPointerEvent<HTMLElement>): PlaygroundInkPoint => {
+    const canvas = canvasRef.current!;
+    return pointOfCoords(event.clientX, event.clientY, canvas);
+  };
+  const pointerPoints = (event: ReactPointerEvent<HTMLElement>): PlaygroundInkPoint[] => {
+    const canvas = canvasRef.current!;
     const coalesced = event.nativeEvent.getCoalescedEvents?.() ?? [];
-    const points = coalesced.map(pointer => pointOfCoords(pointer.clientX, pointer.clientY, event.currentTarget));
+    const points = coalesced.map(pointer => pointOfCoords(pointer.clientX, pointer.clientY, canvas));
     points.push(pointOf(event)); // Safari may not include the final event in the coalesced batch.
     return points;
   };
@@ -139,7 +155,7 @@ export function PlaygroundScratchpad({
     schedulePaint();
   };
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (!enabled) return;
     if (singlePointer) {
       contacts.current.add(event.pointerId);
@@ -151,7 +167,7 @@ export function PlaygroundScratchpad({
           liveStrokeRef.current = null;
           activePointer.current = null;
           lastTap.current = null;
-          optionTap.current = null;
+          clearOptionTap();
           touchPanY.current = [...touchPositions.current.values()].reduce((a, b) => a + b, 0) / touchPositions.current.size;
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -163,7 +179,7 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        optionTap.current = null;
+        clearOptionTap();
         schedulePaint();
         return;
       }
@@ -178,8 +194,9 @@ export function PlaygroundScratchpad({
           event.clientY >= rect.top && event.clientY <= rect.bottom;
       });
       if (button) {
-        event.preventDefault();
-        event.currentTarget.setPointerCapture(event.pointerId);
+        // Leave the native pointer event on the button: click, focus and :active
+        // work normally. Only strokes started elsewhere capture the pointer.
+        button.setAttribute("data-press-preview", "true");
         optionTap.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false, button };
         liveStrokeRef.current = null;
         return;
@@ -197,8 +214,8 @@ export function PlaygroundScratchpad({
     liveStrokeRef.current = { color, points: [point] };
     schedulePaint();
   };
-  const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!enabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+  const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!enabled) return;
     if (singlePointer && event.pointerType === "touch" && touchPositions.current.has(event.pointerId)) {
       touchPositions.current.set(event.pointerId, event.clientY);
       if (touchGesture.current) {
@@ -215,9 +232,13 @@ export function PlaygroundScratchpad({
     if (singlePointer && (touchGesture.current || activePointer.current !== event.pointerId)) return;
     const option = optionTap.current;
     if (option && option.id === event.pointerId) {
-      if (Math.hypot(event.clientX - option.x, event.clientY - option.y) > 10) option.moved = true;
+      if (Math.hypot(event.clientX - option.x, event.clientY - option.y) > 10) {
+        option.moved = true;
+        option.button.removeAttribute("data-press-preview");
+      }
       return;
     }
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
     const points = pointerPoints(event);
     if (mode === "eraser") {
       eraseAt(points);
@@ -229,7 +250,7 @@ export function PlaygroundScratchpad({
       schedulePaint();
     }
   };
-  const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const finishStroke = (event: ReactPointerEvent<HTMLElement>) => {
     if (singlePointer) {
       if (event.pointerType === "touch") {
         touchPositions.current.delete(event.pointerId);
@@ -247,17 +268,15 @@ export function PlaygroundScratchpad({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     const option = optionTap.current;
     if (option && option.id === event.pointerId) {
-      optionTap.current = null;
-      if (!option.moved && Math.hypot(event.clientX - option.x, event.clientY - option.y) <= 10 && !option.button.disabled && option.button.isConnected) {
-        option.button.click();
-      }
+      // The browser dispatches the native click when released on the option.
+      clearOptionTap();
       return;
     }
     const stroke = liveStrokeRef.current;
     liveStrokeRef.current = null;
     if (stroke) {
       if (doubleTapErase) {
-        const rect = event.currentTarget.getBoundingClientRect();
+        const rect = canvasRef.current!.getBoundingClientRect();
         const first = stroke.points[0];
         const tap = performance.now() - pointerStarted.current < 280 && stroke.points.every(point => Math.hypot((point.x - first.x) * rect.width, (point.y - first.y) * rect.height) < 8);
         const previous = lastTap.current;
@@ -280,14 +299,14 @@ export function PlaygroundScratchpad({
       schedulePaint();
     }
   };
-  const cancelStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+  const cancelStroke = (event: ReactPointerEvent<HTMLElement>) => {
     if (!singlePointer) { finishStroke(event); return; }
     if (event.type === "lostpointercapture" && activePointer.current !== event.pointerId) return;
     contacts.current.delete(event.pointerId);
     if (event.pointerType === "touch") touchPositions.current.delete(event.pointerId);
     if (!touchPositions.current.size) { touchGesture.current = false; touchPanY.current = null; }
     lastTap.current = null;
-    optionTap.current = null;
+    clearOptionTap();
     activePointer.current = null;
     liveStrokeRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -296,7 +315,7 @@ export function PlaygroundScratchpad({
   useEffect(() => {
     if (!enabled && singlePointer) {
       activePointer.current = null; contacts.current.clear(); touchPositions.current.clear(); touchGesture.current = false;
-      touchPanY.current = null; liveStrokeRef.current = null; lastTap.current = null; optionTap.current = null; schedulePaint();
+      touchPanY.current = null; liveStrokeRef.current = null; lastTap.current = null; clearOptionTap(); schedulePaint();
     }
   }, [enabled, singlePointer, draw]);
   useEffect(() => {
@@ -309,7 +328,7 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        optionTap.current = null;
+        clearOptionTap();
         touchGesture.current = true;
         schedulePaint();
       }
@@ -322,7 +341,7 @@ export function PlaygroundScratchpad({
         liveStrokeRef.current = null;
         lastTap.current = null;
         activePointer.current = null;
-        optionTap.current = null;
+        clearOptionTap();
         schedulePaint();
       }
     };
@@ -336,18 +355,24 @@ export function PlaygroundScratchpad({
     };
   }, [singlePointer, enabled, draw]);
 
+  // The drawing layer is visually on top, but on phones the sheet receives
+  // pointers so answer buttons remain native, tactile and keyboard accessible.
+  if (inputHandlersRef) inputHandlersRef.current = {
+    down: onPointerDown, move: onPointerMove, up: finishStroke, cancel: cancelStroke,
+  };
+
   return (
     <canvas
       ref={canvasRef}
       aria-label={mode === "eraser" ? "Borrar trazos de la hoja; desliza con dos dedos para desplazarte" : "Escribir cálculos sobre la hoja; desliza con dos dedos para desplazarte"}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={finishStroke}
-      onPointerCancel={cancelStroke}
-      onLostPointerCapture={singlePointer ? cancelStroke : undefined}
+      onPointerDown={optionTapToSelect ? undefined : onPointerDown}
+      onPointerMove={optionTapToSelect ? undefined : onPointerMove}
+      onPointerUp={optionTapToSelect ? undefined : finishStroke}
+      onPointerCancel={optionTapToSelect ? undefined : cancelStroke}
+      onLostPointerCapture={optionTapToSelect ? undefined : singlePointer ? cancelStroke : undefined}
       style={enabled && mode === "eraser" ? { cursor: 'url("/cursors/eraser.svg") 7 26, crosshair' } : undefined}
       className={"absolute inset-0 z-10 h-full w-full " +
-        (enabled ? (mode === "eraser" ? "pointer-events-auto touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
+        (enabled && !optionTapToSelect ? (mode === "eraser" ? "pointer-events-auto touch-none" : "pointer-events-auto cursor-crosshair touch-none") : "pointer-events-none")}
     />
   );
 }

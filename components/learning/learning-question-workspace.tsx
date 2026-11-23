@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Bookmark, Check, Clock, Eraser, Grid3X3, Info, Menu, Move, Pencil, RotateCcw, Settings, Trash2, X, ZoomIn } from "lucide-react";
 import { PaessedBlocks } from "@/components/paessed-blocks";
 import { useDrawingTools } from "@/components/use-drawing-tools";
@@ -68,12 +68,24 @@ export function LearningQuestionWorkspace({ meta, scratchpadKey, timerKey, selec
   const [storageError, setStorageError] = useState("");
   const reducedMotion = useReducedMotion();
   const [mobileViewport, setMobileViewport] = useState(false);
-  useEffect(() => {
+  const previousMobile = useRef(false);
+  // Initialize before the first visible phone paint to avoid a flash of "pen off".
+  useLayoutEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
-    const sync = () => setMobileViewport(query.matches);
+    const sync = () => {
+      const mobile = query.matches;
+      // Each newly opened mobile question begins in drawing mode. A manual
+      // toggle stays respected until the viewport next enters mobile.
+      if (mobile && !previousMobile.current) {
+        setTool("pen");
+        drawing.setDrawingEnabled(true);
+      }
+      previousMobile.current = mobile;
+      setMobileViewport(mobile);
+    };
     sync(); query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
-  }, []);
+  }, [drawing.setDrawingEnabled]);
   // Every question viewer uses the same touch-first ink interaction on phones.
   const mobileInk = mobileViewport;
   const [sheetReady, setSheetReady] = useState(false);
