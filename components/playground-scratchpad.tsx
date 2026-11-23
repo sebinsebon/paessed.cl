@@ -215,7 +215,7 @@ export function PlaygroundScratchpad({
     schedulePaint();
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!enabled || !event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    if (!enabled) return;
     if (singlePointer && event.pointerType === "touch" && touchPositions.current.has(event.pointerId)) {
       touchPositions.current.set(event.pointerId, event.clientY);
       if (touchGesture.current) {
@@ -238,6 +238,7 @@ export function PlaygroundScratchpad({
       }
       return;
     }
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
     const points = pointerPoints(event);
     if (mode === "eraser") {
       eraseAt(points);
